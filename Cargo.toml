@@ -1,0 +1,3 @@
+[workspace]
+members = ["txv-core", "txv-render", "txv-widgets"]
+resolver = "2"
