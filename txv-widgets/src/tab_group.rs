@@ -146,6 +146,17 @@ impl TabGroup {
         true
     }
 
+    /// Force-remove a tab by index (no can_close check).
+    pub fn remove_tab(&mut self, idx: usize) {
+        if idx >= self.group.child_count() {
+            return;
+        }
+        self.group.remove(idx);
+        self.titles.remove(idx);
+        self.lru.remove(idx);
+        self.adjust_after_remove();
+    }
+
     pub fn focus_tab_by_title(&mut self, title: &str) -> bool {
         if let Some(idx) = self.titles.iter().position(|t| t == title) {
             self.set_active(idx);
@@ -197,6 +208,14 @@ impl TabGroup {
         if let Some(v) = self.lru.get_mut(self.group.focused_index()) {
             *v = self.lru_counter;
         }
+    }
+
+    /// Index of the least-recently-used tab, or None if empty.
+    pub fn lru_index(&self) -> Option<usize> {
+        if self.lru.is_empty() {
+            return None;
+        }
+        self.lru.iter().enumerate().min_by_key(|(_, &v)| v).map(|(i, _)| i)
     }
 
     fn adjust_after_remove(&mut self) {
