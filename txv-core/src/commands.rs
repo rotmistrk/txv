@@ -10,3 +10,4 @@ pub const CM_HELP: CommandId = 5;
 pub const CM_MENU: CommandId = 6;
 pub const CM_OK: CommandId = 7;
 pub const CM_CANCEL: CommandId = 8;
+pub const CM_TICK: CommandId = 9;

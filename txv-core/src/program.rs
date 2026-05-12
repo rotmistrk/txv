@@ -129,6 +129,7 @@ impl Program {
             } else {
                 // Tick
                 self.group.dispatch(&Event::Tick, &mut queue);
+                queue.put_command(crate::commands::CM_TICK, None);
             }
 
             // Process commands from queue
