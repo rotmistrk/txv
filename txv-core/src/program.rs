@@ -272,4 +272,9 @@ impl Program {
     pub fn status_bar_mut(&mut self) -> &mut dyn View {
         &mut *self.group.children[0]
     }
+
+    /// Dispatch an event through the group (preprocess → focused → postprocess).
+    pub fn group_dispatch(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+        self.group.dispatch(event, queue)
+    }
 }
