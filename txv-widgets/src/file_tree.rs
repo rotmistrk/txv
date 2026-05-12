@@ -38,7 +38,7 @@ impl FileTreeData {
             nodes: Vec::new(),
             visible: Vec::new(),
             colors: HashMap::new(),
-            show_hidden: false,
+            show_hidden: true,
         };
         data.load_children(root, None, 0);
         data.rebuild_visible();
