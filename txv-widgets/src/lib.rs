@@ -4,6 +4,7 @@
 //! Depends only on txv-core (plus `ignore` for filesystem widgets).
 
 pub mod command_item;
+pub mod confirm_item;
 pub mod dialog;
 pub mod file_list;
 pub mod file_tree;
