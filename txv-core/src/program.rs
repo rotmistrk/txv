@@ -118,14 +118,30 @@ impl Program {
                 backend.flush(&surface);
             }
 
-            // Poll event
+            // Poll event — drain consecutive resize events, act on final size only
             if let Some(event) = backend.poll_event(Duration::from_millis(50)) {
-                if let Event::Resize(nw, nh) = &event {
-                    surface = Surface::new(*nw, *nh);
-                    self.layout(*nw, *nh);
+                if let Event::Resize(mut nw, mut nh) = event {
+                    while let Some(next) = backend.poll_event(Duration::from_millis(0)) {
+                        if let Event::Resize(w2, h2) = next {
+                            nw = w2;
+                            nh = h2;
+                        } else {
+                            surface = Surface::new(nw, nh);
+                            self.layout(nw, nh);
+                            backend.invalidate();
+                            self.group.dispatch(&next, &mut queue);
+                            nw = 0; // signal: already applied
+                            break;
+                        }
+                    }
+                    if nw > 0 {
+                        surface = Surface::new(nw, nh);
+                        self.layout(nw, nh);
+                        backend.invalidate();
+                    }
+                } else {
+                    self.group.dispatch(&event, &mut queue);
                 }
-                // Three-phase dispatch (preprocess → focused → postprocess)
-                self.group.dispatch(&event, &mut queue);
             } else {
                 // Tick
                 self.group.dispatch(&Event::Tick, &mut queue);
@@ -141,6 +157,13 @@ impl Program {
                     if *id == CM_QUIT {
                         quit = true;
                         break;
+                    }
+                    if *id == crate::commands::CM_REPAINT {
+                        backend.invalidate();
+                        let (w, h) = backend.size();
+                        surface = Surface::new(w, h);
+                        self.layout(w, h);
+                        continue;
                     }
                 }
                 // Re-dispatch through the group (Desktop handles its own commands)
