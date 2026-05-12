@@ -63,6 +63,29 @@ impl TabGroup {
         HandleResult::Consumed
     }
 
+    /// Move dropdown cursor down (wraps around).
+    pub fn dropdown_move_down(&mut self) {
+        if let Some(cursor) = self.dropdown_cursor {
+            let count = self.group.child_count();
+            if count > 0 {
+                self.dropdown_cursor = Some((cursor + 1) % count);
+                self.group.view.mark_dirty();
+            }
+        }
+    }
+
+    /// Move dropdown cursor up (wraps around).
+    pub fn dropdown_move_up(&mut self) {
+        if let Some(cursor) = self.dropdown_cursor {
+            let count = self.group.child_count();
+            if count > 0 {
+                let prev = if cursor == 0 { count - 1 } else { cursor - 1 };
+                self.dropdown_cursor = Some(prev);
+                self.group.view.mark_dirty();
+            }
+        }
+    }
+
     /// Draw the dropdown overlay on the surface.
     pub fn draw_dropdown(&self, surface: &mut Surface) {
         let Some(cursor) = self.dropdown_cursor else {
