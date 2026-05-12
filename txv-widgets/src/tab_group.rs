@@ -218,6 +218,11 @@ impl TabGroup {
         self.lru.iter().enumerate().min_by_key(|(_, &v)| v).map(|(i, _)| i)
     }
 
+    /// Check if a tab at the given index can be closed.
+    pub fn can_close_tab(&self, idx: usize) -> CloseResult {
+        self.group.child(idx).map(|c| c.can_close()).unwrap_or(CloseResult::Ok)
+    }
+
     fn adjust_after_remove(&mut self) {
         let fi = self.group.focused_index();
         if fi >= self.group.child_count() && fi > 0 {
