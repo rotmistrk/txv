@@ -21,6 +21,48 @@ pub trait Backend: Send {
     fn leave(&mut self);
     /// Force next flush to redraw all cells (bypass diff).
     fn invalidate(&mut self) {}
+    /// Get a waker handle that background threads can use to interrupt poll_event.
+    fn waker(&self) -> Waker {
+        Waker::noop()
+    }
+}
+
+/// A handle that wakes the event loop from any thread.
+/// Clone + Send — safe to pass to background threads.
+#[derive(Clone)]
+pub struct Waker {
+    fd: Option<std::sync::Arc<WakeFd>>,
+}
+
+struct WakeFd(std::os::unix::io::RawFd);
+
+impl Drop for WakeFd {
+    fn drop(&mut self) {
+        unsafe { libc::close(self.0); }
+    }
+}
+
+// SAFETY: the fd is only written to (single byte), which is atomic on pipes.
+unsafe impl Send for WakeFd {}
+unsafe impl Sync for WakeFd {}
+
+impl Waker {
+    /// Create a waker from the write end of a pipe.
+    pub fn from_fd(write_fd: std::os::unix::io::RawFd) -> Self {
+        Self { fd: Some(std::sync::Arc::new(WakeFd(write_fd))) }
+    }
+
+    /// No-op waker (for tests/mock backends).
+    pub fn noop() -> Self {
+        Self { fd: None }
+    }
+
+    /// Wake the event loop. Safe to call from any thread.
+    pub fn wake(&self) {
+        if let Some(fd) = &self.fd {
+            unsafe { libc::write(fd.0, b"W".as_ptr() as *const libc::c_void, 1); }
+        }
+    }
 }
 
 /// Run the main event loop. Returns when CM_QUIT is received.

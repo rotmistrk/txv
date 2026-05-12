@@ -10,7 +10,7 @@ use crossterm::{
 };
 use txv_core::cell::{Attrs, Color, Style};
 use txv_core::event::Event;
-use txv_core::run::Backend;
+use txv_core::run::{Backend, Waker};
 use txv_core::surface::Surface;
 
 use crate::color::{downgrade, ColorMode};
@@ -21,15 +21,26 @@ pub struct CrosstermBackend {
     previous: Surface,
     color_mode: ColorMode,
     force_full: bool,
+    wake_read: std::os::unix::io::RawFd,
+    wake_write: std::os::unix::io::RawFd,
 }
 
 impl CrosstermBackend {
     pub fn new(color_mode: ColorMode) -> Self {
         let (w, h) = terminal::size().unwrap_or((80, 24));
+        let mut fds = [0i32; 2];
+        unsafe { libc::pipe(fds.as_mut_ptr()); }
+        // Make read end non-blocking
+        unsafe {
+            let flags = libc::fcntl(fds[0], libc::F_GETFL);
+            libc::fcntl(fds[0], libc::F_SETFL, flags | libc::O_NONBLOCK);
+        }
         Self {
             previous: Surface::new(w, h),
             color_mode,
-            force_full: true, // First frame always full
+            force_full: true,
+            wake_read: fds[0],
+            wake_write: fds[1],
         }
     }
 
@@ -67,15 +78,36 @@ impl Backend for CrosstermBackend {
     }
 
     fn poll_event(&mut self, timeout: Duration) -> Option<Event> {
-        if !ct_event::poll(timeout).unwrap_or(false) {
+        // Use libc::poll on both stdin and wake pipe
+        let timeout_ms = timeout.as_millis() as i32;
+        let mut fds = [
+            libc::pollfd { fd: 0, events: libc::POLLIN, revents: 0 },  // stdin
+            libc::pollfd { fd: self.wake_read, events: libc::POLLIN, revents: 0 },
+        ];
+        let ready = unsafe { libc::poll(fds.as_mut_ptr(), 2, timeout_ms) };
+        if ready <= 0 {
             return None;
         }
-        match ct_event::read() {
-            Ok(ct_event::Event::Key(k)) => translate_key(k),
-            Ok(ct_event::Event::Resize(w, h)) => Some(Event::Resize(w, h)),
-            Ok(ct_event::Event::Mouse(m)) => translate_mouse(m),
-            Ok(ct_event::Event::Paste(s)) => Some(Event::Paste(s)),
-            _ => None,
+        // Drain wake pipe if signaled
+        if fds[1].revents & libc::POLLIN != 0 {
+            let mut buf = [0u8; 64];
+            unsafe { libc::read(self.wake_read, buf.as_mut_ptr() as *mut libc::c_void, 64); }
+        }
+        // Check stdin for crossterm events
+        if fds[0].revents & libc::POLLIN != 0 {
+            if !ct_event::poll(Duration::ZERO).unwrap_or(false) {
+                return None;
+            }
+            match ct_event::read() {
+                Ok(ct_event::Event::Key(k)) => translate_key(k),
+                Ok(ct_event::Event::Resize(w, h)) => Some(Event::Resize(w, h)),
+                Ok(ct_event::Event::Mouse(m)) => translate_mouse(m),
+                Ok(ct_event::Event::Paste(s)) => Some(Event::Paste(s)),
+                _ => None,
+            }
+        } else {
+            // Woken by pipe — return None to trigger Tick
+            None
         }
     }
 
@@ -157,6 +189,19 @@ impl Backend for CrosstermBackend {
 
     fn invalidate(&mut self) {
         self.force_full = true;
+    }
+
+    fn waker(&self) -> Waker {
+        Waker::from_fd(self.wake_write)
+    }
+}
+
+impl Drop for CrosstermBackend {
+    fn drop(&mut self) {
+        unsafe {
+            libc::close(self.wake_read);
+            libc::close(self.wake_write);
+        }
     }
 }
 
