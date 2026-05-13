@@ -32,6 +32,8 @@ pub struct InlineEditor {
     pub row: usize,
     pub buffer: String,
     pub cursor: usize,
+    /// Selection anchor (byte offset). When Some, selection is anchor..cursor or cursor..anchor.
+    pub anchor: Option<usize>,
 }
 
 impl InlineEditor {
@@ -41,43 +43,95 @@ impl InlineEditor {
             row,
             buffer: initial_text.to_owned(),
             cursor,
+            anchor: None,
         }
+    }
+
+    /// Create with entire text selected (anchor=0, cursor=end).
+    pub fn new_selected(row: usize, initial_text: &str) -> Self {
+        Self {
+            row,
+            buffer: initial_text.to_owned(),
+            cursor: initial_text.len(),
+            anchor: Some(0),
+        }
+    }
+
+    /// Returns (start, end) byte offsets of selection, or None.
+    pub fn selection_range(&self) -> Option<(usize, usize)> {
+        self.anchor.map(|a| if a <= self.cursor { (a, self.cursor) } else { (self.cursor, a) })
+    }
+
+    fn delete_selection(&mut self) -> bool {
+        if let Some((start, end)) = self.selection_range() {
+            if start != end {
+                self.buffer.drain(start..end);
+                self.cursor = start;
+                self.anchor = None;
+                return true;
+            }
+            self.anchor = None;
+        }
+        false
     }
 
     /// Handle a key event. Returns the editing result.
     pub fn handle_key(&mut self, key: &KeyEvent) -> InlineEditResult {
+        let shift = key.modifiers.shift;
         match key.code {
             KeyCode::Enter => InlineEditResult::Commit(self.buffer.clone()),
+            KeyCode::Tab => InlineEditResult::Commit(self.buffer.clone()),
             KeyCode::Esc => InlineEditResult::Cancel,
             KeyCode::Char(ch) => {
+                self.delete_selection();
                 self.insert_char(ch);
                 InlineEditResult::Continue
             }
             KeyCode::Backspace => {
-                self.delete_before();
+                if !self.delete_selection() {
+                    self.delete_before();
+                }
                 InlineEditResult::Continue
             }
             KeyCode::Delete => {
-                self.delete_at();
+                if !self.delete_selection() {
+                    self.delete_at();
+                }
                 InlineEditResult::Continue
             }
             KeyCode::Left => {
-                if self.cursor > 0 {
-                    self.cursor -= 1;
+                if shift {
+                    if self.anchor.is_none() { self.anchor = Some(self.cursor); }
+                } else {
+                    self.anchor = None;
                 }
+                if self.cursor > 0 { self.cursor -= 1; }
                 InlineEditResult::Continue
             }
             KeyCode::Right => {
-                if self.cursor < self.buffer.len() {
-                    self.cursor += 1;
+                if shift {
+                    if self.anchor.is_none() { self.anchor = Some(self.cursor); }
+                } else {
+                    self.anchor = None;
                 }
+                if self.cursor < self.buffer.len() { self.cursor += 1; }
                 InlineEditResult::Continue
             }
             KeyCode::Home => {
+                if shift {
+                    if self.anchor.is_none() { self.anchor = Some(self.cursor); }
+                } else {
+                    self.anchor = None;
+                }
                 self.cursor = 0;
                 InlineEditResult::Continue
             }
             KeyCode::End => {
+                if shift {
+                    if self.anchor.is_none() { self.anchor = Some(self.cursor); }
+                } else {
+                    self.anchor = None;
+                }
                 self.cursor = self.buffer.len();
                 InlineEditResult::Continue
             }
@@ -87,23 +141,25 @@ impl InlineEditor {
 
     /// Draw the editor at the given position on the surface.
     pub fn draw(&self, surface: &mut Surface, x: u16, y: u16, width: u16, style: Style) {
+        let sel_style = Style { bg: Color::Ansi(2), ..style };
+        let cursor_style = Style { fg: style.bg, bg: style.fg, ..style };
+        let sel = self.selection_range();
         surface.hline(x, y, width, ' ', style);
-        let visible = if self.buffer.len() > width as usize {
-            &self.buffer[..width as usize]
-        } else {
-            &self.buffer
-        };
-        surface.print(x, y, visible, style);
-        // Draw cursor
-        let cx = x + self.cursor as u16;
-        if cx < x + width {
-            let ch = self.buffer.chars().nth(self.cursor).unwrap_or(' ');
-            let cursor_style = Style {
-                fg: style.bg,
-                bg: style.fg,
-                ..style
+        let w = width as usize;
+        for (i, ch) in self.buffer.chars().enumerate() {
+            if i >= w { break; }
+            let st = if i == self.cursor {
+                cursor_style
+            } else if sel.is_some_and(|(s, e)| i >= s && i < e) {
+                sel_style
+            } else {
+                style
             };
-            surface.put(cx, y, ch, cursor_style);
+            surface.put(x + i as u16, y, ch, st);
+        }
+        // Draw cursor at end if past last char
+        if self.cursor >= self.buffer.len() && (self.cursor as u16) < width {
+            surface.put(x + self.cursor as u16, y, ' ', cursor_style);
         }
     }
 
@@ -226,5 +282,52 @@ mod tests {
         assert_eq!(ed.buffer, "gamma");
         ed.apply_completion(&candidates, 1);
         assert_eq!(ed.buffer, "alpha");
+    }
+
+    fn shift_key(code: KeyCode) -> KeyEvent {
+        KeyEvent { code, modifiers: KeyMod { shift: true, ..KeyMod::default() } }
+    }
+
+    #[test]
+    fn new_selected_selects_all() {
+        let ed = InlineEditor::new_selected(0, "hello");
+        assert_eq!(ed.anchor, Some(0));
+        assert_eq!(ed.cursor, 5);
+        assert_eq!(ed.selection_range(), Some((0, 5)));
+    }
+
+    #[test]
+    fn type_replaces_selection() {
+        let mut ed = InlineEditor::new_selected(0, "old");
+        ed.handle_key(&key(KeyCode::Char('n')));
+        assert_eq!(ed.buffer, "n");
+        assert_eq!(ed.cursor, 1);
+        assert_eq!(ed.anchor, None);
+    }
+
+    #[test]
+    fn shift_arrow_extends_selection() {
+        let mut ed = InlineEditor::new(0, "abcde");
+        ed.handle_key(&key(KeyCode::Home));
+        ed.handle_key(&shift_key(KeyCode::Right));
+        ed.handle_key(&shift_key(KeyCode::Right));
+        assert_eq!(ed.selection_range(), Some((0, 2)));
+        // Nav without shift clears selection
+        ed.handle_key(&key(KeyCode::Right));
+        assert_eq!(ed.anchor, None);
+    }
+
+    #[test]
+    fn backspace_deletes_selection() {
+        let mut ed = InlineEditor::new_selected(0, "hello");
+        ed.handle_key(&key(KeyCode::Backspace));
+        assert_eq!(ed.buffer, "");
+        assert_eq!(ed.cursor, 0);
+    }
+
+    #[test]
+    fn tab_commits() {
+        let mut ed = InlineEditor::new(0, "text");
+        assert_eq!(ed.handle_key(&key(KeyCode::Tab)), InlineEditResult::Commit("text".to_owned()));
     }
 }
