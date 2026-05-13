@@ -6,6 +6,9 @@
 mod defaults;
 mod defs;
 
+#[cfg(test)]
+mod tests;
+
 use std::sync::OnceLock;
 
 use crate::cell::{Attrs, Color, Style};

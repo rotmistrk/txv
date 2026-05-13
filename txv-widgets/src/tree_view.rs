@@ -75,19 +75,19 @@ impl<D: TreeData> View for TreeView<D> {
             };
             let node_style = self.data.style(id);
             let style = if idx == self.cursor {
+                let pal = palette();
                 if self.state.is_focused() {
+                    let ps = pal.interactive.cursor_focused;
                     Style {
                         fg: node_style.fg,
-                        bg: Color::Ansi(4),
-                        attrs: Attrs {
-                            underline: true,
-                            ..node_style.attrs
-                        },
+                        bg: ps.bg.unwrap_or(node_style.bg),
+                        attrs: ps.attrs.unwrap_or(node_style.attrs),
                     }
                 } else {
+                    let ps = pal.interactive.cursor_unfocused;
                     Style {
                         fg: node_style.fg,
-                        bg: Color::Ansi(8),
+                        bg: ps.bg.unwrap_or(node_style.bg),
                         attrs: node_style.attrs,
                     }
                 }

@@ -89,10 +89,7 @@ impl View for SplitPane {
         for child in self.group.children_iter() {
             child.draw(surface);
         }
-        let dim = Style {
-            fg: Color::Ansi(8),
-            ..Style::default()
-        };
+        let dim = palette().base.dim.to_style();
         match self.direction {
             SplitDirection::Horizontal => {
                 let x = b.x + (b.w as f32 * self.ratio) as u16;

@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use ignore::WalkBuilder;
 use txv_core::cell::{Color, Style};
+use txv_core::palette::palette;
 
 use crate::tree_view::TreeData;
 
@@ -242,10 +243,7 @@ impl TreeData for FileTreeData {
     fn style(&self, id: usize) -> Style {
         let node = &self.nodes[id];
         if node.is_dir {
-            return Style {
-                fg: Color::Ansi(14),
-                ..Style::default()
-            };
+            return palette().base.tree_dir.to_style();
         }
         let rel = node.path.strip_prefix(&self.root).ok().and_then(|p| p.to_str());
         if let Some(rel_path) = rel {

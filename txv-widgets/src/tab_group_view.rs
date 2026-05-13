@@ -10,10 +10,7 @@ impl TabGroup {
         if b.w == 0 || b.h == 0 || self.titles.is_empty() {
             return;
         }
-        let dim = Style {
-            fg: Color::Ansi(8),
-            ..Style::default()
-        };
+        let dim = palette().base.dim.to_style();
         let bright = Style {
             attrs: Attrs {
                 bold: true,

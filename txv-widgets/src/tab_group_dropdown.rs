@@ -99,24 +99,10 @@ impl TabGroup {
         if b.w == 0 || self.titles.is_empty() {
             return;
         }
-        let border = Style {
-            fg: Color::Ansi(6),
-            bg: Color::Ansi(0),
-            ..Style::default()
-        };
-        let normal = Style {
-            fg: Color::Ansi(15),
-            bg: Color::Ansi(0),
-            ..Style::default()
-        };
-        let cursor_style = Style {
-            fg: Color::Ansi(15),
-            bg: Color::Ansi(4),
-            attrs: Attrs {
-                underline: true,
-                ..Attrs::default()
-            },
-        };
+        let pal = palette();
+        let border = pal.popup.border.to_style();
+        let normal = pal.popup.background.to_style();
+        let cursor_style = pal.popup.selected.to_style();
 
         let count = self.titles.len().min(10);
         let max_w = self

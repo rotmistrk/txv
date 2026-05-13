@@ -20,6 +20,7 @@ pub struct BasePalette {
     pub bright: PaletteStyle,
     pub border: PaletteStyle,
     pub separator: PaletteStyle,
+    pub tree_dir: PaletteStyle,
 }
 
 #[derive(Clone, Debug)]
@@ -28,6 +29,7 @@ pub struct InteractivePalette {
     pub cursor_unfocused: PaletteStyle,
     pub input_cursor: PaletteStyle,
     pub edit_overlay: PaletteStyle,
+    pub edit_selection: PaletteStyle,
     pub search_match: PaletteStyle,
     pub visual_selection: PaletteStyle,
     pub disabled: PaletteStyle,

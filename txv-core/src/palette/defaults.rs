@@ -54,6 +54,7 @@ impl Default for BasePalette {
                 ..Default::default()
             },
             separator: ps_fg(8),
+            tree_dir: ps_fg(14),
         }
     }
 }
@@ -72,6 +73,7 @@ impl Default for InteractivePalette {
                 ..Default::default()
             },
             edit_overlay: ps_fgbg(0, 3),
+            edit_selection: ps_bg(2),
             search_match: ps_bg(3),
             visual_selection: PaletteStyle {
                 fg: Some(ansi(3)),

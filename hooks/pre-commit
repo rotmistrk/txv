@@ -1,0 +1,74 @@
+#!/bin/bash
+# Pre-commit hook: code quality checks
+# ALL checks MUST pass. Zero tolerance for failures.
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+# 1. Format check
+echo "  fmt..."
+cargo fmt --all -- --check || { echo "❌ Run 'cargo fmt'"; exit 1; }
+
+# 2. Clippy (zero warnings)
+echo "  clippy..."
+cargo clippy --workspace -- -D warnings || { echo "❌ Clippy errors"; exit 1; }
+
+# 3. File length: max 240 CODE lines (blank lines and comment-only lines do NOT count)
+echo "  file length..."
+MAX_CODE_LINES=240
+VIOLATIONS=""
+for f in $(find txv-core/src txv-render/src txv-widgets/src -name '*.rs' 2>/dev/null); do
+    CODE_LINES=$(sed 's/[[:space:]]*$//' "$f" | grep -v '^\s*$' | grep -v '^\s*//' | grep -v '^\s*\*' | grep -v '^\s*/\*' | grep -v '^\s*\*/' | wc -l | tr -d ' ')
+    if [ "$CODE_LINES" -gt "$MAX_CODE_LINES" ]; then
+        VIOLATIONS="$VIOLATIONS\n  $f: $CODE_LINES code lines (max $MAX_CODE_LINES)"
+    fi
+done
+if [ -n "$VIOLATIONS" ]; then
+    echo -e "❌ Files exceed $MAX_CODE_LINES code lines:$VIOLATIONS"
+    exit 1
+fi
+
+# 4. ALL tests MUST pass. Zero failures allowed.
+echo "  tests..."
+TEST_OUTPUT=$(cargo test --workspace --no-fail-fast 2>&1)
+TEST_EXIT=$?
+if [ $TEST_EXIT -ne 0 ]; then
+    echo "$TEST_OUTPUT" | grep -E "FAILED|^error|failures:" | head -20
+    echo "❌ Tests failed (exit code $TEST_EXIT)"
+    exit 1
+fi
+# Double-check: ensure at least one test actually ran
+if ! echo "$TEST_OUTPUT" | grep -q "test result:"; then
+    echo "❌ No test results found — tests did not run!"
+    exit 1
+fi
+# Ensure zero failures in output
+if echo "$TEST_OUTPUT" | grep -q "FAILED"; then
+    echo "$TEST_OUTPUT" | grep "FAILED"
+    echo "❌ Test failures detected"
+    exit 1
+fi
+# Ensure zero ignored/skipped tests (check --tests only, doc-tests use rust,ignore legitimately)
+LIB_OUTPUT=$(cargo test --workspace --tests 2>&1)
+if echo "$LIB_OUTPUT" | grep -qE '[1-9][0-9]* ignored'; then
+    echo "$LIB_OUTPUT" | grep 'ignored'
+    echo "❌ Tests were skipped/ignored — all tests must run"
+    exit 1
+fi
+
+# 5. No hardcoded colors in widget/view code (only palette and render internals allowed)
+echo "  hardcoded colors..."
+ALLOWED_PATHS="txv-core/src/palette|txv-render/src/color\.rs|txv-render/src/backend\.rs|txv-render/src/termbuf|_tests\.rs$"
+COLOR_VIOLATIONS=""
+for f in $(find txv-core/src txv-render/src txv-widgets/src -name '*.rs' | grep -Ev "$ALLOWED_PATHS"); do
+    HITS=$(grep -n 'Color::Ansi\|Color::Rgb' "$f" | grep -v '^\s*//' || true)
+    if [ -n "$HITS" ]; then
+        COLOR_VIOLATIONS="$COLOR_VIOLATIONS\n  $f:\n$HITS"
+    fi
+done
+if [ -n "$COLOR_VIOLATIONS" ]; then
+    echo -e "❌ Hardcoded colors found (use palette instead):$COLOR_VIOLATIONS"
+    exit 1
+fi
+
+echo "✅ All checks passed"

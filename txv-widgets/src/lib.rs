@@ -58,3 +58,7 @@ pub use tab_group::TabGroup;
 pub use table::{Column, Table};
 pub use text_area::TextArea;
 pub use tree_view::{TreeData, TreeView};
+
+#[cfg(test)]
+#[path = "palette_integration_tests.rs"]
+mod palette_integration_tests;
