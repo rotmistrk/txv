@@ -53,6 +53,30 @@ impl PtyTerminal {
         Self::spawn_command_with_scrollback(cmd, args, cwd, cols, rows, 2000)
     }
 
+    /// Spawn a specific command with additional environment variables.
+    pub fn spawn_command_with_env(
+        cmd: &str,
+        args: &[&str],
+        cwd: &Path,
+        cols: u16,
+        rows: u16,
+        envs: &[(&str, &str)],
+    ) -> std::io::Result<Self> {
+        let session = PtySession::spawn_with_env(cmd, args, cwd, cols, rows, envs)?;
+        Ok(Self {
+            state: ViewState::default(),
+            termbuf: TermBuf::with_scrollback(cols, rows, 2000),
+            session: Some(session),
+            base_title: cmd.into(),
+            title: cmd.into(),
+            osc_suffix: String::new(),
+            prev_cols: cols,
+            prev_rows: rows,
+            exited: false,
+            scroll_offset: 0,
+        })
+    }
+
     /// Spawn a specific command with a custom scrollback limit.
     pub fn spawn_command_with_scrollback(
         cmd: &str,

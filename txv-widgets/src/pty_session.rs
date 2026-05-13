@@ -17,8 +17,20 @@ pub struct PtySession {
 impl PtySession {
     /// Spawn a new PTY process.
     pub fn spawn(cmd: &str, args: &[&str], cwd: &Path, cols: u16, rows: u16) -> std::io::Result<Self> {
+        Self::spawn_with_env(cmd, args, cwd, cols, rows, &[])
+    }
+
+    /// Spawn a new PTY process with additional environment variables.
+    pub fn spawn_with_env(
+        cmd: &str,
+        args: &[&str],
+        cwd: &Path,
+        cols: u16,
+        rows: u16,
+        envs: &[(&str, &str)],
+    ) -> std::io::Result<Self> {
         let pair = Self::open_pty(cols, rows)?;
-        Self::spawn_child(&pair, cmd, args, cwd)?;
+        Self::spawn_child(&pair, cmd, args, cwd, envs)?;
         let writer = pair
             .master
             .take_writer()
@@ -45,11 +57,20 @@ impl PtySession {
             .map_err(|e| std::io::Error::other(e.to_string()))
     }
 
-    fn spawn_child(pair: &portable_pty::PtyPair, cmd: &str, args: &[&str], cwd: &Path) -> std::io::Result<()> {
+    fn spawn_child(
+        pair: &portable_pty::PtyPair,
+        cmd: &str,
+        args: &[&str],
+        cwd: &Path,
+        envs: &[(&str, &str)],
+    ) -> std::io::Result<()> {
         let mut cmd_builder = CommandBuilder::new(cmd);
         cmd_builder.args(args);
         cmd_builder.cwd(cwd);
         cmd_builder.env("TERM", "xterm-256color");
+        for (k, v) in envs {
+            cmd_builder.env(k, v);
+        }
         pair.slave
             .spawn_command(cmd_builder)
             .map_err(|e| std::io::Error::other(e.to_string()))?;
