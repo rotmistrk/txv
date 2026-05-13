@@ -61,6 +61,7 @@ pub mod event;
 pub mod geometry;
 pub mod group;
 pub mod message;
+pub mod palette;
 pub mod program;
 pub mod run;
 pub mod status;
@@ -79,6 +80,8 @@ pub mod prelude {
     pub use crate::geometry::{Point, Rect};
     pub use crate::group::GroupState;
     pub use crate::message::{Message, MsgLevel};
+    pub use crate::palette::{palette, set_palette, PaletteStyle, ThemeMode};
+    pub use crate::palette::{BasePalette, ChromePalette, InteractivePalette, Palette, PopupPalette, StatePalette};
     pub use crate::run::{exec_view, run, run_cycles, Backend, MockBackend};
     pub use crate::status::{ActiveItem, Gravity, StatusBarItem, VisibleItem};
     pub use crate::surface::{SubSurface, Surface};
