@@ -12,6 +12,7 @@ pub const CM_STATUS_MESSAGE: CommandId = 140;
 pub struct KeyLabelItem {
     key: KeyEvent,
     command: CommandId,
+    data: Option<u16>,
     label_text: String,
     gravity: Gravity,
 }
@@ -21,6 +22,7 @@ impl KeyLabelItem {
         Self {
             key,
             command,
+            data: None,
             label_text: label.into(),
             gravity: Gravity::Left,
         }
@@ -29,6 +31,16 @@ impl KeyLabelItem {
         Self {
             key,
             command,
+            data: None,
+            label_text: String::new(),
+            gravity: Gravity::Left,
+        }
+    }
+    pub fn hidden_with_data(key: KeyEvent, command: CommandId, data: u16) -> Self {
+        Self {
+            key,
+            command,
+            data: Some(data),
             label_text: String::new(),
             gravity: Gravity::Left,
         }
@@ -43,7 +55,8 @@ impl ActiveItem for KeyLabelItem {
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         if let Event::Key(k) = event {
             if *k == self.key {
-                queue.put_command(self.command, None);
+                let payload = self.data.map(|d| Box::new(d) as Box<dyn std::any::Any + Send>);
+                queue.put_command(self.command, payload);
                 return HandleResult::Consumed;
             }
         }
