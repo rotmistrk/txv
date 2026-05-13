@@ -55,17 +55,18 @@ impl View for ProgressBar {
         }
         let filled_style = txv_core::palette::palette().chrome.status_bar.to_style();
         let empty_style = Style::default();
+        let pg = txv_core::glyphs::glyphs().progress;
 
         match self.mode {
             ProgressMode::Determinate => {
                 let filled = (self.progress * b.w as f32) as u16;
                 for col in 0..b.w {
-                    let style = if col < filled {
-                        filled_style
+                    let (ch, style) = if col < filled {
+                        (pg.filled, filled_style)
                     } else {
-                        empty_style
+                        (pg.empty, empty_style)
                     };
-                    surface.put(b.x + col, b.y, '░', style);
+                    surface.put(b.x + col, b.y, ch, style);
                 }
             }
             ProgressMode::Indeterminate => {
@@ -73,12 +74,12 @@ impl View for ProgressBar {
                 let width = 3.min(b.w);
                 for col in 0..b.w {
                     let in_bar = col >= pos && col < pos + width;
-                    let style = if in_bar {
-                        filled_style
+                    let (ch, style) = if in_bar {
+                        (pg.filled, filled_style)
                     } else {
-                        empty_style
+                        (pg.empty, empty_style)
                     };
-                    surface.put(b.x + col, b.y, '░', style);
+                    surface.put(b.x + col, b.y, ch, style);
                 }
             }
         }

@@ -90,14 +90,15 @@ impl View for SplitPane {
             child.draw(surface);
         }
         let dim = palette().base.dim.to_style();
+        let g = glyphs();
         match self.direction {
             SplitDirection::Horizontal => {
                 let x = b.x + (b.w as f32 * self.ratio) as u16;
-                surface.vline(x, b.y, b.h, '│', dim);
+                surface.vline(x, b.y, b.h, g.ui.separator_v, dim);
             }
             SplitDirection::Vertical => {
                 let y = b.y + (b.h as f32 * self.ratio) as u16;
-                surface.hline(b.x, y, b.w, '─', dim);
+                surface.hline(b.x, y, b.w, g.ui.separator_h, dim);
             }
         }
     }

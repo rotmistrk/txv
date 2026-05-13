@@ -62,3 +62,7 @@ pub use tree_view::{TreeData, TreeView};
 #[cfg(test)]
 #[path = "palette_integration_tests.rs"]
 mod palette_integration_tests;
+
+#[cfg(test)]
+#[path = "glyphs_integration_tests.rs"]
+mod glyphs_integration_tests;

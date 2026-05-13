@@ -59,6 +59,7 @@ pub mod complete;
 pub mod dialog;
 pub mod event;
 pub mod geometry;
+pub mod glyphs;
 pub mod group;
 pub mod message;
 pub mod palette;
@@ -78,6 +79,7 @@ pub mod prelude {
     pub use crate::dialog::DialogState;
     pub use crate::event::{CommandId, Event, KeyCode, KeyEvent, KeyMod, MouseAction, MouseButton, MouseEvent};
     pub use crate::geometry::{Point, Rect};
+    pub use crate::glyphs::{glyphs, set_glyphs, GlyphSet, GlyphTier};
     pub use crate::group::GroupState;
     pub use crate::message::{Message, MsgLevel};
     pub use crate::palette::{palette, set_palette, PaletteStyle, ThemeMode};

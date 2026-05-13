@@ -65,10 +65,11 @@ impl<D: TreeData> View for TreeView<D> {
             let depth = self.data.depth(id);
             let indent = (depth * 2) as u16;
             let marker = if self.data.is_expandable(id) {
+                let g = glyphs();
                 if self.data.is_expanded(id) {
-                    "▼ "
+                    g.tree.expanded
                 } else {
-                    "▶ "
+                    g.tree.collapsed
                 }
             } else {
                 "  "

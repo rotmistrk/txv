@@ -100,6 +100,7 @@ impl TabGroup {
             return;
         }
         let pal = palette();
+        let g = glyphs();
         let border = pal.popup.border.to_style();
         let normal = pal.popup.background.to_style();
         let cursor_style = pal.popup.selected.to_style();
@@ -134,22 +135,22 @@ impl TabGroup {
             } else {
                 normal
             };
-            surface.put(x, row_y, '│', border);
+            surface.put(x, row_y, g.box_drawing.v, border);
             surface.print(x + 1, row_y, &padded, st);
             if x + w > 1 {
-                surface.put(x + w - 1, row_y, '│', border);
+                surface.put(x + w - 1, row_y, g.box_drawing.v, border);
             }
         }
 
         // Bottom border
         let bot_y = start_y + visible as u16;
         if bot_y < b.y + b.h {
-            surface.put(x, bot_y, '╰', border);
+            surface.put(x, bot_y, g.box_drawing.bl_round, border);
             for bx in (x + 1)..(x + w - 1) {
-                surface.put(bx, bot_y, '─', border);
+                surface.put(bx, bot_y, g.box_drawing.h, border);
             }
             if x + w > 1 {
-                surface.put(x + w - 1, bot_y, '╯', border);
+                surface.put(x + w - 1, bot_y, g.box_drawing.br_round, border);
             }
         }
     }

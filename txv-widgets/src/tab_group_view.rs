@@ -18,7 +18,7 @@ impl TabGroup {
             },
             ..Style::default()
         };
-        surface.hline(b.x, b.y, b.w, '─', dim);
+        surface.hline(b.x, b.y, b.w, glyphs().ui.separator_h, dim);
         let mut x = b.x;
         for (i, title) in self.titles.iter().enumerate() {
             let style = if i == self.group.focused_index() {

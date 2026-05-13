@@ -48,16 +48,23 @@ impl View for InputDialog {
             surface.hline(b.x, b.y + row, b.w, ' ', normal);
         }
         // Border
-        surface.hline(b.x, b.y, b.w, '═', border);
-        surface.hline(b.x, b.y + b.h.saturating_sub(1), b.w, '═', border);
+        let g = glyphs();
+        let bx = &g.box_drawing;
+        surface.hline(b.x, b.y, b.w, bx.h_heavy, border);
+        surface.hline(b.x, b.y + b.h.saturating_sub(1), b.w, bx.h_heavy, border);
         for row in 1..b.h.saturating_sub(1) {
-            surface.put(b.x, b.y + row, '║', border);
-            surface.put(b.x + b.w.saturating_sub(1), b.y + row, '║', border);
+            surface.put(b.x, b.y + row, bx.v_heavy, border);
+            surface.put(b.x + b.w.saturating_sub(1), b.y + row, bx.v_heavy, border);
         }
-        surface.put(b.x, b.y, '╔', border);
-        surface.put(b.x + b.w.saturating_sub(1), b.y, '╗', border);
-        surface.put(b.x, b.y + b.h.saturating_sub(1), '╚', border);
-        surface.put(b.x + b.w.saturating_sub(1), b.y + b.h.saturating_sub(1), '╝', border);
+        surface.put(b.x, b.y, bx.tl_heavy, border);
+        surface.put(b.x + b.w.saturating_sub(1), b.y, bx.tr_heavy, border);
+        surface.put(b.x, b.y + b.h.saturating_sub(1), bx.bl_heavy, border);
+        surface.put(
+            b.x + b.w.saturating_sub(1),
+            b.y + b.h.saturating_sub(1),
+            bx.br_heavy,
+            border,
+        );
         // Title
         if !self.title_text.is_empty() {
             let title = format!(" {} ", self.title_text);

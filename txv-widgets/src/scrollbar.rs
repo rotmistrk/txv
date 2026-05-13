@@ -45,7 +45,7 @@ impl View for Scrollbar {
             } else {
                 track_style
             };
-            surface.put(b.x, b.y + row, '│', style);
+            surface.put(b.x, b.y + row, glyphs().ui.scrollbar_track, style);
         }
     }
 

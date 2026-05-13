@@ -52,16 +52,18 @@ impl View for Menu {
         let disabled = pal.interactive.disabled.to_style();
 
         // Draw border
-        surface.hline(b.x, b.y, b.w, '─', normal);
-        surface.hline(b.x, b.y + b.h.saturating_sub(1), b.w, '─', normal);
+        let g = glyphs();
+        let bx = &g.box_drawing;
+        surface.hline(b.x, b.y, b.w, bx.h, normal);
+        surface.hline(b.x, b.y + b.h.saturating_sub(1), b.w, bx.h, normal);
         for row in 1..b.h.saturating_sub(1) {
-            surface.put(b.x, b.y + row, '│', normal);
-            surface.put(b.x + b.w.saturating_sub(1), b.y + row, '│', normal);
+            surface.put(b.x, b.y + row, bx.v, normal);
+            surface.put(b.x + b.w.saturating_sub(1), b.y + row, bx.v, normal);
         }
-        surface.put(b.x, b.y, '┌', normal);
-        surface.put(b.x + b.w.saturating_sub(1), b.y, '┐', normal);
-        surface.put(b.x, b.y + b.h.saturating_sub(1), '└', normal);
-        surface.put(b.x + b.w.saturating_sub(1), b.y + b.h.saturating_sub(1), '┘', normal);
+        surface.put(b.x, b.y, bx.tl, normal);
+        surface.put(b.x + b.w.saturating_sub(1), b.y, bx.tr, normal);
+        surface.put(b.x, b.y + b.h.saturating_sub(1), bx.bl, normal);
+        surface.put(b.x + b.w.saturating_sub(1), b.y + b.h.saturating_sub(1), bx.br, normal);
 
         // Draw items
         let inner_w = b.w.saturating_sub(2);

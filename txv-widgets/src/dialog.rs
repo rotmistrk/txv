@@ -54,19 +54,21 @@ impl View for Dialog {
         }
 
         // Border
-        surface.hline(b.x, b.y, b.w, '═', border_style);
-        surface.hline(b.x, b.y + b.h.saturating_sub(1), b.w, '═', border_style);
+        let g = glyphs();
+        let bx = &g.box_drawing;
+        surface.hline(b.x, b.y, b.w, bx.h_heavy, border_style);
+        surface.hline(b.x, b.y + b.h.saturating_sub(1), b.w, bx.h_heavy, border_style);
         for row in 1..b.h.saturating_sub(1) {
-            surface.put(b.x, b.y + row, '║', border_style);
-            surface.put(b.x + b.w.saturating_sub(1), b.y + row, '║', border_style);
+            surface.put(b.x, b.y + row, bx.v_heavy, border_style);
+            surface.put(b.x + b.w.saturating_sub(1), b.y + row, bx.v_heavy, border_style);
         }
-        surface.put(b.x, b.y, '╔', border_style);
-        surface.put(b.x + b.w.saturating_sub(1), b.y, '╗', border_style);
-        surface.put(b.x, b.y + b.h.saturating_sub(1), '╚', border_style);
+        surface.put(b.x, b.y, bx.tl_heavy, border_style);
+        surface.put(b.x + b.w.saturating_sub(1), b.y, bx.tr_heavy, border_style);
+        surface.put(b.x, b.y + b.h.saturating_sub(1), bx.bl_heavy, border_style);
         surface.put(
             b.x + b.w.saturating_sub(1),
             b.y + b.h.saturating_sub(1),
-            '╝',
+            bx.br_heavy,
             border_style,
         );
 
