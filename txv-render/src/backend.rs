@@ -29,7 +29,9 @@ impl CrosstermBackend {
     pub fn new(color_mode: ColorMode) -> Self {
         let (w, h) = terminal::size().unwrap_or((80, 24));
         let mut fds = [0i32; 2];
-        unsafe { libc::pipe(fds.as_mut_ptr()); }
+        unsafe {
+            libc::pipe(fds.as_mut_ptr());
+        }
         // Make read end non-blocking
         unsafe {
             let flags = libc::fcntl(fds[0], libc::F_GETFL);
@@ -81,8 +83,16 @@ impl Backend for CrosstermBackend {
         // Use libc::poll on both stdin and wake pipe
         let timeout_ms = timeout.as_millis() as i32;
         let mut fds = [
-            libc::pollfd { fd: 0, events: libc::POLLIN, revents: 0 },  // stdin
-            libc::pollfd { fd: self.wake_read, events: libc::POLLIN, revents: 0 },
+            libc::pollfd {
+                fd: 0,
+                events: libc::POLLIN,
+                revents: 0,
+            }, // stdin
+            libc::pollfd {
+                fd: self.wake_read,
+                events: libc::POLLIN,
+                revents: 0,
+            },
         ];
         let ready = unsafe { libc::poll(fds.as_mut_ptr(), 2, timeout_ms) };
         if ready <= 0 {
@@ -91,7 +101,9 @@ impl Backend for CrosstermBackend {
         // Drain wake pipe if signaled
         if fds[1].revents & libc::POLLIN != 0 {
             let mut buf = [0u8; 64];
-            unsafe { libc::read(self.wake_read, buf.as_mut_ptr() as *mut libc::c_void, 64); }
+            unsafe {
+                libc::read(self.wake_read, buf.as_mut_ptr() as *mut libc::c_void, 64);
+            }
         }
         // Check stdin for crossterm events
         if fds[0].revents & libc::POLLIN != 0 {

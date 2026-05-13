@@ -79,7 +79,11 @@ impl TabGroup {
         if let Some(cursor) = self.dropdown_cursor {
             let count = self.group.child_count();
             if count > 0 {
-                let prev = if cursor == 0 { count - 1 } else { cursor - 1 };
+                let prev = if cursor == 0 {
+                    count - 1
+                } else {
+                    cursor - 1
+                };
                 self.dropdown_cursor = Some(prev);
                 self.group.view.mark_dirty();
             }

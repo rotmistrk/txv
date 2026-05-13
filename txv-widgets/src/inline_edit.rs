@@ -59,7 +59,13 @@ impl InlineEditor {
 
     /// Returns (start, end) byte offsets of selection, or None.
     pub fn selection_range(&self) -> Option<(usize, usize)> {
-        self.anchor.map(|a| if a <= self.cursor { (a, self.cursor) } else { (self.cursor, a) })
+        self.anchor.map(|a| {
+            if a <= self.cursor {
+                (a, self.cursor)
+            } else {
+                (self.cursor, a)
+            }
+        })
     }
 
     fn delete_selection(&mut self) -> bool {
@@ -101,25 +107,35 @@ impl InlineEditor {
             }
             KeyCode::Left => {
                 if shift {
-                    if self.anchor.is_none() { self.anchor = Some(self.cursor); }
+                    if self.anchor.is_none() {
+                        self.anchor = Some(self.cursor);
+                    }
                 } else {
                     self.anchor = None;
                 }
-                if self.cursor > 0 { self.cursor -= 1; }
+                if self.cursor > 0 {
+                    self.cursor -= 1;
+                }
                 InlineEditResult::Continue
             }
             KeyCode::Right => {
                 if shift {
-                    if self.anchor.is_none() { self.anchor = Some(self.cursor); }
+                    if self.anchor.is_none() {
+                        self.anchor = Some(self.cursor);
+                    }
                 } else {
                     self.anchor = None;
                 }
-                if self.cursor < self.buffer.len() { self.cursor += 1; }
+                if self.cursor < self.buffer.len() {
+                    self.cursor += 1;
+                }
                 InlineEditResult::Continue
             }
             KeyCode::Home => {
                 if shift {
-                    if self.anchor.is_none() { self.anchor = Some(self.cursor); }
+                    if self.anchor.is_none() {
+                        self.anchor = Some(self.cursor);
+                    }
                 } else {
                     self.anchor = None;
                 }
@@ -128,7 +144,9 @@ impl InlineEditor {
             }
             KeyCode::End => {
                 if shift {
-                    if self.anchor.is_none() { self.anchor = Some(self.cursor); }
+                    if self.anchor.is_none() {
+                        self.anchor = Some(self.cursor);
+                    }
                 } else {
                     self.anchor = None;
                 }
@@ -141,13 +159,22 @@ impl InlineEditor {
 
     /// Draw the editor at the given position on the surface.
     pub fn draw(&self, surface: &mut Surface, x: u16, y: u16, width: u16, style: Style) {
-        let sel_style = Style { bg: Color::Ansi(2), ..style };
-        let cursor_style = Style { fg: style.bg, bg: style.fg, ..style };
+        let sel_style = Style {
+            bg: Color::Ansi(2),
+            ..style
+        };
+        let cursor_style = Style {
+            fg: style.bg,
+            bg: style.fg,
+            ..style
+        };
         let sel = self.selection_range();
         surface.hline(x, y, width, ' ', style);
         let w = width as usize;
         for (i, ch) in self.buffer.chars().enumerate() {
-            if i >= w { break; }
+            if i >= w {
+                break;
+            }
             let st = if i == self.cursor {
                 cursor_style
             } else if sel.is_some_and(|(s, e)| i >= s && i < e) {
@@ -285,7 +312,13 @@ mod tests {
     }
 
     fn shift_key(code: KeyCode) -> KeyEvent {
-        KeyEvent { code, modifiers: KeyMod { shift: true, ..KeyMod::default() } }
+        KeyEvent {
+            code,
+            modifiers: KeyMod {
+                shift: true,
+                ..KeyMod::default()
+            },
+        }
     }
 
     #[test]
@@ -328,7 +361,10 @@ mod tests {
     #[test]
     fn tab_commits() {
         let mut ed = InlineEditor::new(0, "text");
-        assert_eq!(ed.handle_key(&key(KeyCode::Tab)), InlineEditResult::Commit("text".to_owned()));
+        assert_eq!(
+            ed.handle_key(&key(KeyCode::Tab)),
+            InlineEditResult::Commit("text".to_owned())
+        );
     }
 
     #[test]

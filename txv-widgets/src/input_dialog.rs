@@ -42,13 +42,7 @@ impl View for InputDialog {
             return;
         }
         let normal = Style::default();
-        let border = Style {
-            attrs: Attrs {
-                bold: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let border = txv_core::palette::palette().base.border.to_style();
         // Fill background
         for row in 0..b.h {
             surface.hline(b.x, b.y + row, b.w, ' ', normal);
@@ -83,13 +77,7 @@ impl View for InputDialog {
         let cx = (self.cursor - start) as u16;
         if cx < inner_w as u16 {
             let ch = self.text.chars().nth(self.cursor).unwrap_or(' ');
-            let cursor_style = Style {
-                attrs: Attrs {
-                    reverse: true,
-                    ..Attrs::default()
-                },
-                ..Style::default()
-            };
+            let cursor_style = txv_core::palette::palette().interactive.input_cursor.to_style();
             surface.put(b.x + 2 + cx, input_y, ch, cursor_style);
         }
     }

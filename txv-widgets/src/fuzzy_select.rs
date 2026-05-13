@@ -84,15 +84,9 @@ impl View for FuzzySelect {
         if b.w == 0 || b.h == 0 {
             return;
         }
+        let pal = txv_core::palette::palette();
         let normal = Style::default();
-        let selected_style = Style {
-            bg: Color::Ansi(4),
-            attrs: Attrs {
-                underline: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let selected_style = pal.interactive.cursor_focused.to_style();
         let input_style = Style {
             attrs: Attrs {
                 underline: true,

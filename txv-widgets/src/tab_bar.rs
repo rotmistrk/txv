@@ -63,14 +63,7 @@ impl View for TabBar {
             return;
         }
         let normal = Style::default();
-        let active_style = Style {
-            attrs: Attrs {
-                bold: true,
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let active_style = txv_core::palette::palette().chrome.tab_focused.to_style();
         surface.hline(b.x, b.y, b.w, ' ', normal);
         let mut x = b.x;
         for (i, tab) in self.tabs.iter().enumerate() {

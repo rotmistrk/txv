@@ -42,22 +42,11 @@ impl View for Dialog {
         if b.w == 0 || b.h == 0 {
             return;
         }
+        let pal = txv_core::palette::palette();
         let normal = Style::default();
-        let border_style = Style {
-            attrs: Attrs {
-                bold: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let border_style = pal.base.border.to_style();
         let btn_normal = Style::default();
-        let btn_focused = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let btn_focused = pal.interactive.input_cursor.to_style();
 
         // Fill background
         for row in 0..b.h {

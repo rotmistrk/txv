@@ -109,15 +109,10 @@ impl View for TextArea {
             return;
         }
         let gutter_w = self.gutter_width();
-        let gutter_style = Style {
-            fg: Color::Ansi(8),
-            ..Style::default()
-        };
+        let pal = txv_core::palette::palette();
+        let gutter_style = pal.base.dim.to_style();
         let normal = Style::default();
-        let highlight = Style {
-            bg: Color::Ansi(3),
-            ..Style::default()
-        };
+        let highlight = pal.interactive.search_match.to_style();
 
         let content_h = if self.searching {
             b.h.saturating_sub(1) as usize
@@ -162,13 +157,7 @@ impl View for TextArea {
         // Search prompt at bottom
         if self.searching {
             let y = b.y + b.h.saturating_sub(1);
-            let prompt_style = Style {
-                attrs: Attrs {
-                    reverse: true,
-                    ..Attrs::default()
-                },
-                ..Style::default()
-            };
+            let prompt_style = txv_core::palette::palette().chrome.status_bar.to_style();
             surface.hline(b.x, y, b.w, ' ', prompt_style);
             let prompt = format!("/{}", self.search_input);
             surface.print(b.x, y, &prompt, prompt_style);

@@ -168,13 +168,11 @@ impl ActiveItem for MessageItem {
                             } else {
                                 format!("[{}] {}", msg.origin, msg.text)
                             };
-                            self.style = Style {
-                                fg: match msg.level {
-                                    MsgLevel::Error => Color::Ansi(9),
-                                    MsgLevel::Warn => Color::Ansi(11),
-                                    _ => Color::Ansi(7),
-                                },
-                                ..Style::default()
+                            let pal = txv_core::palette::palette();
+                            self.style = match msg.level {
+                                MsgLevel::Error => pal.state.error.to_style(),
+                                MsgLevel::Warn => pal.state.warning.to_style(),
+                                _ => pal.state.info.to_style(),
                             };
                             self.last_set = Some(Instant::now());
                         }

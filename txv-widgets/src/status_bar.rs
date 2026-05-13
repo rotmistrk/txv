@@ -57,13 +57,7 @@ impl View for StatusBar {
         if b.w == 0 || b.h == 0 {
             return;
         }
-        let style = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let style = txv_core::palette::palette().chrome.status_bar.to_style();
         surface.hline(b.x, b.y, b.w, ' ', style);
         // Labels left-aligned
         let mut x = b.x;

@@ -72,13 +72,7 @@ impl View for InputLine {
         let cx = (self.cursor - start) as u16;
         if cx < b.w {
             let ch = self.text.chars().nth(self.cursor).unwrap_or(' ');
-            let cursor_style = Style {
-                attrs: Attrs {
-                    reverse: true,
-                    ..Attrs::default()
-                },
-                ..Style::default()
-            };
+            let cursor_style = txv_core::palette::palette().interactive.input_cursor.to_style();
             surface.put(b.x + cx, b.y, ch, cursor_style);
         }
     }

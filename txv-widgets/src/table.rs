@@ -51,29 +51,13 @@ impl View for Table {
         if b.w == 0 || b.h == 0 {
             return;
         }
-        let header_style = Style {
-            attrs: Attrs {
-                bold: true,
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let pal = txv_core::palette::palette();
+        let header_style = pal.popup.table_header.to_style();
         let normal = Style::default();
         let selected = if self.state.is_focused() {
-            Style {
-                bg: Color::Ansi(4),
-                attrs: Attrs {
-                    underline: true,
-                    ..Attrs::default()
-                },
-                ..Style::default()
-            }
+            pal.interactive.cursor_focused.to_style()
         } else {
-            Style {
-                bg: Color::Ansi(8),
-                ..Style::default()
-            }
+            pal.interactive.cursor_unfocused.to_style()
         };
 
         // Header row

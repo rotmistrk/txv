@@ -53,13 +53,7 @@ impl View for ProgressBar {
         if b.w == 0 || b.h == 0 {
             return;
         }
-        let filled_style = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let filled_style = txv_core::palette::palette().chrome.status_bar.to_style();
         let empty_style = Style::default();
 
         match self.mode {

@@ -38,7 +38,9 @@ struct WakeFd(std::os::unix::io::RawFd);
 
 impl Drop for WakeFd {
     fn drop(&mut self) {
-        unsafe { libc::close(self.0); }
+        unsafe {
+            libc::close(self.0);
+        }
     }
 }
 
@@ -49,7 +51,9 @@ unsafe impl Sync for WakeFd {}
 impl Waker {
     /// Create a waker from the write end of a pipe.
     pub fn from_fd(write_fd: std::os::unix::io::RawFd) -> Self {
-        Self { fd: Some(std::sync::Arc::new(WakeFd(write_fd))) }
+        Self {
+            fd: Some(std::sync::Arc::new(WakeFd(write_fd))),
+        }
     }
 
     /// No-op waker (for tests/mock backends).
@@ -60,7 +64,9 @@ impl Waker {
     /// Wake the event loop. Safe to call from any thread.
     pub fn wake(&self) {
         if let Some(fd) = &self.fd {
-            unsafe { libc::write(fd.0, b"W".as_ptr() as *const libc::c_void, 1); }
+            unsafe {
+                libc::write(fd.0, b"W".as_ptr() as *const libc::c_void, 1);
+            }
         }
     }
 }

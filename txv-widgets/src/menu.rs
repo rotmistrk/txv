@@ -46,19 +46,10 @@ impl View for Menu {
         if b.w == 0 || b.h == 0 {
             return;
         }
+        let pal = txv_core::palette::palette();
         let normal = Style::default();
-        let selected = Style {
-            bg: Color::Ansi(4),
-            attrs: Attrs {
-                underline: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
-        let disabled = Style {
-            fg: Color::Ansi(8),
-            ..Style::default()
-        };
+        let selected = pal.interactive.cursor_focused.to_style();
+        let disabled = pal.interactive.disabled.to_style();
 
         // Draw border
         surface.hline(b.x, b.y, b.w, '─', normal);

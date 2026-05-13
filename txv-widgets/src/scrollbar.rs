@@ -35,18 +35,9 @@ impl View for Scrollbar {
         if b.w == 0 || b.h == 0 {
             return;
         }
-        let track_style = Style {
-            fg: Color::Ansi(8),
-            ..Style::default()
-        };
-        let thumb_style = Style {
-            fg: Color::Reset,
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let pal = txv_core::palette::palette();
+        let track_style = pal.chrome.scrollbar_track.to_style();
+        let thumb_style = pal.chrome.scrollbar_thumb.to_style();
         let (thumb_pos, thumb_size) = self.scroll.thumb(b.h);
         for row in 0..b.h {
             let style = if row >= thumb_pos && row < thumb_pos + thumb_size {
