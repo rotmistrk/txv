@@ -330,4 +330,62 @@ mod tests {
         let mut ed = InlineEditor::new(0, "text");
         assert_eq!(ed.handle_key(&key(KeyCode::Tab)), InlineEditResult::Commit("text".to_owned()));
     }
+
+    #[test]
+    fn shift_home_selects_to_start() {
+        let mut ed = InlineEditor::new(0, "hello");
+        // cursor at end (5)
+        ed.handle_key(&shift_key(KeyCode::Home));
+        assert_eq!(ed.selection_range(), Some((0, 5)));
+        assert_eq!(ed.cursor, 0);
+        assert_eq!(ed.anchor, Some(5));
+    }
+
+    #[test]
+    fn shift_end_selects_to_end() {
+        let mut ed = InlineEditor::new(0, "hello");
+        ed.handle_key(&key(KeyCode::Home));
+        ed.handle_key(&shift_key(KeyCode::End));
+        assert_eq!(ed.selection_range(), Some((0, 5)));
+        assert_eq!(ed.cursor, 5);
+        assert_eq!(ed.anchor, Some(0));
+    }
+
+    #[test]
+    fn delete_key_removes_selection() {
+        let mut ed = InlineEditor::new(0, "abcde");
+        ed.handle_key(&key(KeyCode::Home));
+        ed.handle_key(&shift_key(KeyCode::Right));
+        ed.handle_key(&shift_key(KeyCode::Right));
+        ed.handle_key(&shift_key(KeyCode::Right));
+        // selection is 0..3
+        ed.handle_key(&key(KeyCode::Delete));
+        assert_eq!(ed.buffer, "de");
+        assert_eq!(ed.cursor, 0);
+    }
+
+    #[test]
+    fn type_mid_selection_replaces() {
+        let mut ed = InlineEditor::new(0, "abcde");
+        ed.cursor = 1;
+        ed.anchor = Some(4); // select "bcd"
+        ed.handle_key(&key(KeyCode::Char('X')));
+        assert_eq!(ed.buffer, "aXe");
+        assert_eq!(ed.cursor, 2);
+    }
+
+    #[test]
+    fn selection_range_none_without_anchor() {
+        let ed = InlineEditor::new(0, "text");
+        assert_eq!(ed.selection_range(), None);
+    }
+
+    #[test]
+    fn nav_after_selection_clears_anchor() {
+        let mut ed = InlineEditor::new_selected(0, "abc");
+        ed.handle_key(&key(KeyCode::Left));
+        assert_eq!(ed.anchor, None);
+        // cursor moved
+        assert_eq!(ed.cursor, 2);
+    }
 }
