@@ -4,7 +4,7 @@ use super::defs::*;
 
 impl Default for GlyphSet {
     fn default() -> Self {
-        Self::unicode()
+        Self::nerd()
     }
 }
 
@@ -15,6 +15,7 @@ impl GlyphSet {
             box_drawing: BoxGlyphs::ascii(),
             tree: TreeGlyphs::ascii(),
             ui: UiGlyphs::ascii(),
+            chrome: ChromeGlyphs::ascii(),
             progress: ProgressGlyphs::ascii(),
         }
     }
@@ -25,6 +26,7 @@ impl GlyphSet {
             box_drawing: BoxGlyphs::unicode(),
             tree: TreeGlyphs::unicode(),
             ui: UiGlyphs::unicode(),
+            chrome: ChromeGlyphs::unicode(),
             progress: ProgressGlyphs::unicode(),
         }
     }
@@ -35,6 +37,7 @@ impl GlyphSet {
             box_drawing: BoxGlyphs::unicode_extended(),
             tree: TreeGlyphs::unicode(),
             ui: UiGlyphs::unicode(),
+            chrome: ChromeGlyphs::unicode(),
             progress: ProgressGlyphs::unicode(),
         }
     }
@@ -45,6 +48,7 @@ impl GlyphSet {
             box_drawing: BoxGlyphs::unicode_extended(),
             tree: TreeGlyphs::nerd(),
             ui: UiGlyphs::nerd(),
+            chrome: ChromeGlyphs::nerd(),
             progress: ProgressGlyphs::unicode(),
         }
     }
@@ -198,6 +202,32 @@ impl ProgressGlyphs {
             filled: '█',
             empty: '░',
             partial: '▒',
+        }
+    }
+}
+
+impl ChromeGlyphs {
+    pub fn ascii() -> Self {
+        Self {
+            tab_left: "[",
+            tab_right: "]",
+            tab_separator: "|",
+        }
+    }
+
+    pub fn unicode() -> Self {
+        Self {
+            tab_left: "│",
+            tab_right: "│",
+            tab_separator: "│",
+        }
+    }
+
+    pub fn nerd() -> Self {
+        Self {
+            tab_left: "\u{E0B6}",  // Powerline left half-circle (filled)
+            tab_right: "\u{E0B4}", // Powerline right half-circle (filled)
+            tab_separator: "\u{E0B1}", // Powerline thin separator
         }
     }
 }

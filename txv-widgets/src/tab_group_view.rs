@@ -10,29 +10,41 @@ impl TabGroup {
         if b.w == 0 || b.h == 0 || self.titles.is_empty() {
             return;
         }
-        let dim = palette().base.dim.to_style();
-        let bright = Style {
-            attrs: Attrs {
-                bold: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
-        surface.hline(b.x, b.y, b.w, glyphs().ui.separator_h, dim);
+        let pal = palette();
+        let g = glyphs();
+        let dim = pal.base.dim.to_style();
+        let focused_style = pal.chrome.tab_focused.to_style();
+        let arrow_style = pal.chrome.tab_focused_arrow.to_style();
+        surface.hline(b.x, b.y, b.w, g.ui.separator_h, dim);
         let mut x = b.x;
+        let active_idx = self.group.focused_index();
         for (i, title) in self.titles.iter().enumerate() {
-            let style = if i == self.group.focused_index() {
-                bright
+            if i == active_idx {
+                // Active tab with chrome glyphs
+                let left = g.chrome.tab_left;
+                let right = g.chrome.tab_right;
+                let left_len = left.chars().count() as u16;
+                let right_len = right.chars().count() as u16;
+                let label = format!(" {title} ");
+                let label_len = label.len() as u16;
+                if x + left_len + label_len + right_len > b.x + b.w {
+                    break;
+                }
+                surface.print(x, b.y, left, arrow_style);
+                x += left_len;
+                surface.print(x, b.y, &label, focused_style);
+                x += label_len;
+                surface.print(x, b.y, right, arrow_style);
+                x += right_len;
             } else {
-                dim
-            };
-            let label = format!(" {title} ");
-            let len = label.len() as u16;
-            if x + len > b.x + b.w {
-                break;
+                let label = format!(" {title} ");
+                let len = label.len() as u16;
+                if x + len > b.x + b.w {
+                    break;
+                }
+                surface.print(x, b.y, &label, dim);
+                x += len;
             }
-            surface.print(x, b.y, &label, style);
-            x += len;
         }
         if self.titles.len() > 1 {
             let count = format!("❨{}❩", self.titles.len());

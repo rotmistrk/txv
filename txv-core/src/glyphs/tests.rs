@@ -3,10 +3,10 @@
 use super::*;
 
 #[test]
-fn default_is_unicode() {
+fn default_is_nerd() {
     let g = GlyphSet::default();
-    assert_eq!(g.tier, GlyphTier::Unicode);
-    assert_eq!(g.box_drawing.tl, '┌');
+    assert_eq!(g.tier, GlyphTier::Nerd);
+    assert_eq!(g.box_drawing.tl_round, '╭');
     assert_eq!(g.box_drawing.h_heavy, '═');
 }
 

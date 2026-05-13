@@ -16,6 +16,7 @@ pub struct GlyphSet {
     pub box_drawing: BoxGlyphs,
     pub tree: TreeGlyphs,
     pub ui: UiGlyphs,
+    pub chrome: ChromeGlyphs,
     pub progress: ProgressGlyphs,
 }
 
@@ -71,4 +72,15 @@ pub struct ProgressGlyphs {
     pub filled: char,
     pub empty: char,
     pub partial: char,
+}
+
+/// Chrome/tab bar characters.
+#[derive(Clone, Debug)]
+pub struct ChromeGlyphs {
+    /// Left separator for active tab (e.g., filled left half-circle).
+    pub tab_left: &'static str,
+    /// Right separator for active tab (e.g., filled right half-circle).
+    pub tab_right: &'static str,
+    /// Separator between inactive tabs.
+    pub tab_separator: &'static str,
 }
