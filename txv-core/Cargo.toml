@@ -7,3 +7,4 @@ description = "Pure Rust TUI framework core — View trait, Group dispatch, Surf
 [dependencies]
 log = "0.4"
 libc = "0.2"
+unicode-width = "0.2"

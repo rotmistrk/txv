@@ -38,19 +38,31 @@ impl Surface {
 
     pub fn put(&mut self, x: u16, y: u16, ch: char, style: Style) {
         if x < self.width && y < self.height {
+            let cw = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as u16;
             let i = self.idx(x, y);
-            self.cells[i] = Cell { ch, style, width: 1 };
+            self.cells[i] = Cell { ch, style, width: cw.max(1) as u8 };
+            // Place continuation cells for wide chars
+            if cw == 2 && x + 1 < self.width {
+                let j = self.idx(x + 1, y);
+                self.cells[j] = Cell { ch: ' ', style, width: 0 };
+            }
         }
+    }
+
+    /// Character display width (1 or 2).
+    fn char_width(ch: char) -> u16 {
+        unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as u16
     }
 
     pub fn print(&mut self, x: u16, y: u16, text: &str, style: Style) {
         let mut col = x;
         for ch in text.chars() {
-            if col >= self.width {
+            let cw = Self::char_width(ch);
+            if col + cw > self.width {
                 break;
             }
             self.put(col, y, ch, style);
-            col = col.saturating_add(1);
+            col = col.saturating_add(cw);
         }
     }
 
@@ -60,11 +72,12 @@ impl Surface {
         let mut col = x;
         let end = x.saturating_add(width).min(self.width);
         for ch in text.chars() {
-            if col >= end {
+            let cw = Self::char_width(ch);
+            if col + cw > end {
                 break;
             }
             self.put(col, y, ch, style);
-            col = col.saturating_add(1);
+            col = col.saturating_add(cw);
         }
         while col < end {
             self.put(col, y, ' ', style);
@@ -79,11 +92,12 @@ impl Surface {
         let end = x.saturating_add(width).min(self.width);
         for &(text, style) in spans {
             for ch in text.chars() {
-                if col >= end {
+                let cw = Self::char_width(ch);
+                if col + cw > end {
                     break;
                 }
                 self.put(col, y, ch, style);
-                col = col.saturating_add(1);
+                col = col.saturating_add(cw);
             }
         }
         while col < end {
