@@ -126,12 +126,7 @@ impl PtyTerminal {
             }
         }
         if let Some(osc_title) = self.termbuf.take_title() {
-            let clipped = if osc_title.len() > 20 {
-                format!("{}...", &osc_title[..17])
-            } else {
-                osc_title
-            };
-            self.osc_suffix = clipped;
+            self.osc_suffix = osc_title;
             self.state.mark_dirty();
         }
     }
