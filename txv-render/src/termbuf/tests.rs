@@ -196,3 +196,50 @@ fn scrollback_respects_limit() {
     assert_eq!(tb.scrollback_line(0).map(|l| l[0].ch), Some('C'));
     assert_eq!(tb.scrollback_line(1).map(|l| l[0].ch), Some('B'));
 }
+
+#[test]
+fn resize_shrink_preserves_scrollback() {
+    let mut tb = TermBuf::new(80, 10);
+    // Fill 8 lines with content, cursor on line 7
+    for i in 0..8 {
+        let line = format!("line {i}\r\n");
+        tb.process(line.as_bytes());
+    }
+    // Cursor should be on line 8 (after 8 newlines)
+    assert_eq!(tb.cursor().1, 8);
+
+    // Shrink to 5 rows — lines above cursor should go to scrollback
+    tb.resize(80, 5);
+
+    // Cursor should still be valid (within new height)
+    assert!(tb.cursor().1 < 5, "cursor_y={} should be < 5", tb.cursor().1);
+
+    // Lines should have been pushed to scrollback
+    assert!(tb.scrollback_len() > 0, "Expected lines in scrollback after shrink");
+}
+
+#[test]
+fn resize_grow_keeps_content() {
+    let mut tb = TermBuf::new(80, 5);
+    tb.process(b"line0\r\nline1\r\nline2");
+    let cy = tb.cursor().1;
+
+    // Grow to 10 rows
+    tb.resize(80, 10);
+
+    // Cursor position unchanged
+    assert_eq!(tb.cursor().1, cy);
+    // Content preserved
+    assert_eq!(tb.cells[0][0].ch, 'l');
+    assert_eq!(tb.cells[0][4].ch, '0');
+}
+
+#[test]
+fn resize_shrink_cols_preserves_content() {
+    let mut tb = TermBuf::new(80, 10);
+    tb.process(b"hello world");
+    tb.resize(5, 10);
+    // First 5 chars preserved
+    assert_eq!(tb.cells[0][0].ch, 'h');
+    assert_eq!(tb.cells[0][4].ch, 'o');
+}

@@ -180,7 +180,11 @@ impl Backend for CrosstermBackend {
                     cell.ch
                 };
                 queue!(out, style::Print(ch)).ok();
-                let advance = if cell.width > 1 { cell.width as u16 } else { 1 };
+                let advance = if cell.width > 1 {
+                    cell.width as u16
+                } else {
+                    1
+                };
                 cursor_x = Some(x + advance);
                 x += 1;
             }

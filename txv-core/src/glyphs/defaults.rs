@@ -225,8 +225,8 @@ impl ChromeGlyphs {
 
     pub fn nerd() -> Self {
         Self {
-            tab_left: "\u{E0B6}",  // Powerline left half-circle (filled)
-            tab_right: "\u{E0B4}", // Powerline right half-circle (filled)
+            tab_left: "\u{E0B6}",      // Powerline left half-circle (filled)
+            tab_right: "\u{E0B4}",     // Powerline right half-circle (filled)
             tab_separator: "\u{E0B1}", // Powerline thin separator
         }
     }

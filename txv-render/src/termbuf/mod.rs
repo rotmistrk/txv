@@ -51,6 +51,10 @@ impl Default for TCell {
     }
 }
 
+fn is_blank_row(row: &[TCell]) -> bool {
+    row.iter().all(|c| c.ch == ' ' || c.ch == '\0')
+}
+
 impl TermBuf {
     pub fn new(cols: u16, rows: u16) -> Self {
         Self::with_scrollback(cols, rows, 2000)
@@ -128,18 +132,45 @@ impl TermBuf {
 
     /// Resize the terminal buffer.
     pub fn resize(&mut self, cols: u16, rows: u16) {
-        let mut new_cells = vec![vec![TCell::default(); cols as usize]; rows as usize];
-        let copy_rows = self.rows.min(rows) as usize;
-        let copy_cols = self.cols.min(cols) as usize;
-        for (y, new_row) in new_cells.iter_mut().enumerate().take(copy_rows) {
-            new_row[..copy_cols].clone_from_slice(&self.cells[y][..copy_cols]);
+        let old_rows = self.rows as usize;
+        let new_rows = rows as usize;
+        let new_cols = cols as usize;
+
+        // When shrinking vertically, push excess lines above cursor into scrollback.
+        if new_rows < old_rows {
+            let cursor_y = self.cursor_y as usize;
+            // Lines needed below cursor (inclusive): old_rows - cursor_y
+            // Lines we can keep: new_rows
+            // Lines to push to scrollback: max(0, cursor_y + 1 - new_rows)
+            let lines_to_push = (cursor_y + 1).saturating_sub(new_rows);
+            for i in 0..lines_to_push {
+                if !is_blank_row(&self.cells[i]) {
+                    self.scrollback.push(self.cells[i].clone());
+                }
+            }
+            // Shift remaining content up
+            let start = lines_to_push;
+            let mut new_cells = vec![vec![TCell::default(); new_cols]; new_rows];
+            let copy_cols = (self.cols as usize).min(new_cols);
+            for (dst_y, src_y) in (start..old_rows).enumerate().take(new_rows) {
+                new_cells[dst_y][..copy_cols].clone_from_slice(&self.cells[src_y][..copy_cols]);
+            }
+            self.cells = new_cells;
+            self.cursor_y = (cursor_y - lines_to_push).min(new_rows - 1) as u16;
+        } else {
+            // Growing or same height: just expand the grid
+            let mut new_cells = vec![vec![TCell::default(); new_cols]; new_rows];
+            let copy_rows = old_rows.min(new_rows);
+            let copy_cols = (self.cols as usize).min(new_cols);
+            for (y, new_row) in new_cells.iter_mut().enumerate().take(copy_rows) {
+                new_row[..copy_cols].clone_from_slice(&self.cells[y][..copy_cols]);
+            }
+            self.cells = new_cells;
         }
-        self.cells = new_cells;
         self.cols = cols;
         self.rows = rows;
         self.scroll_bottom = rows.saturating_sub(1);
         self.cursor_x = self.cursor_x.min(cols.saturating_sub(1));
-        self.cursor_y = self.cursor_y.min(rows.saturating_sub(1));
     }
 
     /// Render terminal content to a Surface.

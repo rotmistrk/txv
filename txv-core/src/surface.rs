@@ -40,11 +40,19 @@ impl Surface {
         if x < self.width && y < self.height {
             let cw = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as u16;
             let i = self.idx(x, y);
-            self.cells[i] = Cell { ch, style, width: cw.max(1) as u8 };
+            self.cells[i] = Cell {
+                ch,
+                style,
+                width: cw.max(1) as u8,
+            };
             // Place continuation cells for wide chars
             if cw == 2 && x + 1 < self.width {
                 let j = self.idx(x + 1, y);
-                self.cells[j] = Cell { ch: ' ', style, width: 0 };
+                self.cells[j] = Cell {
+                    ch: ' ',
+                    style,
+                    width: 0,
+                };
             }
         }
     }
