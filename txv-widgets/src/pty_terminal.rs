@@ -133,7 +133,7 @@ impl PtyTerminal {
 }
 
 impl View for PtyTerminal {
-    delegate_view_state!(state, override { title, subtitle, set_bounds, needs_redraw });
+    delegate_view_state!(state, override { title, subtitle, set_bounds, needs_redraw, draw });
 
     fn title(&self) -> &str {
         &self.title
@@ -163,31 +163,40 @@ impl View for PtyTerminal {
         }
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         if self.scroll_offset == 0 {
-            self.termbuf.render_at(surface, b.x, b.y, b.w, b.h);
+            // Render grid into buffer
+            let rh = self.termbuf.grid_rows().min(h);
+            let rw = self.prev_cols.min(w);
+            for y in 0..rh {
+                if let Some(line) = self.termbuf.grid_line(y as usize) {
+                    for (x, tc) in line.iter().enumerate().take(rw as usize) {
+                        self.state.buf.put(x as u16, y, tc.ch, tc.style);
+                    }
+                }
+            }
+            // Draw cursor
             if self.termbuf.cursor_visible() {
                 let (cx, cy) = self.termbuf.cursor();
-                let sx = b.x + cx;
-                let sy = b.y + cy;
-                if sx < surface.width() && sy < surface.height() {
-                    let cell = surface.cell(sx, sy);
+                if cx < w && cy < h {
+                    let cell = self.state.buf.cell(cx, cy);
                     let mut style = cell.style;
                     style.attrs.reverse = !style.attrs.reverse;
                     let ch = cell.ch;
-                    surface.put(sx, sy, ch, style);
+                    self.state.buf.put(cx, cy, ch, style);
                 }
             }
         } else {
-            self.draw_scrollback(surface);
+            self.draw_scrollback_to_buf();
         }
     }
 
-    fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         match event {
             Event::Tick => {
                 self.poll_and_feed();

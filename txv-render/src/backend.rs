@@ -8,17 +8,17 @@ use crossterm::{
     style::{self, Attribute, SetAttribute},
     terminal::{self, Clear, ClearType},
 };
+use txv_core::buffer::Buffer;
 use txv_core::cell::{Attrs, Color, Style};
 use txv_core::event::Event;
 use txv_core::run::{Backend, Waker};
-use txv_core::surface::Surface;
 
 use crate::color::{downgrade, ColorMode};
 use crate::event_translate::{translate_key, translate_mouse};
 
 /// Crossterm-based terminal backend with dual-buffer diffing.
 pub struct CrosstermBackend {
-    previous: Surface,
+    previous: Buffer,
     color_mode: ColorMode,
     force_full: bool,
     wake_read: std::os::unix::io::RawFd,
@@ -38,7 +38,7 @@ impl CrosstermBackend {
             libc::fcntl(fds[0], libc::F_SETFL, flags | libc::O_NONBLOCK);
         }
         Self {
-            previous: Surface::new(w, h),
+            previous: Buffer::new(w, h),
             color_mode,
             force_full: true,
             wake_read: fds[0],
@@ -123,13 +123,13 @@ impl Backend for CrosstermBackend {
         }
     }
 
-    fn flush(&mut self, surface: &Surface) {
+    fn flush(&mut self, surface: &Buffer) {
         let w = surface.width();
         let h = surface.height();
 
         // Resize or force-full: invalidate previous buffer so all cells are emitted
         if self.previous.width() != w || self.previous.height() != h {
-            self.previous = Surface::new(w, h);
+            self.previous = Buffer::new(w, h);
             self.force_full = true;
         }
 

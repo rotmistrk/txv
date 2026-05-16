@@ -32,7 +32,7 @@ impl ModeItem {
 }
 
 impl ActiveItem for ModeItem {
-    fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event, _sink: &EventSink) -> HandleResult {
         if let Event::Command { id, data } = event {
             if *id == self.command_id {
                 if let Some(boxed) = data.as_ref() {
@@ -74,7 +74,7 @@ impl PositionItem {
 }
 
 impl ActiveItem for PositionItem {
-    fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event, _sink: &EventSink) -> HandleResult {
         if let Event::Command { id, data } = event {
             if *id == self.command_id {
                 if let Some(boxed) = data.as_ref() {

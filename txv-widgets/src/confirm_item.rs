@@ -26,7 +26,7 @@ impl ConfirmItem {
 }
 
 impl ActiveItem for ConfirmItem {
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event, sink: &EventSink) -> HandleResult {
         if !self.active {
             if let Event::Command { id, data } = event {
                 if *id == self.activate_command {
@@ -50,7 +50,7 @@ impl ActiveItem for ConfirmItem {
             };
             self.active = false;
             self.label.clear();
-            queue.put_command(self.response_command, Some(Box::new(ch)));
+            sink.push_command(self.response_command, Some(Box::new(ch)));
             return HandleResult::Consumed;
         }
         HandleResult::Consumed

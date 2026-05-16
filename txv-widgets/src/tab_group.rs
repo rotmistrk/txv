@@ -157,6 +157,28 @@ impl TabGroup {
         self.adjust_after_remove();
     }
 
+    /// Remove and return a tab's view (for re-parenting into splits, etc.)
+    pub fn take_tab(&mut self, idx: usize) -> Option<Box<dyn View>> {
+        if idx >= self.group.child_count() {
+            return None;
+        }
+        let view = self.group.remove(idx);
+        self.titles.remove(idx);
+        self.lru.remove(idx);
+        self.adjust_after_remove();
+        Some(view)
+    }
+
+    /// Insert a tab at a specific index.
+    pub fn insert_tab_at(&mut self, idx: usize, title: impl Into<String>, mut view: Box<dyn View>) {
+        let content_rect = self.content_rect();
+        view.set_bounds(content_rect);
+        self.group.insert_at(idx, view);
+        self.titles.insert(idx, title.into());
+        self.lru.insert(idx, 0);
+        self.set_active(idx);
+    }
+
     pub fn focus_tab_by_title(&mut self, title: &str) -> bool {
         if let Some(idx) = self.titles.iter().position(|t| t == title) {
             self.set_active(idx);

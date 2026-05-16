@@ -1,140 +1,28 @@
 //! Surface — abstract drawing target backed by a cell grid.
+//! Re-exports Buffer as Surface for backward compatibility.
 
-use crate::cell::{Cell, Style};
+use crate::cell::Style;
 
-/// Owned cell grid.
-pub struct Surface {
-    cells: Vec<Cell>,
-    width: u16,
-    height: u16,
+/// Re-export the canonical Buffer from the buffer module.
+pub use crate::buffer::Buffer;
+
+/// Legacy alias — the root buffer flushed to the backend.
+pub type Surface = Buffer;
+
+/// A borrowed rectangular region of a Surface.
+pub struct SubSurface<'a> {
+    surface: &'a mut Surface,
+    ox: u16,
+    oy: u16,
+    w: u16,
+    h: u16,
 }
 
-impl Surface {
-    pub fn new(w: u16, h: u16) -> Self {
-        let len = (w as usize) * (h as usize);
-        Self {
-            cells: vec![Cell::default(); len],
-            width: w,
-            height: h,
-        }
-    }
-
-    pub fn width(&self) -> u16 {
-        self.width
-    }
-
-    pub fn height(&self) -> u16 {
-        self.height
-    }
-
-    pub fn cell(&self, x: u16, y: u16) -> &Cell {
-        &self.cells[self.idx(x, y)]
-    }
-
-    pub fn cell_mut(&mut self, x: u16, y: u16) -> &mut Cell {
-        let i = self.idx(x, y);
-        &mut self.cells[i]
-    }
-
-    pub fn put(&mut self, x: u16, y: u16, ch: char, style: Style) {
-        if x < self.width && y < self.height {
-            let cw = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as u16;
-            let i = self.idx(x, y);
-            self.cells[i] = Cell {
-                ch,
-                style,
-                width: cw.max(1) as u8,
-            };
-            // Place continuation cells for wide chars
-            if cw == 2 && x + 1 < self.width {
-                let j = self.idx(x + 1, y);
-                self.cells[j] = Cell {
-                    ch: ' ',
-                    style,
-                    width: 0,
-                };
-            }
-        }
-    }
-
-    /// Character display width (1 or 2).
-    fn char_width(ch: char) -> u16 {
-        unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as u16
-    }
-
-    pub fn print(&mut self, x: u16, y: u16, text: &str, style: Style) {
-        let mut col = x;
-        for ch in text.chars() {
-            let cw = Self::char_width(ch);
-            if col + cw > self.width {
-                break;
-            }
-            self.put(col, y, ch, style);
-            col = col.saturating_add(cw);
-        }
-    }
-
-    /// Print text at (x, y) and fill remaining width with spaces in the same style.
-    /// TXV model: every line write covers the full width. No stale content.
-    pub fn print_line(&mut self, x: u16, y: u16, text: &str, width: u16, style: Style) {
-        let mut col = x;
-        let end = x.saturating_add(width).min(self.width);
-        for ch in text.chars() {
-            let cw = Self::char_width(ch);
-            if col + cw > end {
-                break;
-            }
-            self.put(col, y, ch, style);
-            col = col.saturating_add(cw);
-        }
-        while col < end {
-            self.put(col, y, ' ', style);
-            col += 1;
-        }
-    }
-
-    /// Print styled spans at (x, y) and fill remaining width with spaces.
-    /// TXV model: every line write covers the full width. No stale content.
-    pub fn print_spans_line(&mut self, x: u16, y: u16, spans: &[(&str, Style)], width: u16, fill_style: Style) {
-        let mut col = x;
-        let end = x.saturating_add(width).min(self.width);
-        for &(text, style) in spans {
-            for ch in text.chars() {
-                let cw = Self::char_width(ch);
-                if col + cw > end {
-                    break;
-                }
-                self.put(col, y, ch, style);
-                col = col.saturating_add(cw);
-            }
-        }
-        while col < end {
-            self.put(col, y, ' ', fill_style);
-            col += 1;
-        }
-    }
-
-    pub fn fill(&mut self, ch: char, style: Style) {
-        for cell in &mut self.cells {
-            *cell = Cell { ch, style, width: 1 };
-        }
-    }
-
-    pub fn hline(&mut self, x: u16, y: u16, len: u16, ch: char, style: Style) {
-        for col in x..x.saturating_add(len).min(self.width) {
-            self.put(col, y, ch, style);
-        }
-    }
-
-    pub fn vline(&mut self, x: u16, y: u16, len: u16, ch: char, style: Style) {
-        for row in y..y.saturating_add(len).min(self.height) {
-            self.put(x, row, ch, style);
-        }
-    }
-
+impl Buffer {
+    /// Create a SubSurface view into this buffer.
     pub fn sub(&mut self, x: u16, y: u16, w: u16, h: u16) -> SubSurface<'_> {
-        let clamped_w = w.min(self.width.saturating_sub(x));
-        let clamped_h = h.min(self.height.saturating_sub(y));
+        let clamped_w = w.min(self.width().saturating_sub(x));
+        let clamped_h = h.min(self.height().saturating_sub(y));
         SubSurface {
             surface: self,
             ox: x,
@@ -144,18 +32,11 @@ impl Surface {
         }
     }
 
-    fn idx(&self, x: u16, y: u16) -> usize {
-        (y as usize) * (self.width as usize) + (x as usize)
+    /// Mutable cell access.
+    pub fn cell_mut(&mut self, x: u16, y: u16) -> &mut crate::cell::Cell {
+        let i = (y as usize) * (self.width() as usize) + (x as usize);
+        &mut self.cells_mut()[i]
     }
-}
-
-/// A borrowed rectangular region of a Surface.
-pub struct SubSurface<'a> {
-    surface: &'a mut Surface,
-    ox: u16,
-    oy: u16,
-    w: u16,
-    h: u16,
 }
 
 impl SubSurface<'_> {
@@ -185,7 +66,6 @@ impl SubSurface<'_> {
         }
     }
 
-    /// Print text at (x, y) and fill remaining width with spaces.
     pub fn print_line(&mut self, x: u16, y: u16, text: &str, width: u16, style: Style) {
         let mut col = x;
         let end = x.saturating_add(width).min(self.w);
@@ -202,7 +82,6 @@ impl SubSurface<'_> {
         }
     }
 
-    /// Print styled spans at (x, y) and fill remaining width with spaces.
     pub fn print_spans_line(&mut self, x: u16, y: u16, spans: &[(&str, Style)], width: u16, fill_style: Style) {
         let mut col = x;
         let end = x.saturating_add(width).min(self.w);

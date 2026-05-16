@@ -40,6 +40,18 @@ impl<D: TreeData> TreeView<D> {
         }
     }
 
+    pub fn buffer_mut(&mut self) -> &mut Buffer {
+        &mut self.state.buf
+    }
+
+    pub fn is_focused(&self) -> bool {
+        self.state.is_focused()
+    }
+
+    pub fn mark_dirty(&mut self) {
+        self.state.mark_dirty();
+    }
+
     fn sync_scroll(&mut self) {
         let h = self.state.bounds().h as usize;
         self.scroll.set_viewport(h);
@@ -51,12 +63,13 @@ impl<D: TreeData> TreeView<D> {
 impl<D: TreeData> View for TreeView<D> {
     delegate_view_state!(state);
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
-        for row in 0..b.h as usize {
+        for row in 0..h as usize {
             let idx = self.scroll.offset + row;
             if idx >= self.data.visible_count() {
                 break;
@@ -95,15 +108,15 @@ impl<D: TreeData> View for TreeView<D> {
             } else {
                 node_style
             };
-            let y = b.y + row as u16;
-            surface.hline(b.x, y, b.w, ' ', style);
-            let x = b.x + indent;
-            surface.print(x, y, marker, style);
-            surface.print(x + 2, y, self.data.label(id), style);
+            let y = row as u16;
+            self.state.buf.hline(0, y, w, ' ', style);
+            let x = indent;
+            self.state.buf.print(x, y, marker, style);
+            self.state.buf.print(x + 2, y, self.data.label(id), style);
         }
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         match event {
             Event::Key(key) => match key.code {
                 KeyCode::Up => {
@@ -131,7 +144,7 @@ impl<D: TreeData> View for TreeView<D> {
                             self.sync_scroll();
                             self.state.mark_dirty();
                         } else {
-                            queue.put_command(CM_OK, Some(Box::new(id)));
+                            self.state.put_command(CM_OK, Some(Box::new(id)));
                         }
                     }
                     HandleResult::Consumed

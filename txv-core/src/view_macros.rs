@@ -22,11 +22,14 @@ macro_rules! delegate_view_state {
         fn set_bounds(&mut self, r: $crate::geometry::Rect) {
             self.$field.set_bounds(r);
         }
+        fn set_sink(&mut self, sink: $crate::view::EventSink) {
+            self.$field.set_sink(sink);
+        }
         fn options(&self) -> $crate::view::ViewOptions {
-            self.$field.options
+            self.$field.options()
         }
         fn title(&self) -> &str {
-            &self.$field.title
+            self.$field.title()
         }
         fn needs_redraw(&self) -> bool {
             self.$field.is_dirty()
@@ -45,6 +48,9 @@ macro_rules! delegate_view_state {
         fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
             Some(self)
         }
+        fn buffer(&self) -> &$crate::buffer::Buffer {
+            self.$field.buffer()
+        }
     };
     ($field:ident, override { $($skip:ident),* $(,)? }) => {
         $crate::__dvs_maybe!(bounds, [$($skip),*], {
@@ -57,14 +63,19 @@ macro_rules! delegate_view_state {
                 self.$field.set_bounds(r);
             }
         });
+        $crate::__dvs_maybe!(set_sink, [$($skip),*], {
+            fn set_sink(&mut self, sink: $crate::view::EventSink) {
+                self.$field.set_sink(sink);
+            }
+        });
         $crate::__dvs_maybe!(options, [$($skip),*], {
             fn options(&self) -> $crate::view::ViewOptions {
-                self.$field.options
+                self.$field.options()
             }
         });
         $crate::__dvs_maybe!(title, [$($skip),*], {
             fn title(&self) -> &str {
-                &self.$field.title
+                self.$field.title()
             }
         });
         $crate::__dvs_maybe!(needs_redraw, [$($skip),*], {
@@ -94,6 +105,11 @@ macro_rules! delegate_view_state {
                 Some(self)
             }
         });
+        $crate::__dvs_maybe!(buffer, [$($skip),*], {
+            fn buffer(&self) -> &$crate::buffer::Buffer {
+                self.$field.buffer()
+            }
+        });
     };
 }
 
@@ -103,12 +119,14 @@ macro_rules! delegate_view_state {
 macro_rules! __dvs_maybe {
     (bounds, [bounds $(, $rest:ident)*], { $($body:tt)* }) => {};
     (set_bounds, [set_bounds $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (set_sink, [set_sink $(, $rest:ident)*], { $($body:tt)* }) => {};
     (options, [options $(, $rest:ident)*], { $($body:tt)* }) => {};
     (title, [title $(, $rest:ident)*], { $($body:tt)* }) => {};
     (needs_redraw, [needs_redraw $(, $rest:ident)*], { $($body:tt)* }) => {};
     (mark_redrawn, [mark_redrawn $(, $rest:ident)*], { $($body:tt)* }) => {};
     (select, [select $(, $rest:ident)*], { $($body:tt)* }) => {};
     (unselect, [unselect $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (buffer, [buffer $(, $rest:ident)*], { $($body:tt)* }) => {};
     ($method:ident, [$head:ident $(, $rest:ident)*], { $($body:tt)* }) => {
         $crate::__dvs_maybe!($method, [$($rest),*], { $($body)* });
     };
@@ -126,6 +144,9 @@ macro_rules! delegate_view {
         });
         $crate::__dv_maybe!(set_bounds, [$($skip),*], {
             fn set_bounds(&mut self, r: $crate::geometry::Rect) { self.$field.set_bounds(r); }
+        });
+        $crate::__dv_maybe!(set_sink, [$($skip),*], {
+            fn set_sink(&mut self, sink: $crate::view::EventSink) { self.$field.set_sink(sink); }
         });
         $crate::__dv_maybe!(options, [$($skip),*], {
             fn options(&self) -> $crate::view::ViewOptions { self.$field.options() }
@@ -146,12 +167,15 @@ macro_rules! delegate_view {
             fn unselect(&mut self) { self.$field.unselect(); }
         });
         $crate::__dv_maybe!(draw, [$($skip),*], {
-            fn draw(&self, surface: &mut $crate::surface::Surface) { self.$field.draw(surface); }
+            fn draw(&mut self) { self.$field.draw(); }
         });
         $crate::__dv_maybe!(handle, [$($skip),*], {
-            fn handle(&mut self, event: &$crate::event::Event, queue: &mut $crate::view::EventQueue) -> $crate::view::HandleResult {
-                self.$field.handle(event, queue)
+            fn handle(&mut self, event: &$crate::event::Event) -> $crate::view::HandleResult {
+                self.$field.handle(event)
             }
+        });
+        $crate::__dv_maybe!(buffer, [$($skip),*], {
+            fn buffer(&self) -> &$crate::buffer::Buffer { self.$field.buffer() }
         });
     };
 }
@@ -161,6 +185,7 @@ macro_rules! delegate_view {
 macro_rules! __dv_maybe {
     (bounds, [bounds $(, $rest:ident)*], { $($body:tt)* }) => {};
     (set_bounds, [set_bounds $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (set_sink, [set_sink $(, $rest:ident)*], { $($body:tt)* }) => {};
     (options, [options $(, $rest:ident)*], { $($body:tt)* }) => {};
     (title, [title $(, $rest:ident)*], { $($body:tt)* }) => {};
     (needs_redraw, [needs_redraw $(, $rest:ident)*], { $($body:tt)* }) => {};
@@ -169,6 +194,7 @@ macro_rules! __dv_maybe {
     (unselect, [unselect $(, $rest:ident)*], { $($body:tt)* }) => {};
     (draw, [draw $(, $rest:ident)*], { $($body:tt)* }) => {};
     (handle, [handle $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (buffer, [buffer $(, $rest:ident)*], { $($body:tt)* }) => {};
     ($method:ident, [$head:ident $(, $rest:ident)*], { $($body:tt)* }) => {
         $crate::__dv_maybe!($method, [$($rest),*], { $($body)* });
     };

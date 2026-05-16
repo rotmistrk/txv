@@ -23,7 +23,7 @@ impl InputDialog {
             text: String::new(),
             cursor: 0,
         };
-        s.state.title = s.title_text.clone();
+        s.state.set_title(s.title_text.clone());
         s
     }
 
@@ -36,69 +36,67 @@ impl InputDialog {
 impl View for InputDialog {
     delegate_view_state!(state);
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let normal = Style::default();
         let border = txv_core::palette::palette().base.border.to_style();
         // Fill background
-        for row in 0..b.h {
-            surface.hline(b.x, b.y + row, b.w, ' ', normal);
+        for row in 0..h {
+            self.state.buf.hline(0, row, w, ' ', normal);
         }
         // Border
         let g = glyphs();
         let bx = &g.box_drawing;
-        surface.hline(b.x, b.y, b.w, bx.h_heavy, border);
-        surface.hline(b.x, b.y + b.h.saturating_sub(1), b.w, bx.h_heavy, border);
-        for row in 1..b.h.saturating_sub(1) {
-            surface.put(b.x, b.y + row, bx.v_heavy, border);
-            surface.put(b.x + b.w.saturating_sub(1), b.y + row, bx.v_heavy, border);
+        self.state.buf.hline(0, 0, w, bx.h_heavy, border);
+        self.state.buf.hline(0, h.saturating_sub(1), w, bx.h_heavy, border);
+        for row in 1..h.saturating_sub(1) {
+            self.state.buf.put(0, row, bx.v_heavy, border);
+            self.state.buf.put(w.saturating_sub(1), row, bx.v_heavy, border);
         }
-        surface.put(b.x, b.y, bx.tl_heavy, border);
-        surface.put(b.x + b.w.saturating_sub(1), b.y, bx.tr_heavy, border);
-        surface.put(b.x, b.y + b.h.saturating_sub(1), bx.bl_heavy, border);
-        surface.put(
-            b.x + b.w.saturating_sub(1),
-            b.y + b.h.saturating_sub(1),
-            bx.br_heavy,
-            border,
-        );
+        self.state.buf.put(0, 0, bx.tl_heavy, border);
+        self.state.buf.put(w.saturating_sub(1), 0, bx.tr_heavy, border);
+        self.state.buf.put(0, h.saturating_sub(1), bx.bl_heavy, border);
+        self.state
+            .buf
+            .put(w.saturating_sub(1), h.saturating_sub(1), bx.br_heavy, border);
         // Title
         if !self.title_text.is_empty() {
             let title = format!(" {} ", self.title_text);
-            surface.print(b.x + 2, b.y, &title, border);
+            self.state.buf.print(2, 0, &title, border);
         }
         // Input line
-        let inner_w = b.w.saturating_sub(4) as usize;
-        let input_y = b.y + 2;
+        let inner_w = w.saturating_sub(4) as usize;
+        let input_y = 2u16;
         let start = if self.cursor >= inner_w {
             self.cursor - inner_w + 1
         } else {
             0
         };
         let visible: String = self.text.chars().skip(start).take(inner_w).collect();
-        surface.print(b.x + 2, input_y, &visible, normal);
+        self.state.buf.print(2, input_y, &visible, normal);
         // Cursor
         let cx = (self.cursor - start) as u16;
         if cx < inner_w as u16 {
             let ch = self.text.chars().nth(self.cursor).unwrap_or(' ');
             let cursor_style = txv_core::palette::palette().interactive.input_cursor.to_style();
-            surface.put(b.x + 2 + cx, input_y, ch, cursor_style);
+            self.state.buf.put(2 + cx, input_y, ch, cursor_style);
         }
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Consumed;
         };
         match &key.code {
             KeyCode::Enter => {
-                queue.put_command(CM_OK, Some(Box::new(self.text.clone())));
+                self.state.put_command(CM_OK, Some(Box::new(self.text.clone())));
             }
             KeyCode::Esc => {
-                queue.put_command(CM_CANCEL, None);
+                self.state.put_command(CM_CANCEL, None);
             }
             KeyCode::Backspace => {
                 if self.cursor > 0 {

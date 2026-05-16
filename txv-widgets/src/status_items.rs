@@ -52,11 +52,11 @@ impl KeyLabelItem {
 }
 
 impl ActiveItem for KeyLabelItem {
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event, sink: &EventSink) -> HandleResult {
         if let Event::Key(k) = event {
             if *k == self.key {
                 let payload = self.data.map(|d| Box::new(d) as Box<dyn std::any::Any + Send>);
-                queue.put_command(self.command, payload);
+                sink.push_command(self.command, payload);
                 return HandleResult::Consumed;
             }
         }
@@ -157,7 +157,7 @@ impl MessageItem {
 }
 
 impl ActiveItem for MessageItem {
-    fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event, _sink: &EventSink) -> HandleResult {
         if let Event::Command { id, data } = event {
             if *id == CM_STATUS_MESSAGE {
                 if let Some(boxed) = data.as_ref() {

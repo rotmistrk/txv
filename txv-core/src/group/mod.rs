@@ -27,6 +27,14 @@ impl GroupState {
 
     pub fn insert(&mut self, child: Box<dyn View>) {
         self.children.push(child);
+        let idx = self.children.len() - 1;
+        self.propagate_sink_to(idx);
+        self.view.mark_dirty();
+    }
+
+    pub fn insert_at(&mut self, index: usize, child: Box<dyn View>) {
+        self.children.insert(index, child);
+        self.propagate_sink_to(index);
         self.view.mark_dirty();
     }
 

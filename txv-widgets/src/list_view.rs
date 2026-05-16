@@ -42,9 +42,10 @@ impl<D: ListData> ListView<D> {
 impl<D: ListData> View for ListView<D> {
     delegate_view_state!(state);
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let selected = if self.state.is_focused() {
@@ -52,7 +53,7 @@ impl<D: ListData> View for ListView<D> {
         } else {
             txv_core::palette::palette().interactive.cursor_unfocused.to_style()
         };
-        for row in 0..b.h as usize {
+        for row in 0..h as usize {
             let idx = self.scroll.offset + row;
             if idx >= self.data.len() {
                 break;
@@ -62,13 +63,13 @@ impl<D: ListData> View for ListView<D> {
             } else {
                 self.data.style(idx)
             };
-            let y = b.y + row as u16;
-            surface.hline(b.x, y, b.w, ' ', style);
-            surface.print(b.x + 1, y, self.data.label(idx), style);
+            let y = row as u16;
+            self.state.buf.hline(0, y, w, ' ', style);
+            self.state.buf.print(1, y, self.data.label(idx), style);
         }
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         match event {
             Event::Key(key) => match key.code {
                 KeyCode::Up => {
@@ -89,7 +90,7 @@ impl<D: ListData> View for ListView<D> {
                     HandleResult::Consumed
                 }
                 KeyCode::Enter => {
-                    queue.put_command(CM_OK, Some(Box::new(self.cursor)));
+                    self.state.put_command(CM_OK, Some(Box::new(self.cursor)));
                     HandleResult::Consumed
                 }
                 KeyCode::Home => {

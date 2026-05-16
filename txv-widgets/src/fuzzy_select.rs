@@ -79,9 +79,10 @@ fn fuzzy_match(haystack: &str, needle: &str) -> bool {
 impl View for FuzzySelect {
     delegate_view_state!(state);
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let pal = txv_core::palette::palette();
@@ -96,20 +97,20 @@ impl View for FuzzySelect {
         };
 
         // Input line at top
-        surface.hline(b.x, b.y, b.w, ' ', input_style);
+        self.state.buf.hline(0, 0, w, ' ', input_style);
         let prompt = "> ";
-        surface.print(b.x, b.y, prompt, input_style);
-        let avail = b.w.saturating_sub(2) as usize;
+        self.state.buf.print(0, 0, prompt, input_style);
+        let avail = w.saturating_sub(2) as usize;
         let visible: String = self.query.chars().take(avail).collect();
-        surface.print(b.x + 2, b.y, &visible, input_style);
+        self.state.buf.print(2, 0, &visible, input_style);
 
         // Filtered list
-        let list_h = b.h.saturating_sub(1) as usize;
+        let list_h = h.saturating_sub(1) as usize;
         for row in 0..list_h {
             let idx = self.scroll.offset + row;
-            let y = b.y + 1 + row as u16;
+            let y = 1 + row as u16;
             if idx >= self.filtered.len() {
-                surface.hline(b.x, y, b.w, ' ', normal);
+                self.state.buf.hline(0, y, w, ' ', normal);
                 continue;
             }
             let style = if idx == self.selected {
@@ -117,14 +118,14 @@ impl View for FuzzySelect {
             } else {
                 normal
             };
-            surface.hline(b.x, y, b.w, ' ', style);
+            self.state.buf.hline(0, y, w, ' ', style);
             let item_idx = self.filtered[idx];
-            let text: String = self.items[item_idx].chars().take(b.w as usize).collect();
-            surface.print(b.x + 1, y, &text, style);
+            let text: String = self.items[item_idx].chars().take(w as usize).collect();
+            self.state.buf.print(1, y, &text, style);
         }
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Consumed;
         };
@@ -161,12 +162,12 @@ impl View for FuzzySelect {
             }
             KeyCode::Enter => {
                 if let Some(&item_idx) = self.filtered.get(self.selected) {
-                    queue.put_command(CM_OK, Some(Box::new(item_idx)));
+                    self.state.put_command(CM_OK, Some(Box::new(item_idx)));
                 }
                 HandleResult::Consumed
             }
             KeyCode::Esc => {
-                queue.put_command(CM_CANCEL, None);
+                self.state.put_command(CM_CANCEL, None);
                 HandleResult::Consumed
             }
             _ => HandleResult::Consumed,

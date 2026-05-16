@@ -52,32 +52,33 @@ impl Default for InputLine {
 impl View for InputLine {
     delegate_view_state!(state);
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let style = Style::default();
-        surface.hline(b.x, b.y, b.w, ' ', style);
+        self.state.buf.hline(0, 0, w, ' ', style);
         // Compute visible window of text
-        let w = b.w as usize;
-        let start = if self.cursor >= w {
-            self.cursor - w + 1
+        let ww = w as usize;
+        let start = if self.cursor >= ww {
+            self.cursor - ww + 1
         } else {
             0
         };
-        let visible: String = self.text.chars().skip(start).take(w).collect();
-        surface.print(b.x, b.y, &visible, style);
+        let visible: String = self.text.chars().skip(start).take(ww).collect();
+        self.state.buf.print(0, 0, &visible, style);
         // Draw cursor
         let cx = (self.cursor - start) as u16;
-        if cx < b.w {
+        if cx < w {
             let ch = self.text.chars().nth(self.cursor).unwrap_or(' ');
             let cursor_style = txv_core::palette::palette().interactive.input_cursor.to_style();
-            surface.put(b.x + cx, b.y, ch, cursor_style);
+            self.state.buf.put(cx, 0, ch, cursor_style);
         }
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
@@ -129,11 +130,11 @@ impl View for InputLine {
             }
             KeyCode::Enter => {
                 self.push_history();
-                queue.put_command(CM_OK, Some(Box::new(self.text.clone())));
+                self.state.put_command(CM_OK, Some(Box::new(self.text.clone())));
                 HandleResult::Consumed
             }
             KeyCode::Esc => {
-                queue.put_command(CM_CANCEL, None);
+                self.state.put_command(CM_CANCEL, None);
                 HandleResult::Consumed
             }
             KeyCode::Up => {

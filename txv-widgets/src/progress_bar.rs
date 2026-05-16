@@ -48,9 +48,10 @@ impl Default for ProgressBar {
 impl View for ProgressBar {
     delegate_view_state!(state);
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let filled_style = txv_core::palette::palette().chrome.status_bar.to_style();
@@ -59,33 +60,33 @@ impl View for ProgressBar {
 
         match self.mode {
             ProgressMode::Determinate => {
-                let filled = (self.progress * b.w as f32) as u16;
-                for col in 0..b.w {
+                let filled = (self.progress * w as f32) as u16;
+                for col in 0..w {
                     let (ch, style) = if col < filled {
                         (pg.filled, filled_style)
                     } else {
                         (pg.empty, empty_style)
                     };
-                    surface.put(b.x + col, b.y, ch, style);
+                    self.state.buf.put(col, 0, ch, style);
                 }
             }
             ProgressMode::Indeterminate => {
-                let pos = self.tick % b.w;
-                let width = 3.min(b.w);
-                for col in 0..b.w {
+                let pos = self.tick % w;
+                let width = 3.min(w);
+                for col in 0..w {
                     let in_bar = col >= pos && col < pos + width;
                     let (ch, style) = if in_bar {
                         (pg.filled, filled_style)
                     } else {
                         (pg.empty, empty_style)
                     };
-                    surface.put(b.x + col, b.y, ch, style);
+                    self.state.buf.put(col, 0, ch, style);
                 }
             }
         }
     }
 
-    fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Tick = event {
             if self.mode == ProgressMode::Indeterminate {
                 self.advance_tick();

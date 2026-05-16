@@ -16,8 +16,8 @@ impl Dummy {
 }
 impl View for Dummy {
     delegate_view_state!(state);
-    fn draw(&self, _: &mut Surface) {}
-    fn handle(&mut self, _: &Event, _: &mut EventQueue) -> HandleResult {
+    fn draw(&mut self) {}
+    fn handle(&mut self, _: &Event) -> HandleResult {
         HandleResult::Ignored
     }
 }
@@ -32,10 +32,9 @@ fn split_pane_draws_glyph_separator() {
     );
     sp.set_bounds(Rect::new(0, 0, 20, 10));
 
-    let mut surface = Surface::new(20, 10);
-    sp.draw(&mut surface);
+    sp.draw();
 
-    let cell = surface.cell(10, 0);
+    let cell = sp.buffer().cell(10, 0);
     let g = glyphs();
     assert_eq!(cell.ch, g.ui.separator_v, "separator should match active glyph set");
 }

@@ -1,7 +1,6 @@
 use super::*;
 use crate::event::{Event, KeyCode, KeyEvent, KeyMod};
-use crate::surface::Surface;
-use crate::view::{EventQueue, HandleResult, ViewState};
+use crate::view::{HandleResult, ViewState};
 
 struct DummyView {
     state: ViewState,
@@ -18,8 +17,8 @@ impl DummyView {
 }
 impl View for DummyView {
     crate::delegate_view_state!(state);
-    fn draw(&self, _surface: &mut Surface) {}
-    fn handle(&mut self, _event: &Event, _queue: &mut EventQueue) -> HandleResult {
+    fn draw(&mut self) {}
+    fn handle(&mut self, _event: &Event) -> HandleResult {
         HandleResult::Ignored
     }
 }
@@ -53,8 +52,8 @@ fn three_phase_dispatch() {
     }
     impl View for PreView {
         crate::delegate_view_state!(state);
-        fn draw(&self, _s: &mut Surface) {}
-        fn handle(&mut self, _event: &Event, _queue: &mut EventQueue) -> HandleResult {
+        fn draw(&mut self) {}
+        fn handle(&mut self, _event: &Event) -> HandleResult {
             HandleResult::Consumed
         }
     }
@@ -74,7 +73,6 @@ fn three_phase_dispatch() {
         code: KeyCode::Char('x'),
         modifiers: KeyMod::default(),
     });
-    let mut queue = EventQueue::new();
-    let result = g.dispatch(&ev, &mut queue);
+    let result = g.dispatch(&ev);
     assert_eq!(result, HandleResult::Consumed);
 }

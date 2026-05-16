@@ -1,10 +1,11 @@
-//! View trait, ViewState, EventQueue, and the delegate_view_state! macro.
+//! View trait, ViewState, EventSink, and the delegate_view_state! macro.
 
 use std::any::Any;
+use std::sync::{Arc, Mutex};
 
+use crate::buffer::Buffer;
 use crate::event::{CommandId, Event};
 use crate::geometry::Rect;
-use crate::surface::Surface;
 
 /// Options flags for a View.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -22,34 +23,33 @@ pub enum HandleResult {
     Ignored,
 }
 
-/// Event queue — views emit commands via `put_command`.
-pub struct EventQueue {
-    events: Vec<Event>,
+/// Shared event sink — views push events here, owner drains them.
+#[derive(Clone)]
+pub struct EventSink {
+    events: Arc<Mutex<Vec<Event>>>,
 }
 
-impl EventQueue {
+impl EventSink {
     pub fn new() -> Self {
-        Self { events: Vec::new() }
+        Self {
+            events: Arc::new(Mutex::new(Vec::new())),
+        }
     }
 
-    pub fn put(&mut self, event: Event) {
-        self.events.push(event);
+    pub fn push(&self, event: Event) {
+        self.events.lock().unwrap_or_else(|e| e.into_inner()).push(event);
     }
 
-    pub fn put_command(&mut self, id: CommandId, data: Option<Box<dyn Any + Send>>) {
-        self.events.push(Event::Command { id, data });
+    pub fn push_command(&self, id: CommandId, data: Option<Box<dyn Any + Send>>) {
+        self.push(Event::Command { id, data });
     }
 
-    pub fn drain(&mut self) -> Vec<Event> {
-        std::mem::take(&mut self.events)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.events.is_empty()
+    pub fn drain(&self) -> Vec<Event> {
+        std::mem::take(&mut *self.events.lock().unwrap_or_else(|e| e.into_inner()))
     }
 }
 
-impl Default for EventQueue {
+impl Default for EventSink {
     fn default() -> Self {
         Self::new()
     }
@@ -66,12 +66,14 @@ pub enum CloseResult {
 }
 
 pub trait View: Send {
-    fn draw(&self, surface: &mut Surface);
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult;
+    /// Draw into own buffer at relative coords (0,0). Called by parent.
+    fn draw(&mut self);
+    fn handle(&mut self, event: &Event) -> HandleResult;
     fn select(&mut self) {}
     fn unselect(&mut self) {}
     fn bounds(&self) -> Rect;
     fn set_bounds(&mut self, rect: Rect);
+    fn set_sink(&mut self, sink: EventSink);
     fn options(&self) -> ViewOptions {
         ViewOptions {
             focusable: true,
@@ -97,15 +99,20 @@ pub trait View: Send {
     fn as_any_mut(&mut self) -> Option<&mut dyn Any> {
         None
     }
+    /// Access the view's buffer after draw().
+    fn buffer(&self) -> &Buffer;
 }
 
 /// Common view state — embed in every view.
 pub struct ViewState {
     bounds: Rect,
-    pub options: ViewOptions,
+    pub(crate) options: ViewOptions,
     dirty: bool,
     focused: bool,
-    pub title: String,
+    pub(crate) title: String,
+    /// The view's drawing buffer. Sized to bounds. Draw into this in draw().
+    pub buf: Buffer,
+    sink: Option<EventSink>,
 }
 
 impl ViewState {
@@ -116,11 +123,26 @@ impl ViewState {
             dirty: true,
             focused: false,
             title: String::new(),
+            buf: Buffer::default(),
+            sink: None,
         }
     }
 
     pub fn bounds(&self) -> Rect {
         self.bounds
+    }
+
+    pub fn options(&self) -> ViewOptions {
+        self.options
+    }
+
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
+    pub fn set_title(&mut self, t: impl Into<String>) {
+        self.title = t.into();
+        self.dirty = true;
     }
 
     pub fn is_dirty(&self) -> bool {
@@ -144,8 +166,39 @@ impl ViewState {
     }
 
     pub fn set_bounds(&mut self, r: Rect) {
+        if self.bounds.w != r.w || self.bounds.h != r.h {
+            self.buf.resize(r.w, r.h);
+        }
         self.bounds = r;
         self.dirty = true;
+    }
+
+    pub fn buffer(&self) -> &Buffer {
+        &self.buf
+    }
+
+    pub fn buffer_mut(&mut self) -> &mut Buffer {
+        &mut self.buf
+    }
+
+    pub fn set_sink(&mut self, sink: EventSink) {
+        self.sink = Some(sink);
+    }
+
+    pub fn sink(&self) -> Option<&EventSink> {
+        self.sink.as_ref()
+    }
+
+    /// Push an event to the owner's sink. No-op if sink not set.
+    pub fn put_event(&self, event: Event) {
+        if let Some(ref sink) = self.sink {
+            sink.push(event);
+        }
+    }
+
+    /// Push a command event to the owner's sink.
+    pub fn put_command(&self, id: CommandId, data: Option<Box<dyn Any + Send>>) {
+        self.put_event(Event::Command { id, data });
     }
 }
 

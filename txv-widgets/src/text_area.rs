@@ -103,9 +103,10 @@ impl Default for TextArea {
 impl View for TextArea {
     delegate_view_state!(state);
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let gutter_w = self.gutter_width();
@@ -115,15 +116,15 @@ impl View for TextArea {
         let highlight = pal.interactive.search_match.to_style();
 
         let content_h = if self.searching {
-            b.h.saturating_sub(1) as usize
+            h.saturating_sub(1) as usize
         } else {
-            b.h as usize
+            h as usize
         };
 
         for row in 0..content_h {
             let line_idx = self.scroll.offset + row;
-            let y = b.y + row as u16;
-            surface.hline(b.x, y, b.w, ' ', normal);
+            let y = row as u16;
+            self.state.buf.hline(0, y, w, ' ', normal);
 
             if line_idx >= self.lines.len() {
                 continue;
@@ -132,7 +133,7 @@ impl View for TextArea {
             // Line number
             if self.line_numbers {
                 let num = format!("{:>width$} ", line_idx + 1, width = (gutter_w - 1) as usize);
-                surface.print(b.x, y, &num, gutter_style);
+                self.state.buf.print(0, y, &num, gutter_style);
             }
 
             // Line content
@@ -147,24 +148,24 @@ impl View for TextArea {
             } else {
                 normal
             };
-            let text_x = b.x + gutter_w;
-            let avail = b.w.saturating_sub(gutter_w) as usize;
+            let text_x = gutter_w;
+            let avail = w.saturating_sub(gutter_w) as usize;
             let line = &self.lines[line_idx];
             let visible: String = line.chars().take(avail).collect();
-            surface.print(text_x, y, &visible, style);
+            self.state.buf.print(text_x, y, &visible, style);
         }
 
         // Search prompt at bottom
         if self.searching {
-            let y = b.y + b.h.saturating_sub(1);
+            let y = h.saturating_sub(1);
             let prompt_style = txv_core::palette::palette().chrome.status_bar.to_style();
-            surface.hline(b.x, y, b.w, ' ', prompt_style);
+            self.state.buf.hline(0, y, w, ' ', prompt_style);
             let prompt = format!("/{}", self.search_input);
-            surface.print(b.x, y, &prompt, prompt_style);
+            self.state.buf.print(0, y, &prompt, prompt_style);
         }
     }
 
-    fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };

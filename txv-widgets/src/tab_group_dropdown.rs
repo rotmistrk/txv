@@ -90,15 +90,16 @@ impl TabGroup {
         }
     }
 
-    /// Draw the dropdown overlay on the surface.
-    pub fn draw_dropdown(&self, surface: &mut Surface) {
+    /// Draw the dropdown overlay into own buffer.
+    pub fn draw_dropdown(&mut self) {
         let Some(cursor) = self.dropdown_cursor else {
             return;
         };
-        let b = self.group.view.bounds();
-        if b.w == 0 || self.titles.is_empty() {
+        let w = self.group.view.buf.width();
+        if w == 0 || self.titles.is_empty() {
             return;
         }
+        let h = self.group.view.buf.height();
         let pal = palette();
         let g = glyphs();
         let border = pal.popup.border.to_style();
@@ -113,10 +114,9 @@ impl TabGroup {
             .map(|(i, t)| format!(" {i}:{t}").len())
             .max()
             .unwrap_or(6);
-        let w = ((max_w + 2) as u16).min(b.w);
-        let x = b.x;
-        let start_y = b.y + 1; // Below chrome
-        let avail_h = (b.y + b.h).saturating_sub(start_y + 1) as usize;
+        let dw = ((max_w + 2) as u16).min(w);
+        let start_y = 1u16; // Below chrome
+        let avail_h = h.saturating_sub(start_y + 1) as usize;
         let visible = count.min(avail_h);
         let scroll = if cursor >= visible {
             cursor - visible + 1
@@ -129,28 +129,28 @@ impl TabGroup {
             let row_y = start_y + vi as u16;
             let title = self.titles.get(i).map(|s| s.as_str()).unwrap_or("");
             let entry = format!(" {i}:{title}");
-            let padded = format!("{:<width$}", entry, width = (w - 2) as usize);
+            let padded = format!("{:<width$}", entry, width = (dw - 2) as usize);
             let st = if i == cursor {
                 cursor_style
             } else {
                 normal
             };
-            surface.put(x, row_y, g.box_drawing.v, border);
-            surface.print(x + 1, row_y, &padded, st);
-            if x + w > 1 {
-                surface.put(x + w - 1, row_y, g.box_drawing.v, border);
+            self.group.view.buf.put(0, row_y, g.box_drawing.v, border);
+            self.group.view.buf.print(1, row_y, &padded, st);
+            if dw > 1 {
+                self.group.view.buf.put(dw - 1, row_y, g.box_drawing.v, border);
             }
         }
 
         // Bottom border
         let bot_y = start_y + visible as u16;
-        if bot_y < b.y + b.h {
-            surface.put(x, bot_y, g.box_drawing.bl_round, border);
-            for bx in (x + 1)..(x + w - 1) {
-                surface.put(bx, bot_y, g.box_drawing.h, border);
+        if bot_y < h {
+            self.group.view.buf.put(0, bot_y, g.box_drawing.bl_round, border);
+            for bx in 1..(dw - 1) {
+                self.group.view.buf.put(bx, bot_y, g.box_drawing.h, border);
             }
-            if x + w > 1 {
-                surface.put(x + w - 1, bot_y, g.box_drawing.br_round, border);
+            if dw > 1 {
+                self.group.view.buf.put(dw - 1, bot_y, g.box_drawing.br_round, border);
             }
         }
     }

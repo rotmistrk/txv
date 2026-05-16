@@ -77,7 +77,7 @@ impl CommandItem {
 }
 
 impl ActiveItem for CommandItem {
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event, sink: &EventSink) -> HandleResult {
         if !self.active {
             if let Event::Key(k) = event {
                 if self.activation_keys.contains(k) {
@@ -110,7 +110,7 @@ impl ActiveItem for CommandItem {
                 let cmd = self.text.clone();
                 self.deactivate();
                 if !cmd.is_empty() {
-                    queue.put_command(self.command_id, Some(Box::new(cmd)));
+                    sink.push_command(self.command_id, Some(Box::new(cmd)));
                 }
             }
             KeyCode::Tab => self.try_complete(),

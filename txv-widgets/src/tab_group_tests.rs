@@ -12,8 +12,8 @@ impl Dummy {
 }
 impl View for Dummy {
     delegate_view_state!(state);
-    fn draw(&self, _: &mut Surface) {}
-    fn handle(&mut self, _: &Event, _: &mut EventQueue) -> HandleResult {
+    fn draw(&mut self) {}
+    fn handle(&mut self, _: &Event) -> HandleResult {
         HandleResult::Ignored
     }
 }

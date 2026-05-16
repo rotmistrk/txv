@@ -52,40 +52,41 @@ impl Default for StatusBar {
 impl View for StatusBar {
     delegate_view_state!(state);
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let style = txv_core::palette::palette().chrome.status_bar.to_style();
-        surface.hline(b.x, b.y, b.w, ' ', style);
+        self.state.buf.hline(0, 0, w, ' ', style);
         // Labels left-aligned
-        let mut x = b.x;
+        let mut x = 0u16;
         for item in &self.items {
-            if x >= b.x + b.w {
+            if x >= w {
                 break;
             }
             let text = format!(" {} ", item.label);
-            surface.print(x, b.y, &text, style);
+            self.state.buf.print(x, 0, &text, style);
             x += text.len() as u16;
         }
         // Context right-aligned
         if !self.context.is_empty() {
             let ctx_len = self.context.len() as u16;
-            let rx = (b.x + b.w).saturating_sub(ctx_len + 1);
+            let rx = w.saturating_sub(ctx_len + 1);
             if rx > x {
-                surface.print(rx, b.y, &self.context, style);
+                self.state.buf.print(rx, 0, &self.context, style);
             }
         }
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
         for item in &self.items {
             if *key == item.key {
-                queue.put_command(item.command, None);
+                self.state.put_command(item.command, None);
                 return HandleResult::Consumed;
             }
         }

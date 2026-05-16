@@ -19,16 +19,16 @@ impl QuitView {
 }
 impl View for QuitView {
     crate::delegate_view_state!(state);
-    fn draw(&self, surface: &mut Surface) {
-        surface.put(0, 0, 'Q', Style::default());
+    fn draw(&mut self) {
+        self.state.buf.put(0, 0, 'Q', Style::default());
     }
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Key(KeyEvent {
             code: KeyCode::Char('q'),
             ..
         }) = event
         {
-            queue.put_command(CM_QUIT, None);
+            self.state.put_command(CM_QUIT, None);
             return HandleResult::Consumed;
         }
         HandleResult::Ignored

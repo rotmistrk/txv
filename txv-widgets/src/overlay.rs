@@ -39,13 +39,23 @@ impl Overlay {
 }
 
 impl View for Overlay {
-    delegate_view_state!(state);
+    delegate_view_state!(state, override { draw, set_sink });
 
-    fn draw(&self, surface: &mut Surface) {
-        self.child.draw(surface);
+    fn draw(&mut self) {
+        self.child.draw();
+        let my_bounds = self.state.bounds();
+        let cb = self.child.bounds();
+        let dx = cb.x.saturating_sub(my_bounds.x);
+        let dy = cb.y.saturating_sub(my_bounds.y);
+        self.state.buf.blit(self.child.buffer(), dx, dy);
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
-        self.child.handle(event, queue)
+    fn set_sink(&mut self, sink: EventSink) {
+        self.state.set_sink(sink.clone());
+        self.child.set_sink(sink);
+    }
+
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        self.child.handle(event)
     }
 }

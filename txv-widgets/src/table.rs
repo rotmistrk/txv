@@ -46,9 +46,10 @@ impl Table {
 impl View for Table {
     delegate_view_state!(state);
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let pal = txv_core::palette::palette();
@@ -61,25 +62,25 @@ impl View for Table {
         };
 
         // Header row
-        surface.hline(b.x, b.y, b.w, ' ', header_style);
-        let mut x = b.x;
+        self.state.buf.hline(0, 0, w, ' ', header_style);
+        let mut x = 0u16;
         for col in &self.columns {
-            if x >= b.x + b.w {
+            if x >= w {
                 break;
             }
-            let w = col.width.min(b.x + b.w - x);
-            let title: String = col.title.chars().take(w as usize).collect();
-            surface.print(x, b.y, &title, header_style);
+            let cw = col.width.min(w - x);
+            let title: String = col.title.chars().take(cw as usize).collect();
+            self.state.buf.print(x, 0, &title, header_style);
             x += col.width;
         }
 
         // Data rows
-        let data_h = b.h.saturating_sub(1) as usize;
+        let data_h = h.saturating_sub(1) as usize;
         for row in 0..data_h {
             let idx = self.scroll.offset + row;
-            let y = b.y + 1 + row as u16;
+            let y = 1 + row as u16;
             if idx >= self.rows.len() {
-                surface.hline(b.x, y, b.w, ' ', normal);
+                self.state.buf.hline(0, y, w, ' ', normal);
                 continue;
             }
             let style = if idx == self.cursor {
@@ -87,22 +88,22 @@ impl View for Table {
             } else {
                 normal
             };
-            surface.hline(b.x, y, b.w, ' ', style);
-            let mut cx = b.x;
+            self.state.buf.hline(0, y, w, ' ', style);
+            let mut cx = 0u16;
             for (ci, col) in self.columns.iter().enumerate() {
-                if cx >= b.x + b.w {
+                if cx >= w {
                     break;
                 }
                 let text = self.rows[idx].get(ci).map(|s| s.as_str()).unwrap_or("");
-                let w = col.width.min(b.x + b.w - cx) as usize;
-                let visible: String = text.chars().take(w).collect();
-                surface.print(cx, y, &visible, style);
+                let cw = col.width.min(w - cx) as usize;
+                let visible: String = text.chars().take(cw).collect();
+                self.state.buf.print(cx, y, &visible, style);
                 cx += col.width;
             }
         }
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
@@ -125,7 +126,7 @@ impl View for Table {
                 HandleResult::Consumed
             }
             KeyCode::Enter => {
-                queue.put_command(CM_OK, Some(Box::new(self.cursor)));
+                self.state.put_command(CM_OK, Some(Box::new(self.cursor)));
                 HandleResult::Consumed
             }
             KeyCode::PageDown => {

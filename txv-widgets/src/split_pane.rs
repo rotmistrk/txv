@@ -46,6 +46,40 @@ impl SplitPane {
         }
     }
 
+    pub fn focused_index(&self) -> usize {
+        self.group.focused_index()
+    }
+
+    pub fn child_mut(&mut self, idx: usize) -> Option<&mut Box<dyn View>> {
+        self.group.child_mut(idx)
+    }
+
+    pub fn child(&self, idx: usize) -> Option<&dyn View> {
+        self.group.child(idx)
+    }
+
+    pub fn child_count(&self) -> usize {
+        self.group.child_count()
+    }
+
+    pub fn focus_next(&mut self) {
+        self.group.focus_next();
+    }
+
+    pub fn focus_prev(&mut self) {
+        self.group.focus_prev();
+    }
+
+    /// Remove a child by index and return it.
+    pub fn remove_child(&mut self, idx: usize) -> Box<dyn View> {
+        self.group.remove(idx)
+    }
+
+    /// Take a child by index, removing it from the split.
+    pub fn take_child(mut self, idx: usize) -> Box<dyn View> {
+        self.group.remove(idx)
+    }
+
     fn apply_layout(&mut self) {
         let b = self.group.view.bounds();
         if b.w == 0 || b.h == 0 {
@@ -81,29 +115,47 @@ impl View for SplitPane {
         self.apply_layout();
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.group.view.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.group.view.buf.width();
+        let h = self.group.view.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
-        for child in self.group.children_iter() {
-            child.draw(surface);
+        self.group.view.buf.fill(' ', Style::default());
+        let my_bounds = self.group.view.bounds();
+
+        // Draw and blit children
+        for child in self.group.children_iter_mut() {
+            child.draw();
         }
+        // Blit children into own buffer.
+        // Safety: we borrow children (immutable) and view.buf (mutable) which are disjoint fields.
+        let buf_ptr = &mut self.group.view.buf as *mut Buffer;
+        for i in 0..self.group.child_count() {
+            if let Some(child) = self.group.child(i) {
+                let cb = child.bounds();
+                let dx = cb.x.saturating_sub(my_bounds.x);
+                let dy = cb.y.saturating_sub(my_bounds.y);
+                unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
+            }
+        }
+
+        // Draw divider
         let dim = palette().base.dim.to_style();
         let g = glyphs();
         match self.direction {
             SplitDirection::Horizontal => {
-                let x = b.x + (b.w as f32 * self.ratio) as u16;
-                surface.vline(x, b.y, b.h, g.ui.separator_v, dim);
+                let x = (w as f32 * self.ratio) as u16;
+                self.group.view.buf.vline(x, 0, h, g.ui.separator_v, dim);
             }
             SplitDirection::Vertical => {
-                let y = b.y + (b.h as f32 * self.ratio) as u16;
-                surface.hline(b.x, y, b.w, g.ui.separator_h, dim);
+                let y = (h as f32 * self.ratio) as u16;
+                self.group.view.buf.hline(0, y, w, g.ui.separator_h, dim);
             }
         }
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
-        self.group.dispatch(event, queue)
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        self.group.dispatch(event)
     }
 }

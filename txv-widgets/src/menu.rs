@@ -41,9 +41,10 @@ impl Menu {
 impl View for Menu {
     delegate_view_state!(state);
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let pal = txv_core::palette::palette();
@@ -54,25 +55,26 @@ impl View for Menu {
         // Draw border
         let g = glyphs();
         let bx = &g.box_drawing;
-        surface.hline(b.x, b.y, b.w, bx.h, normal);
-        surface.hline(b.x, b.y + b.h.saturating_sub(1), b.w, bx.h, normal);
-        for row in 1..b.h.saturating_sub(1) {
-            surface.put(b.x, b.y + row, bx.v, normal);
-            surface.put(b.x + b.w.saturating_sub(1), b.y + row, bx.v, normal);
+        self.state.buf.hline(0, 0, w, bx.h, normal);
+        self.state.buf.hline(0, h.saturating_sub(1), w, bx.h, normal);
+        for row in 1..h.saturating_sub(1) {
+            self.state.buf.put(0, row, bx.v, normal);
+            self.state.buf.put(w.saturating_sub(1), row, bx.v, normal);
         }
-        surface.put(b.x, b.y, bx.tl, normal);
-        surface.put(b.x + b.w.saturating_sub(1), b.y, bx.tr, normal);
-        surface.put(b.x, b.y + b.h.saturating_sub(1), bx.bl, normal);
-        surface.put(b.x + b.w.saturating_sub(1), b.y + b.h.saturating_sub(1), bx.br, normal);
+        self.state.buf.put(0, 0, bx.tl, normal);
+        self.state.buf.put(w.saturating_sub(1), 0, bx.tr, normal);
+        self.state.buf.put(0, h.saturating_sub(1), bx.bl, normal);
+        self.state
+            .buf
+            .put(w.saturating_sub(1), h.saturating_sub(1), bx.br, normal);
 
         // Draw items
-        let inner_w = b.w.saturating_sub(2);
+        let inner_w = w.saturating_sub(2);
         for (i, item) in self.items.iter().enumerate() {
             let row = i as u16 + 1;
-            if row >= b.h.saturating_sub(1) {
+            if row >= h.saturating_sub(1) {
                 break;
             }
-            let y = b.y + row;
             let style = if !item.enabled {
                 disabled
             } else if i == self.cursor {
@@ -80,12 +82,12 @@ impl View for Menu {
             } else {
                 normal
             };
-            surface.hline(b.x + 1, y, inner_w, ' ', style);
-            surface.print(b.x + 2, y, &item.label, style);
+            self.state.buf.hline(1, row, inner_w, ' ', style);
+            self.state.buf.print(2, row, &item.label, style);
         }
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Consumed; // modal captures all
         };
@@ -107,13 +109,13 @@ impl View for Menu {
             KeyCode::Enter => {
                 if let Some(item) = self.items.get(self.cursor) {
                     if item.enabled {
-                        queue.put_command(item.command, None);
+                        self.state.put_command(item.command, None);
                     }
                 }
                 HandleResult::Consumed
             }
             KeyCode::Esc => {
-                queue.put_command(CM_CANCEL, None);
+                self.state.put_command(CM_CANCEL, None);
                 HandleResult::Consumed
             }
             _ => HandleResult::Consumed, // modal swallows all keys

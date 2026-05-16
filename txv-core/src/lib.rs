@@ -1,7 +1,7 @@
 //! # txv-core
 //!
 //! Pure Rust TUI framework core. Zero external dependencies.
-//! Defines the View trait, Group three-phase dispatch, Surface, EventQueue,
+//! Defines the View trait, Group three-phase dispatch, Surface, EventSink,
 //! Backend trait, and the run loop.
 //!
 //! ## How to create a View
@@ -16,14 +16,13 @@
 //! impl View for MyView {
 //!     delegate_view_state!(state);
 //!
-//!     fn draw(&self, surface: &mut Surface) {
-//!         surface.print(0, 0, "Hello", Style::default());
+//!     fn draw(&mut self) {
+//!         self.state.buf.print(0, 0, "Hello", Style::default());
 //!     }
 //!
 //!     fn handle(
 //!         &mut self,
 //!         event: &Event,
-//!         queue: &mut EventQueue,
 //!     ) -> HandleResult {
 //!         HandleResult::Ignored
 //!     }
@@ -53,6 +52,7 @@
 //! }
 //! ```
 
+pub mod buffer;
 pub mod cell;
 pub mod commands;
 pub mod complete;
@@ -73,6 +73,7 @@ pub mod window;
 
 /// Prelude — import everything needed to implement a View.
 pub mod prelude {
+    pub use crate::buffer::Buffer;
     pub use crate::cell::{Attrs, Cell, Color, Style};
     pub use crate::commands::*;
     pub use crate::complete::{Completer, Completion};
@@ -88,7 +89,7 @@ pub mod prelude {
     pub use crate::status::{ActiveItem, Gravity, StatusBarItem, VisibleItem};
     pub use crate::surface::{SubSurface, Surface};
     pub use crate::text::{display_char_width, display_width, visual_positions};
-    pub use crate::view::{CloseResult, EventQueue, HandleResult, View, ViewOptions, ViewState};
+    pub use crate::view::{CloseResult, EventSink, HandleResult, View, ViewOptions, ViewState};
     pub use crate::window::{FrameStyle, WindowState};
 
     // Re-export macros (they are already at crate root via #[macro_export])

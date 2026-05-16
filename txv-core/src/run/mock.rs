@@ -2,45 +2,41 @@
 
 use std::time::Duration;
 
-use crate::cell::Style;
+use crate::buffer::Buffer;
 use crate::commands::CM_QUIT;
 use crate::event::{Event, KeyCode, KeyMod};
-use crate::surface::Surface;
-use crate::view::{EventQueue, View};
+use crate::view::{EventSink, View};
 
 use super::Backend;
 
 /// Run N event-loop cycles with a MockBackend (for testing).
 pub fn run_cycles(root: &mut dyn View, backend: &mut MockBackend, n: usize) {
-    let mut queue = EventQueue::new();
-    let (w, h) = backend.size();
-    let mut surface = Surface::new(w, h);
+    let sink = EventSink::new();
+    root.set_sink(sink.clone());
 
     for _ in 0..n {
         while let Some(event) = backend.poll_event(Duration::ZERO) {
             if let Event::Resize(nw, nh) = &event {
-                surface = Surface::new(*nw, *nh);
+                root.set_bounds(crate::geometry::Rect::new(0, 0, *nw, *nh));
             }
-            root.handle(&event, &mut queue);
+            root.handle(&event);
 
-            let events = queue.drain();
+            let events = sink.drain();
             for ev in events {
                 if let Event::Command { id, .. } = &ev {
                     if *id == CM_QUIT {
-                        surface.fill(' ', Style::default());
-                        root.draw(&mut surface);
-                        backend.flush(&surface);
+                        root.draw();
+                        backend.flush(root.buffer());
                         return;
                     }
                 }
-                root.handle(&ev, &mut queue);
+                root.handle(&ev);
             }
         }
 
-        surface.fill(' ', Style::default());
-        root.draw(&mut surface);
+        root.draw();
         root.mark_redrawn();
-        backend.flush(&surface);
+        backend.flush(root.buffer());
     }
 }
 
@@ -49,7 +45,7 @@ pub struct MockBackend {
     width: u16,
     height: u16,
     events: Vec<Event>,
-    last_surface: Option<Surface>,
+    last_buffer: Option<Buffer>,
 }
 
 impl MockBackend {
@@ -58,7 +54,7 @@ impl MockBackend {
             width,
             height,
             events: Vec::new(),
-            last_surface: None,
+            last_buffer: None,
         }
     }
 
@@ -92,16 +88,16 @@ impl MockBackend {
         self.inject(Event::Resize(width, height));
     }
 
-    pub fn surface(&self) -> Option<&Surface> {
-        self.last_surface.as_ref()
+    pub fn surface(&self) -> Option<&Buffer> {
+        self.last_buffer.as_ref()
     }
 
     pub fn screen_text(&self) -> String {
-        let Some(ref s) = self.last_surface else {
+        let Some(ref buf) = self.last_buffer else {
             return String::new();
         };
         let mut rows = Vec::new();
-        for y in 0..s.height() {
+        for y in 0..buf.height() {
             rows.push(self.row(y));
         }
         rows.join("\n")
@@ -109,10 +105,10 @@ impl MockBackend {
 
     /// Check if text appears anywhere on screen (including status bar).
     pub fn contains(&self, text: &str) -> bool {
-        let Some(ref s) = self.last_surface else {
+        let Some(ref buf) = self.last_buffer else {
             return false;
         };
-        for y in 0..s.height() {
+        for y in 0..buf.height() {
             if self.row(y).contains(text) {
                 return true;
             }
@@ -122,10 +118,10 @@ impl MockBackend {
 
     /// Check if text appears in the content area (excludes status bar on last row).
     pub fn content_contains(&self, text: &str) -> bool {
-        let Some(ref s) = self.last_surface else {
+        let Some(ref buf) = self.last_buffer else {
             return false;
         };
-        let content_rows = s.height().saturating_sub(1);
+        let content_rows = buf.height().saturating_sub(1);
         for y in 0..content_rows {
             if self.row(y).contains(text) {
                 return true;
@@ -135,15 +131,15 @@ impl MockBackend {
     }
 
     pub fn row(&self, y: u16) -> String {
-        let Some(ref s) = self.last_surface else {
+        let Some(ref buf) = self.last_buffer else {
             return String::new();
         };
-        if y >= s.height() {
+        if y >= buf.height() {
             return String::new();
         }
         let mut row = String::new();
-        for x in 0..s.width() {
-            row.push(s.cell(x, y).ch);
+        for x in 0..buf.width() {
+            row.push(buf.cell(x, y).ch);
         }
         row.trim_end().to_string()
     }
@@ -160,16 +156,15 @@ impl Backend for MockBackend {
     fn size(&self) -> (u16, u16) {
         (self.width, self.height)
     }
-    fn flush(&mut self, surface: &Surface) {
-        self.last_surface = Some(Surface::new(surface.width(), surface.height()));
-        if let Some(ref mut s) = self.last_surface {
-            for y in 0..surface.height() {
-                for x in 0..surface.width() {
-                    let cell = surface.cell(x, y);
-                    s.put(x, y, cell.ch, cell.style);
-                }
+    fn flush(&mut self, buffer: &Buffer) {
+        let mut copy = Buffer::new(buffer.width(), buffer.height());
+        for y in 0..buffer.height() {
+            for x in 0..buffer.width() {
+                let cell = buffer.cell(x, y);
+                copy.put(x, y, cell.ch, cell.style);
             }
         }
+        self.last_buffer = Some(copy);
     }
     fn enter(&mut self) {}
     fn leave(&mut self) {}

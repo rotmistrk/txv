@@ -23,7 +23,7 @@ impl Dialog {
             buttons: vec!["OK".into(), "Cancel".into()],
             focused_button: 0,
         };
-        s.state.title = s.title_text.clone();
+        s.state.set_title(s.title_text.clone());
         s
     }
 
@@ -37,9 +37,10 @@ impl Dialog {
 impl View for Dialog {
     delegate_view_state!(state);
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let pal = txv_core::palette::palette();
@@ -49,52 +50,50 @@ impl View for Dialog {
         let btn_focused = pal.interactive.input_cursor.to_style();
 
         // Fill background
-        for row in 0..b.h {
-            surface.hline(b.x, b.y + row, b.w, ' ', normal);
+        for row in 0..h {
+            self.state.buf.hline(0, row, w, ' ', normal);
         }
 
         // Border
         let g = glyphs();
         let bx = &g.box_drawing;
-        surface.hline(b.x, b.y, b.w, bx.h_heavy, border_style);
-        surface.hline(b.x, b.y + b.h.saturating_sub(1), b.w, bx.h_heavy, border_style);
-        for row in 1..b.h.saturating_sub(1) {
-            surface.put(b.x, b.y + row, bx.v_heavy, border_style);
-            surface.put(b.x + b.w.saturating_sub(1), b.y + row, bx.v_heavy, border_style);
+        self.state.buf.hline(0, 0, w, bx.h_heavy, border_style);
+        self.state
+            .buf
+            .hline(0, h.saturating_sub(1), w, bx.h_heavy, border_style);
+        for row in 1..h.saturating_sub(1) {
+            self.state.buf.put(0, row, bx.v_heavy, border_style);
+            self.state.buf.put(w.saturating_sub(1), row, bx.v_heavy, border_style);
         }
-        surface.put(b.x, b.y, bx.tl_heavy, border_style);
-        surface.put(b.x + b.w.saturating_sub(1), b.y, bx.tr_heavy, border_style);
-        surface.put(b.x, b.y + b.h.saturating_sub(1), bx.bl_heavy, border_style);
-        surface.put(
-            b.x + b.w.saturating_sub(1),
-            b.y + b.h.saturating_sub(1),
-            bx.br_heavy,
-            border_style,
-        );
+        self.state.buf.put(0, 0, bx.tl_heavy, border_style);
+        self.state.buf.put(w.saturating_sub(1), 0, bx.tr_heavy, border_style);
+        self.state.buf.put(0, h.saturating_sub(1), bx.bl_heavy, border_style);
+        self.state
+            .buf
+            .put(w.saturating_sub(1), h.saturating_sub(1), bx.br_heavy, border_style);
 
         // Title
         if !self.title_text.is_empty() {
             let title = format!(" {} ", self.title_text);
-            let tx = b.x + 2;
-            surface.print(tx, b.y, &title, border_style);
+            self.state.buf.print(2, 0, &title, border_style);
         }
 
         // Message
-        let inner_w = b.w.saturating_sub(4) as usize;
-        let msg_y = b.y + 2;
+        let inner_w = w.saturating_sub(4) as usize;
+        let msg_y = 2u16;
         for (i, line) in self.message.lines().enumerate() {
             let y = msg_y + i as u16;
-            if y >= b.y + b.h.saturating_sub(2) {
+            if y >= h.saturating_sub(2) {
                 break;
             }
             let visible: String = line.chars().take(inner_w).collect();
-            surface.print(b.x + 2, y, &visible, normal);
+            self.state.buf.print(2, y, &visible, normal);
         }
 
         // Buttons at bottom
-        let btn_y = b.y + b.h.saturating_sub(2);
+        let btn_y = h.saturating_sub(2);
         let total_btn_width: u16 = self.buttons.iter().map(|b| b.len() as u16 + 4).sum();
-        let mut bx = b.x + (b.w.saturating_sub(total_btn_width)) / 2;
+        let mut bx_pos = w.saturating_sub(total_btn_width) / 2;
         for (i, btn) in self.buttons.iter().enumerate() {
             let style = if i == self.focused_button {
                 btn_focused
@@ -102,12 +101,12 @@ impl View for Dialog {
                 btn_normal
             };
             let label = format!("[ {} ]", btn);
-            surface.print(bx, btn_y, &label, style);
-            bx += label.len() as u16 + 1;
+            self.state.buf.print(bx_pos, btn_y, &label, style);
+            bx_pos += label.len() as u16 + 1;
         }
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Consumed;
         };
@@ -132,11 +131,11 @@ impl View for Dialog {
                 } else {
                     CM_CANCEL
                 };
-                queue.put_command(cmd, Some(Box::new(self.focused_button)));
+                self.state.put_command(cmd, Some(Box::new(self.focused_button)));
                 HandleResult::Consumed
             }
             KeyCode::Esc => {
-                queue.put_command(CM_CANCEL, None);
+                self.state.put_command(CM_CANCEL, None);
                 HandleResult::Consumed
             }
             _ => HandleResult::Consumed,

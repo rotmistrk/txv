@@ -5,9 +5,10 @@ use txv_core::prelude::*;
 use super::tab_group::TabGroup;
 
 impl TabGroup {
-    pub(crate) fn draw_chrome(&self, surface: &mut Surface) {
-        let b = self.group.view.bounds();
-        if b.w == 0 || b.h == 0 || self.titles.is_empty() {
+    pub(crate) fn draw_chrome(&mut self) {
+        let w = self.group.view.buf.width();
+        let h = self.group.view.buf.height();
+        if w == 0 || h == 0 || self.titles.is_empty() {
             return;
         }
         let pal = palette();
@@ -15,8 +16,8 @@ impl TabGroup {
         let dim = pal.base.dim.to_style();
         let focused_style = pal.chrome.tab_focused.to_style();
         let arrow_style = pal.chrome.tab_focused_arrow.to_style();
-        surface.hline(b.x, b.y, b.w, g.ui.separator_h, dim);
-        let mut x = b.x;
+        self.group.view.buf.hline(0, 0, w, g.ui.separator_h, dim);
+        let mut x = 0u16;
         let active_idx = self.group.focused_index();
         for (i, title) in self.titles.iter().enumerate() {
             if i == active_idx {
@@ -27,30 +28,30 @@ impl TabGroup {
                 let right_len = right.chars().count() as u16;
                 let label = format!(" {title} ");
                 let label_len = label.len() as u16;
-                if x + left_len + label_len + right_len > b.x + b.w {
+                if x + left_len + label_len + right_len > w {
                     break;
                 }
-                surface.print(x, b.y, left, arrow_style);
+                self.group.view.buf.print(x, 0, left, arrow_style);
                 x += left_len;
-                surface.print(x, b.y, &label, focused_style);
+                self.group.view.buf.print(x, 0, &label, focused_style);
                 x += label_len;
-                surface.print(x, b.y, right, arrow_style);
+                self.group.view.buf.print(x, 0, right, arrow_style);
                 x += right_len;
             } else {
                 let label = format!(" {title} ");
                 let len = label.len() as u16;
-                if x + len > b.x + b.w {
+                if x + len > w {
                     break;
                 }
-                surface.print(x, b.y, &label, dim);
+                self.group.view.buf.print(x, 0, &label, dim);
                 x += len;
             }
         }
         if self.titles.len() > 1 {
             let count = format!("❨{}❩", self.titles.len());
             let clen = count.chars().count() as u16;
-            if x + clen < b.x + b.w {
-                surface.print(x + 1, b.y, &count, dim);
+            if x + clen < w {
+                self.group.view.buf.print(x + 1, 0, &count, dim);
             }
         }
     }
@@ -68,20 +69,33 @@ impl View for TabGroup {
         }
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        self.draw_chrome(surface);
-        if let Some(child) = self.group.child(self.group.focused_index()) {
-            child.draw(surface);
+    fn draw(&mut self) {
+        self.group.view.buf.fill(' ', Style::default());
+        self.draw_chrome();
+        let my_bounds = self.group.view.bounds();
+        // Draw and blit focused child
+        let fi = self.group.focused_index();
+        if let Some(child) = self.group.child_mut(fi) {
+            child.draw();
         }
-        self.draw_dropdown(surface);
+        // Blit child buffer into own buffer.
+        // Safety: children and view.buf are disjoint fields of GroupState.
+        let buf_ptr = &mut self.group.view.buf as *mut Buffer;
+        if let Some(child) = self.group.child(fi) {
+            let cb = child.bounds();
+            let dx = cb.x.saturating_sub(my_bounds.x);
+            let dy = cb.y.saturating_sub(my_bounds.y);
+            unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
+        }
+        self.draw_dropdown();
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         // Tick goes to ALL tabs (background tabs need it for refresh/polling)
         if matches!(event, Event::Tick) {
             for i in 0..self.group.child_count() {
                 if let Some(child) = self.group.child_mut(i) {
-                    child.handle(event, queue);
+                    child.handle(event);
                 }
             }
             // Sync active tab title: append view's subtitle (e.g. OSC title)
@@ -128,6 +142,6 @@ impl View for TabGroup {
             }
         }
         // All other events go to active tab only
-        self.group.dispatch(event, queue)
+        self.group.dispatch(event)
     }
 }
