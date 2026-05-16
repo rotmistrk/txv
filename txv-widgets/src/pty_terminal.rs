@@ -109,7 +109,7 @@ impl PtyTerminal {
             return;
         };
         if let Some(data) = session.poll() {
-            log::info!("PTY data: {} bytes", data.len());
+            log::trace!("PTY data: {} bytes", data.len());
             self.termbuf.process(&data);
             self.scroll_offset = 0;
             self.state.mark_dirty();
@@ -153,7 +153,7 @@ impl View for PtyTerminal {
         let cols = r.w;
         let rows = r.h;
         if cols > 0 && rows > 0 && (cols != self.prev_cols || rows != self.prev_rows) {
-            log::info!("PTY resize: {}x{} -> {}x{}", self.prev_cols, self.prev_rows, cols, rows);
+            log::debug!("PTY resize: {}x{} -> {}x{}", self.prev_cols, self.prev_rows, cols, rows);
             self.prev_cols = cols;
             self.prev_rows = rows;
             self.termbuf.resize(cols, rows);
