@@ -6,7 +6,7 @@ use std::time::Duration;
 use crossterm::{
     cursor, event as ct_event, execute, queue,
     style::{self, Attribute, SetAttribute},
-    terminal,
+    terminal::{self, Clear, ClearType},
 };
 use txv_core::cell::{Attrs, Color, Style};
 use txv_core::event::Event;
@@ -135,6 +135,10 @@ impl Backend for CrosstermBackend {
 
         let mut out = io::stdout().lock();
         let mut last_style: Option<Style> = None;
+
+        if self.force_full {
+            queue!(out, Clear(ClearType::All)).ok();
+        }
 
         for y in 0..h {
             let mut cursor_x: Option<u16> = None;

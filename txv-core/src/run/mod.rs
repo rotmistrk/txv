@@ -89,6 +89,7 @@ pub fn run(root: &mut dyn View, backend: &mut dyn Backend) {
         if let Some(event) = backend.poll_event(Duration::from_millis(50)) {
             if let Event::Resize(nw, nh) = &event {
                 surface = Surface::new(*nw, *nh);
+                backend.invalidate();
             }
             root.handle(&event, &mut queue);
         } else {
