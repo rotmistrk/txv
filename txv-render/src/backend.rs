@@ -143,10 +143,37 @@ impl Backend for CrosstermBackend {
         for y in 0..h {
             let mut cursor_x: Option<u16> = None;
 
+            // Find last meaningful cell on this row (non-default-space).
+            let last_meaningful = (0..w)
+                .rev()
+                .find(|&x| {
+                    let c = surface.cell(x, y);
+                    c.ch != ' ' || c.style != Style::default() || c.width != 1
+                })
+                .map(|x| x + 1)
+                .unwrap_or(0);
+
             let mut x = 0u16;
             while x < w {
                 let cell = surface.cell(x, y);
                 let prev = self.previous.cell(x, y);
+
+                // Beyond last meaningful: only emit EL if previous had content here
+                if x >= last_meaningful {
+                    // Check if any remaining previous cells are non-default-space
+                    if !self.force_full {
+                        let prev_had_content = (x..w).any(|px| {
+                            let p = self.previous.cell(px, y);
+                            p.ch != ' ' || p.style != Style::default() || p.width != 1
+                        });
+                        if prev_had_content {
+                            queue!(out, cursor::MoveTo(x, y)).ok();
+                            queue!(out, Clear(ClearType::UntilNewLine)).ok();
+                            last_style = None;
+                        }
+                    }
+                    break;
+                }
 
                 // Skip unchanged cells — but NEVER skip if previous frame had
                 // a wide char or placeholder here (terminal state may differ)
