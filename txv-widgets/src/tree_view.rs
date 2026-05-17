@@ -114,6 +114,11 @@ impl<D: TreeData> View for TreeView<D> {
             self.state.buf.print(x, y, marker, style);
             self.state.buf.print(x + 2, y, self.data.label(id), style);
         }
+        // Clear remaining rows below the last item
+        let drawn = self.data.visible_count().saturating_sub(self.scroll.offset).min(h as usize);
+        for row in drawn..h as usize {
+            self.state.buf.hline(0, row as u16, w, ' ', Style::default());
+        }
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
