@@ -239,6 +239,14 @@ impl GroupState {
     pub fn set_title(&mut self, t: impl Into<String>) {
         self.view.set_title(t);
     }
+
+    pub fn put_event(&self, event: crate::event::Event) {
+        self.view.put_event(event);
+    }
+
+    pub fn put_command(&self, id: crate::event::CommandId, data: Option<Box<dyn std::any::Any + Send>>) {
+        self.view.put_command(id, data);
+    }
 }
 
 impl Default for GroupState {
