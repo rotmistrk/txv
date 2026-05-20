@@ -8,7 +8,7 @@ impl TabGroup {
     /// Open the dropdown menu.
     pub fn open_dropdown(&mut self) {
         self.dropdown_cursor = Some(self.group.focused_index());
-        self.group.view.mark_dirty();
+        self.group.mark_dirty();
     }
 
     /// Whether the dropdown is currently open.
@@ -24,7 +24,7 @@ impl TabGroup {
         match key.code {
             KeyCode::Esc => {
                 self.dropdown_cursor = None;
-                self.group.view.mark_dirty();
+                self.group.mark_dirty();
             }
             KeyCode::Char(c) if c.is_ascii_digit() => {
                 let idx = (c as u8 - b'0') as usize;
@@ -32,18 +32,18 @@ impl TabGroup {
                     self.set_active(idx);
                 }
                 self.dropdown_cursor = None;
-                self.group.view.mark_dirty();
+                self.group.mark_dirty();
             }
             KeyCode::Enter => {
                 self.set_active(cursor);
                 self.dropdown_cursor = None;
-                self.group.view.mark_dirty();
+                self.group.mark_dirty();
             }
             KeyCode::Down => {
                 let count = self.group.child_count();
                 if count > 0 {
                     self.dropdown_cursor = Some((cursor + 1) % count);
-                    self.group.view.mark_dirty();
+                    self.group.mark_dirty();
                 }
             }
             KeyCode::Up => {
@@ -55,7 +55,7 @@ impl TabGroup {
                         cursor - 1
                     };
                     self.dropdown_cursor = Some(prev);
-                    self.group.view.mark_dirty();
+                    self.group.mark_dirty();
                 }
             }
             _ => {}
@@ -69,7 +69,7 @@ impl TabGroup {
             let count = self.group.child_count();
             if count > 0 {
                 self.dropdown_cursor = Some((cursor + 1) % count);
-                self.group.view.mark_dirty();
+                self.group.mark_dirty();
             }
         }
     }
@@ -85,7 +85,7 @@ impl TabGroup {
                     cursor - 1
                 };
                 self.dropdown_cursor = Some(prev);
-                self.group.view.mark_dirty();
+                self.group.mark_dirty();
             }
         }
     }
@@ -95,11 +95,11 @@ impl TabGroup {
         let Some(cursor) = self.dropdown_cursor else {
             return;
         };
-        let w = self.group.view.buf.width();
+        let w = self.group.buffer_mut().width();
         if w == 0 || self.titles.is_empty() {
             return;
         }
-        let h = self.group.view.buf.height();
+        let h = self.group.buffer_mut().height();
         let pal = palette();
         let g = glyphs();
         let border = pal.popup.border.to_style();
@@ -135,22 +135,24 @@ impl TabGroup {
             } else {
                 normal
             };
-            self.group.view.buf.put(0, row_y, g.box_drawing.v, border);
-            self.group.view.buf.print(1, row_y, &padded, st);
+            self.group.buffer_mut().put(0, row_y, g.box_drawing.v, border);
+            self.group.buffer_mut().print(1, row_y, &padded, st);
             if dw > 1 {
-                self.group.view.buf.put(dw - 1, row_y, g.box_drawing.v, border);
+                self.group.buffer_mut().put(dw - 1, row_y, g.box_drawing.v, border);
             }
         }
 
         // Bottom border
         let bot_y = start_y + visible as u16;
         if bot_y < h {
-            self.group.view.buf.put(0, bot_y, g.box_drawing.bl_round, border);
+            self.group.buffer_mut().put(0, bot_y, g.box_drawing.bl_round, border);
             for bx in 1..(dw - 1) {
-                self.group.view.buf.put(bx, bot_y, g.box_drawing.h, border);
+                self.group.buffer_mut().put(bx, bot_y, g.box_drawing.h, border);
             }
             if dw > 1 {
-                self.group.view.buf.put(dw - 1, bot_y, g.box_drawing.br_round, border);
+                self.group
+                    .buffer_mut()
+                    .put(dw - 1, bot_y, g.box_drawing.br_round, border);
             }
         }
     }

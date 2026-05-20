@@ -104,8 +104,8 @@ impl View for TextArea {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -124,7 +124,7 @@ impl View for TextArea {
         for row in 0..content_h {
             let line_idx = self.scroll.offset + row;
             let y = row as u16;
-            self.state.buf.hline(0, y, w, ' ', normal);
+            self.state.buffer_mut().hline(0, y, w, ' ', normal);
 
             if line_idx >= self.lines.len() {
                 continue;
@@ -133,7 +133,7 @@ impl View for TextArea {
             // Line number
             if self.line_numbers {
                 let num = format!("{:>width$} ", line_idx + 1, width = (gutter_w - 1) as usize);
-                self.state.buf.print(0, y, &num, gutter_style);
+                self.state.buffer_mut().print(0, y, &num, gutter_style);
             }
 
             // Line content
@@ -152,16 +152,16 @@ impl View for TextArea {
             let avail = w.saturating_sub(gutter_w) as usize;
             let line = &self.lines[line_idx];
             let visible: String = line.chars().take(avail).collect();
-            self.state.buf.print(text_x, y, &visible, style);
+            self.state.buffer_mut().print(text_x, y, &visible, style);
         }
 
         // Search prompt at bottom
         if self.searching {
             let y = h.saturating_sub(1);
             let prompt_style = txv_core::palette::palette().chrome.status_bar.to_style();
-            self.state.buf.hline(0, y, w, ' ', prompt_style);
+            self.state.buffer_mut().hline(0, y, w, ' ', prompt_style);
             let prompt = format!("/{}", self.search_input);
-            self.state.buf.print(0, y, &prompt, prompt_style);
+            self.state.buffer_mut().print(0, y, &prompt, prompt_style);
         }
     }
 

@@ -47,8 +47,8 @@ impl View for Table {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -62,7 +62,7 @@ impl View for Table {
         };
 
         // Header row
-        self.state.buf.hline(0, 0, w, ' ', header_style);
+        self.state.buffer_mut().hline(0, 0, w, ' ', header_style);
         let mut x = 0u16;
         for col in &self.columns {
             if x >= w {
@@ -70,7 +70,7 @@ impl View for Table {
             }
             let cw = col.width.min(w - x);
             let title: String = col.title.chars().take(cw as usize).collect();
-            self.state.buf.print(x, 0, &title, header_style);
+            self.state.buffer_mut().print(x, 0, &title, header_style);
             x += col.width;
         }
 
@@ -80,7 +80,7 @@ impl View for Table {
             let idx = self.scroll.offset + row;
             let y = 1 + row as u16;
             if idx >= self.rows.len() {
-                self.state.buf.hline(0, y, w, ' ', normal);
+                self.state.buffer_mut().hline(0, y, w, ' ', normal);
                 continue;
             }
             let style = if idx == self.cursor {
@@ -88,7 +88,7 @@ impl View for Table {
             } else {
                 normal
             };
-            self.state.buf.hline(0, y, w, ' ', style);
+            self.state.buffer_mut().hline(0, y, w, ' ', style);
             let mut cx = 0u16;
             for (ci, col) in self.columns.iter().enumerate() {
                 if cx >= w {
@@ -97,7 +97,7 @@ impl View for Table {
                 let text = self.rows[idx].get(ci).map(|s| s.as_str()).unwrap_or("");
                 let cw = col.width.min(w - cx) as usize;
                 let visible: String = text.chars().take(cw).collect();
-                self.state.buf.print(cx, y, &visible, style);
+                self.state.buffer_mut().print(cx, y, &visible, style);
                 cx += col.width;
             }
         }

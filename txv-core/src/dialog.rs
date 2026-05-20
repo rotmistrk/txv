@@ -39,49 +39,37 @@ impl Default for DialogState {
 macro_rules! delegate_dialog_state {
     ($field:ident) => {
         fn bounds(&self) -> $crate::geometry::Rect {
-            self.$field.window.group.view.bounds()
+            self.$field.window.group.bounds()
         }
         fn set_bounds(&mut self, r: $crate::geometry::Rect) {
-            self.$field.window.group.view.set_bounds(r);
+            self.$field.window.group.set_bounds(r);
         }
         fn options(&self) -> $crate::view::ViewOptions {
-            self.$field.window.group.view.options
+            self.$field.window.group.options()
         }
         fn title(&self) -> &str {
-            &self.$field.window.group.view.title
+            self.$field.window.group.title()
         }
         fn needs_redraw(&self) -> bool {
             self.$field.window.group.any_dirty()
         }
         fn mark_redrawn(&mut self) {
-            self.$field.window.group.view.mark_redrawn();
-            for child in &mut self.$field.window.group.children {
-                child.mark_redrawn();
+            self.$field.window.group.mark_redrawn();
+            for i in 0..self.$field.window.group.child_count() {
+                if let Some(child) = self.$field.window.group.child_mut(i) { child.mark_redrawn(); }
             }
         }
         fn select(&mut self) {
-            self.$field.window.group.view.set_focused(true);
-            self.$field.window.group.view.mark_dirty();
-            if let Some(child) = self
-                .$field
-                .window
-                .group
-                .children
-                .get_mut(self.$field.window.group.focused)
-            {
+            self.$field.window.group.set_focused(true);
+            self.$field.window.group.mark_dirty();
+            if let Some(child) = self.$field.window.group.focused_child_mut() {
                 child.select();
             }
         }
         fn unselect(&mut self) {
-            self.$field.window.group.view.set_focused(false);
-            self.$field.window.group.view.mark_dirty();
-            if let Some(child) = self
-                .$field
-                .window
-                .group
-                .children
-                .get_mut(self.$field.window.group.focused)
-            {
+            self.$field.window.group.set_focused(false);
+            self.$field.window.group.mark_dirty();
+            if let Some(child) = self.$field.window.group.focused_child_mut() {
                 child.unselect();
             }
         }
@@ -89,22 +77,22 @@ macro_rules! delegate_dialog_state {
     ($field:ident, override { $($skip:ident),* $(,)? }) => {
         $crate::__dvs_maybe!(bounds, [$($skip),*], {
             fn bounds(&self) -> $crate::geometry::Rect {
-                self.$field.window.group.view.bounds()
+                self.$field.window.group.bounds()
             }
         });
         $crate::__dvs_maybe!(set_bounds, [$($skip),*], {
             fn set_bounds(&mut self, r: $crate::geometry::Rect) {
-                self.$field.window.group.view.set_bounds(r);
+                self.$field.window.group.set_bounds(r);
             }
         });
         $crate::__dvs_maybe!(options, [$($skip),*], {
             fn options(&self) -> $crate::view::ViewOptions {
-                self.$field.window.group.view.options
+                self.$field.window.group.options()
             }
         });
         $crate::__dvs_maybe!(title, [$($skip),*], {
             fn title(&self) -> &str {
-                &self.$field.window.group.view.title
+                self.$field.window.group.title()
             }
         });
         $crate::__dvs_maybe!(needs_redraw, [$($skip),*], {
@@ -114,38 +102,26 @@ macro_rules! delegate_dialog_state {
         });
         $crate::__dvs_maybe!(mark_redrawn, [$($skip),*], {
             fn mark_redrawn(&mut self) {
-                self.$field.window.group.view.mark_redrawn();
-                for child in &mut self.$field.window.group.children {
-                    child.mark_redrawn();
+                self.$field.window.group.mark_redrawn();
+                for i in 0..self.$field.window.group.child_count() {
+                    if let Some(child) = self.$field.window.group.child_mut(i) { child.mark_redrawn(); }
                 }
             }
         });
         $crate::__dvs_maybe!(select, [$($skip),*], {
             fn select(&mut self) {
-                self.$field.window.group.view.set_focused(true);
-                self.$field.window.group.view.mark_dirty();
-                if let Some(child) = self
-                    .$field
-                    .window
-                    .group
-                    .children
-                    .get_mut(self.$field.window.group.focused)
-                {
+                self.$field.window.group.set_focused(true);
+                self.$field.window.group.mark_dirty();
+                if let Some(child) = self.$field.window.group.focused_child_mut() {
                     child.select();
                 }
             }
         });
         $crate::__dvs_maybe!(unselect, [$($skip),*], {
             fn unselect(&mut self) {
-                self.$field.window.group.view.set_focused(false);
-                self.$field.window.group.view.mark_dirty();
-                if let Some(child) = self
-                    .$field
-                    .window
-                    .group
-                    .children
-                    .get_mut(self.$field.window.group.focused)
-                {
+                self.$field.window.group.set_focused(false);
+                self.$field.window.group.mark_dirty();
+                if let Some(child) = self.$field.window.group.focused_child_mut() {
                     child.unselect();
                 }
             }

@@ -111,7 +111,7 @@ pub struct ViewState {
     focused: bool,
     pub(crate) title: String,
     /// The view's drawing buffer. Sized to bounds. Draw into this in draw().
-    pub buf: Buffer,
+    buf: Buffer,
     sink: Option<EventSink>,
 }
 

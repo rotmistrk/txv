@@ -38,8 +38,8 @@ impl View for Dialog {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -51,31 +51,37 @@ impl View for Dialog {
 
         // Fill background
         for row in 0..h {
-            self.state.buf.hline(0, row, w, ' ', normal);
+            self.state.buffer_mut().hline(0, row, w, ' ', normal);
         }
 
         // Border
         let g = glyphs();
         let bx = &g.box_drawing;
-        self.state.buf.hline(0, 0, w, bx.h_heavy, border_style);
+        self.state.buffer_mut().hline(0, 0, w, bx.h_heavy, border_style);
         self.state
-            .buf
+            .buffer_mut()
             .hline(0, h.saturating_sub(1), w, bx.h_heavy, border_style);
         for row in 1..h.saturating_sub(1) {
-            self.state.buf.put(0, row, bx.v_heavy, border_style);
-            self.state.buf.put(w.saturating_sub(1), row, bx.v_heavy, border_style);
+            self.state.buffer_mut().put(0, row, bx.v_heavy, border_style);
+            self.state
+                .buffer_mut()
+                .put(w.saturating_sub(1), row, bx.v_heavy, border_style);
         }
-        self.state.buf.put(0, 0, bx.tl_heavy, border_style);
-        self.state.buf.put(w.saturating_sub(1), 0, bx.tr_heavy, border_style);
-        self.state.buf.put(0, h.saturating_sub(1), bx.bl_heavy, border_style);
+        self.state.buffer_mut().put(0, 0, bx.tl_heavy, border_style);
         self.state
-            .buf
+            .buffer_mut()
+            .put(w.saturating_sub(1), 0, bx.tr_heavy, border_style);
+        self.state
+            .buffer_mut()
+            .put(0, h.saturating_sub(1), bx.bl_heavy, border_style);
+        self.state
+            .buffer_mut()
             .put(w.saturating_sub(1), h.saturating_sub(1), bx.br_heavy, border_style);
 
         // Title
         if !self.title_text.is_empty() {
             let title = format!(" {} ", self.title_text);
-            self.state.buf.print(2, 0, &title, border_style);
+            self.state.buffer_mut().print(2, 0, &title, border_style);
         }
 
         // Message
@@ -87,7 +93,7 @@ impl View for Dialog {
                 break;
             }
             let visible: String = line.chars().take(inner_w).collect();
-            self.state.buf.print(2, y, &visible, normal);
+            self.state.buffer_mut().print(2, y, &visible, normal);
         }
 
         // Buttons at bottom
@@ -101,7 +107,7 @@ impl View for Dialog {
                 btn_normal
             };
             let label = format!("[ {} ]", btn);
-            self.state.buf.print(bx_pos, btn_y, &label, style);
+            self.state.buffer_mut().print(bx_pos, btn_y, &label, style);
             bx_pos += label.len() as u16 + 1;
         }
     }

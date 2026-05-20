@@ -209,7 +209,7 @@ layout engine — parents compute child rectangles explicitly. This gives full c
 
 ```rust
 fn set_bounds(&mut self, r: Rect) {
-    self.group.view.set_bounds(r);
+    self.group.set_bounds(r);
     // Left panel: 30 columns
     self.group.set_child_bounds(0, Rect::new(r.x, r.y, 30, r.h));
     // Right panel: remainder

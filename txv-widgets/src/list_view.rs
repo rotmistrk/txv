@@ -43,8 +43,8 @@ impl<D: ListData> View for ListView<D> {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -64,8 +64,8 @@ impl<D: ListData> View for ListView<D> {
                 self.data.style(idx)
             };
             let y = row as u16;
-            self.state.buf.hline(0, y, w, ' ', style);
-            self.state.buf.print(1, y, self.data.label(idx), style);
+            self.state.buffer_mut().hline(0, y, w, ' ', style);
+            self.state.buffer_mut().print(1, y, self.data.label(idx), style);
         }
     }
 

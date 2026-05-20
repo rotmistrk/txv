@@ -9,12 +9,13 @@ use crossterm::{
     terminal::{self, Clear, ClearType},
 };
 use txv_core::buffer::Buffer;
-use txv_core::cell::{Attrs, Color, Style};
+use txv_core::cell::Style;
 use txv_core::event::Event;
 use txv_core::run::{Backend, Waker};
 
 use crate::color::{downgrade, ColorMode};
 use crate::event_translate::{translate_key, translate_mouse};
+use crate::style_emit::emit_attrs;
 
 /// Crossterm-based terminal backend with dual-buffer diffing.
 pub struct CrosstermBackend {
@@ -253,55 +254,29 @@ impl Drop for CrosstermBackend {
     }
 }
 
-fn apply_color_mode(style: Style, mode: ColorMode) -> Style {
+fn apply_color_mode(s: Style, mode: ColorMode) -> Style {
     Style {
-        fg: downgrade(style.fg, mode),
-        bg: downgrade(style.bg, mode),
-        attrs: style.attrs,
+        fg: downgrade(s.fg, mode),
+        bg: downgrade(s.bg, mode),
+        attrs: s.attrs,
     }
 }
 
-fn emit_style(out: &mut impl Write, style: &Style) {
+fn emit_style(out: &mut impl Write, s: &Style) {
     queue!(out, SetAttribute(Attribute::Reset)).ok();
-    emit_fg(out, style.fg);
-    emit_bg(out, style.bg);
-    emit_attrs(out, style.attrs);
+    let fg = to_crossterm_color(s.fg);
+    queue!(out, style::SetForegroundColor(fg)).ok();
+    let bg = to_crossterm_color(s.bg);
+    queue!(out, style::SetBackgroundColor(bg)).ok();
+    emit_attrs(out, s.attrs);
 }
 
-fn emit_fg(out: &mut impl Write, color: Color) {
-    let ct_color = to_crossterm_color(color);
-    queue!(out, style::SetForegroundColor(ct_color)).ok();
-}
-
-fn emit_bg(out: &mut impl Write, color: Color) {
-    let ct_color = to_crossterm_color(color);
-    queue!(out, style::SetBackgroundColor(ct_color)).ok();
-}
-
-fn emit_attrs(out: &mut impl Write, attrs: Attrs) {
-    if attrs.bold {
-        queue!(out, SetAttribute(Attribute::Bold)).ok();
-    }
-    if attrs.dim {
-        queue!(out, SetAttribute(Attribute::Dim)).ok();
-    }
-    if attrs.italic {
-        queue!(out, SetAttribute(Attribute::Italic)).ok();
-    }
-    if attrs.underline {
-        queue!(out, SetAttribute(Attribute::Underlined)).ok();
-    }
-    if attrs.reverse {
-        queue!(out, SetAttribute(Attribute::Reverse)).ok();
-    }
-}
-
-fn to_crossterm_color(color: Color) -> style::Color {
+fn to_crossterm_color(color: txv_core::cell::Color) -> style::Color {
     match color {
-        Color::Reset => style::Color::Reset,
-        Color::Ansi(n) => style::Color::AnsiValue(n),
-        Color::Palette(n) => style::Color::AnsiValue(n),
-        Color::Rgb(r, g, b) => style::Color::Rgb { r, g, b },
+        txv_core::cell::Color::Reset => style::Color::Reset,
+        txv_core::cell::Color::Ansi(n) => style::Color::AnsiValue(n),
+        txv_core::cell::Color::Palette(n) => style::Color::AnsiValue(n),
+        txv_core::cell::Color::Rgb(r, g, b) => style::Color::Rgb { r, g, b },
     }
 }
 

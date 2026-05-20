@@ -164,8 +164,8 @@ impl View for PtyTerminal {
     }
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -176,7 +176,7 @@ impl View for PtyTerminal {
             for y in 0..rh {
                 if let Some(line) = self.termbuf.grid_line(y as usize) {
                     for (x, tc) in line.iter().enumerate().take(rw as usize) {
-                        self.state.buf.put(x as u16, y, tc.ch, tc.style);
+                        self.state.buffer_mut().put(x as u16, y, tc.ch, tc.style);
                     }
                 }
             }
@@ -184,11 +184,11 @@ impl View for PtyTerminal {
             if self.termbuf.cursor_visible() {
                 let (cx, cy) = self.termbuf.cursor();
                 if cx < w && cy < h {
-                    let cell = self.state.buf.cell(cx, cy);
+                    let cell = self.state.buffer_mut().cell(cx, cy);
                     let mut style = cell.style;
                     style.attrs.reverse = !style.attrs.reverse;
                     let ch = cell.ch;
-                    self.state.buf.put(cx, cy, ch, style);
+                    self.state.buffer_mut().put(cx, cy, ch, style);
                 }
             }
         } else {

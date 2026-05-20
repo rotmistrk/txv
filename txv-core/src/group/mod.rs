@@ -11,7 +11,7 @@ use crate::view::{View, ViewOptions, ViewState};
 
 /// Common group state — embed in any view that owns children.
 pub struct GroupState {
-    pub view: ViewState,
+    view: ViewState,
     pub(crate) children: Vec<Box<dyn View>>,
     pub(crate) focused: usize,
 }
@@ -184,6 +184,60 @@ impl GroupState {
             self.children[prev].select();
             self.view.mark_dirty();
         }
+    }
+
+    // --- Forwarding methods (delegate to self.view) ---
+
+    pub fn bounds(&self) -> crate::geometry::Rect {
+        self.view.bounds()
+    }
+
+    pub fn set_bounds(&mut self, r: crate::geometry::Rect) {
+        self.view.set_bounds(r);
+    }
+
+    pub fn mark_dirty(&mut self) {
+        self.view.mark_dirty();
+    }
+
+    pub fn mark_redrawn(&mut self) {
+        self.view.mark_redrawn();
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.view.is_dirty()
+    }
+
+    pub fn is_focused(&self) -> bool {
+        self.view.is_focused()
+    }
+
+    pub fn set_focused(&mut self, f: bool) {
+        self.view.set_focused(f);
+    }
+
+    pub fn buffer(&self) -> &crate::buffer::Buffer {
+        self.view.buffer()
+    }
+
+    pub fn buffer_mut(&mut self) -> &mut crate::buffer::Buffer {
+        self.view.buffer_mut()
+    }
+
+    pub fn options(&self) -> ViewOptions {
+        self.view.options()
+    }
+
+    pub fn sink(&self) -> Option<&crate::view::EventSink> {
+        self.view.sink()
+    }
+
+    pub fn title(&self) -> &str {
+        self.view.title()
+    }
+
+    pub fn set_title(&mut self, t: impl Into<String>) {
+        self.view.set_title(t);
     }
 }
 

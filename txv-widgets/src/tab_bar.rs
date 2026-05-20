@@ -58,14 +58,14 @@ impl View for TabBar {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
         let normal = Style::default();
         let active_style = txv_core::palette::palette().chrome.tab_focused.to_style();
-        self.state.buf.hline(0, 0, w, ' ', normal);
+        self.state.buffer_mut().hline(0, 0, w, ' ', normal);
         let mut x = 0u16;
         for (i, tab) in self.tabs.iter().enumerate() {
             let style = if i == self.active {
@@ -78,7 +78,7 @@ impl View for TabBar {
             if x + len > w {
                 break;
             }
-            self.state.buf.print(x, 0, &label, style);
+            self.state.buffer_mut().print(x, 0, &label, style);
             x += len;
         }
     }

@@ -80,8 +80,8 @@ impl View for FuzzySelect {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -97,12 +97,12 @@ impl View for FuzzySelect {
         };
 
         // Input line at top
-        self.state.buf.hline(0, 0, w, ' ', input_style);
+        self.state.buffer_mut().hline(0, 0, w, ' ', input_style);
         let prompt = "> ";
-        self.state.buf.print(0, 0, prompt, input_style);
+        self.state.buffer_mut().print(0, 0, prompt, input_style);
         let avail = w.saturating_sub(2) as usize;
         let visible: String = self.query.chars().take(avail).collect();
-        self.state.buf.print(2, 0, &visible, input_style);
+        self.state.buffer_mut().print(2, 0, &visible, input_style);
 
         // Filtered list
         let list_h = h.saturating_sub(1) as usize;
@@ -110,7 +110,7 @@ impl View for FuzzySelect {
             let idx = self.scroll.offset + row;
             let y = 1 + row as u16;
             if idx >= self.filtered.len() {
-                self.state.buf.hline(0, y, w, ' ', normal);
+                self.state.buffer_mut().hline(0, y, w, ' ', normal);
                 continue;
             }
             let style = if idx == self.selected {
@@ -118,10 +118,10 @@ impl View for FuzzySelect {
             } else {
                 normal
             };
-            self.state.buf.hline(0, y, w, ' ', style);
+            self.state.buffer_mut().hline(0, y, w, ' ', style);
             let item_idx = self.filtered[idx];
             let text: String = self.items[item_idx].chars().take(w as usize).collect();
-            self.state.buf.print(1, y, &text, style);
+            self.state.buffer_mut().print(1, y, &text, style);
         }
     }
 

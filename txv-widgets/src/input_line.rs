@@ -53,13 +53,13 @@ impl View for InputLine {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
         let style = Style::default();
-        self.state.buf.hline(0, 0, w, ' ', style);
+        self.state.buffer_mut().hline(0, 0, w, ' ', style);
         // Compute visible window of text
         let ww = w as usize;
         let start = if self.cursor >= ww {
@@ -68,13 +68,13 @@ impl View for InputLine {
             0
         };
         let visible: String = self.text.chars().skip(start).take(ww).collect();
-        self.state.buf.print(0, 0, &visible, style);
+        self.state.buffer_mut().print(0, 0, &visible, style);
         // Draw cursor
         let cx = (self.cursor - start) as u16;
         if cx < w {
             let ch = self.text.chars().nth(self.cursor).unwrap_or(' ');
             let cursor_style = txv_core::palette::palette().interactive.input_cursor.to_style();
-            self.state.buf.put(cx, 0, ch, cursor_style);
+            self.state.buffer_mut().put(cx, 0, ch, cursor_style);
         }
     }
 

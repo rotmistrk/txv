@@ -37,8 +37,8 @@ impl View for InputDialog {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -46,27 +46,31 @@ impl View for InputDialog {
         let border = txv_core::palette::palette().base.border.to_style();
         // Fill background
         for row in 0..h {
-            self.state.buf.hline(0, row, w, ' ', normal);
+            self.state.buffer_mut().hline(0, row, w, ' ', normal);
         }
         // Border
         let g = glyphs();
         let bx = &g.box_drawing;
-        self.state.buf.hline(0, 0, w, bx.h_heavy, border);
-        self.state.buf.hline(0, h.saturating_sub(1), w, bx.h_heavy, border);
-        for row in 1..h.saturating_sub(1) {
-            self.state.buf.put(0, row, bx.v_heavy, border);
-            self.state.buf.put(w.saturating_sub(1), row, bx.v_heavy, border);
-        }
-        self.state.buf.put(0, 0, bx.tl_heavy, border);
-        self.state.buf.put(w.saturating_sub(1), 0, bx.tr_heavy, border);
-        self.state.buf.put(0, h.saturating_sub(1), bx.bl_heavy, border);
+        self.state.buffer_mut().hline(0, 0, w, bx.h_heavy, border);
         self.state
-            .buf
+            .buffer_mut()
+            .hline(0, h.saturating_sub(1), w, bx.h_heavy, border);
+        for row in 1..h.saturating_sub(1) {
+            self.state.buffer_mut().put(0, row, bx.v_heavy, border);
+            self.state
+                .buffer_mut()
+                .put(w.saturating_sub(1), row, bx.v_heavy, border);
+        }
+        self.state.buffer_mut().put(0, 0, bx.tl_heavy, border);
+        self.state.buffer_mut().put(w.saturating_sub(1), 0, bx.tr_heavy, border);
+        self.state.buffer_mut().put(0, h.saturating_sub(1), bx.bl_heavy, border);
+        self.state
+            .buffer_mut()
             .put(w.saturating_sub(1), h.saturating_sub(1), bx.br_heavy, border);
         // Title
         if !self.title_text.is_empty() {
             let title = format!(" {} ", self.title_text);
-            self.state.buf.print(2, 0, &title, border);
+            self.state.buffer_mut().print(2, 0, &title, border);
         }
         // Input line
         let inner_w = w.saturating_sub(4) as usize;
@@ -77,13 +81,13 @@ impl View for InputDialog {
             0
         };
         let visible: String = self.text.chars().skip(start).take(inner_w).collect();
-        self.state.buf.print(2, input_y, &visible, normal);
+        self.state.buffer_mut().print(2, input_y, &visible, normal);
         // Cursor
         let cx = (self.cursor - start) as u16;
         if cx < inner_w as u16 {
             let ch = self.text.chars().nth(self.cursor).unwrap_or(' ');
             let cursor_style = txv_core::palette::palette().interactive.input_cursor.to_style();
-            self.state.buf.put(2 + cx, input_y, ch, cursor_style);
+            self.state.buffer_mut().put(2 + cx, input_y, ch, cursor_style);
         }
     }
 

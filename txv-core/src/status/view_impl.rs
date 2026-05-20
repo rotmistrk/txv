@@ -35,8 +35,8 @@ impl View for StatusBar {
     fn unselect(&mut self) {}
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -47,12 +47,12 @@ impl View for StatusBar {
             },
             ..Style::default()
         };
-        self.state.buf.hline(0, 0, w, ' ', style);
+        self.state.buffer_mut().hline(0, 0, w, ' ', style);
 
         if let Some(idx) = self.exclusive {
             if let Some(label) = self.visible_label(idx) {
                 let label = label.to_string();
-                self.state.buf.print_line(0, 0, &label, w, style);
+                self.state.buffer_mut().print_line(0, 0, &label, w, style);
             }
             return;
         }
@@ -96,7 +96,7 @@ impl View for StatusBar {
             if item.gravity == Gravity::Left {
                 let tw = item.text.len() as u16;
                 if lx + tw <= w {
-                    self.state.buf.print(lx, 0, &item.text, style);
+                    self.state.buffer_mut().print(lx, 0, &item.text, style);
                     lx += tw;
                 }
             }
@@ -118,7 +118,7 @@ impl View for StatusBar {
                     } else {
                         style
                     };
-                    self.state.buf.print(rx, 0, &item.text, s);
+                    self.state.buffer_mut().print(rx, 0, &item.text, s);
                 }
             }
         }
@@ -161,6 +161,6 @@ impl View for StatusBar {
     }
 
     fn buffer(&self) -> &Buffer {
-        &self.state.buf
+        self.state.buffer()
     }
 }

@@ -37,8 +37,8 @@ impl SplitPane {
 
     pub fn resize(&mut self, delta: i16) {
         let total = match self.direction {
-            SplitDirection::Horizontal => self.group.view.bounds().w,
-            SplitDirection::Vertical => self.group.view.bounds().h,
+            SplitDirection::Horizontal => self.group.bounds().w,
+            SplitDirection::Vertical => self.group.bounds().h,
         } as f32;
         if total > 0.0 {
             self.ratio = (self.ratio + delta as f32 / total).clamp(0.1, 0.9);
@@ -81,7 +81,7 @@ impl SplitPane {
     }
 
     fn apply_layout(&mut self) {
-        let b = self.group.view.bounds();
+        let b = self.group.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -110,19 +110,19 @@ impl View for SplitPane {
     delegate_group_state!(group, override { set_bounds, draw, handle });
 
     fn set_bounds(&mut self, r: Rect) {
-        self.group.view.set_bounds(r);
-        self.group.view.mark_dirty();
+        self.group.set_bounds(r);
+        self.group.mark_dirty();
         self.apply_layout();
     }
 
     fn draw(&mut self) {
-        let w = self.group.view.buf.width();
-        let h = self.group.view.buf.height();
+        let w = self.group.buffer_mut().width();
+        let h = self.group.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
-        self.group.view.buf.fill(' ', Style::default());
-        let my_bounds = self.group.view.bounds();
+        self.group.buffer_mut().fill(' ', Style::default());
+        let my_bounds = self.group.bounds();
 
         // Draw and blit children
         for child in self.group.children_iter_mut() {
@@ -130,7 +130,7 @@ impl View for SplitPane {
         }
         // Blit children into own buffer.
         // Safety: we borrow children (immutable) and view.buf (mutable) which are disjoint fields.
-        let buf_ptr = &mut self.group.view.buf as *mut Buffer;
+        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child(i) {
                 let cb = child.bounds();
@@ -146,11 +146,11 @@ impl View for SplitPane {
         match self.direction {
             SplitDirection::Horizontal => {
                 let x = (w as f32 * self.ratio) as u16;
-                self.group.view.buf.vline(x, 0, h, g.ui.separator_v, dim);
+                self.group.buffer_mut().vline(x, 0, h, g.ui.separator_v, dim);
             }
             SplitDirection::Vertical => {
                 let y = (h as f32 * self.ratio) as u16;
-                self.group.view.buf.hline(0, y, w, g.ui.separator_h, dim);
+                self.group.buffer_mut().hline(0, y, w, g.ui.separator_h, dim);
             }
         }
     }

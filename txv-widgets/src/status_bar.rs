@@ -53,13 +53,13 @@ impl View for StatusBar {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
         let style = txv_core::palette::palette().chrome.status_bar.to_style();
-        self.state.buf.hline(0, 0, w, ' ', style);
+        self.state.buffer_mut().hline(0, 0, w, ' ', style);
         // Labels left-aligned
         let mut x = 0u16;
         for item in &self.items {
@@ -67,7 +67,7 @@ impl View for StatusBar {
                 break;
             }
             let text = format!(" {} ", item.label);
-            self.state.buf.print(x, 0, &text, style);
+            self.state.buffer_mut().print(x, 0, &text, style);
             x += text.len() as u16;
         }
         // Context right-aligned
@@ -75,7 +75,7 @@ impl View for StatusBar {
             let ctx_len = self.context.len() as u16;
             let rx = w.saturating_sub(ctx_len + 1);
             if rx > x {
-                self.state.buf.print(rx, 0, &self.context, style);
+                self.state.buffer_mut().print(rx, 0, &self.context, style);
             }
         }
     }

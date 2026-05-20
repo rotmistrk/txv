@@ -47,7 +47,7 @@ impl View for Overlay {
         let cb = self.child.bounds();
         let dx = cb.x.saturating_sub(my_bounds.x);
         let dy = cb.y.saturating_sub(my_bounds.y);
-        self.state.buf.blit(self.child.buffer(), dx, dy);
+        self.state.buffer_mut().blit(self.child.buffer(), dx, dy);
     }
 
     fn set_sink(&mut self, sink: EventSink) {

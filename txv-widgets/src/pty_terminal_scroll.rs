@@ -34,8 +34,8 @@ impl PtyTerminal {
     }
 
     pub(crate) fn draw_scrollback_to_buf(&mut self) {
-        let h = self.state.buf.height() as usize;
-        let w = self.state.buf.width() as usize;
+        let h = self.state.buffer_mut().height() as usize;
+        let w = self.state.buffer_mut().width() as usize;
         let grid_rows = self.termbuf.grid_rows() as usize;
         let sb_len = self.termbuf.scrollback_len();
         let style = Style::default();
@@ -47,18 +47,18 @@ impl PtyTerminal {
             if line_idx < sb_len {
                 if let Some(line) = self.termbuf.scrollback_line(sb_len - 1 - line_idx) {
                     for (x, tc) in line.iter().enumerate().take(w) {
-                        self.state.buf.put(x as u16, screen_y as u16, tc.ch, tc.style);
+                        self.state.buffer_mut().put(x as u16, screen_y as u16, tc.ch, tc.style);
                     }
                 }
             } else {
                 let row = line_idx - sb_len;
                 if let Some(line) = self.termbuf.grid_line(row) {
                     for (x, tc) in line.iter().enumerate().take(w) {
-                        self.state.buf.put(x as u16, screen_y as u16, tc.ch, tc.style);
+                        self.state.buffer_mut().put(x as u16, screen_y as u16, tc.ch, tc.style);
                     }
                 } else {
                     for x in 0..w {
-                        self.state.buf.put(x as u16, screen_y as u16, ' ', style);
+                        self.state.buffer_mut().put(x as u16, screen_y as u16, ' ', style);
                     }
                 }
             }

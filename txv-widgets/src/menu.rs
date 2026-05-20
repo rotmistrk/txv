@@ -42,8 +42,8 @@ impl View for Menu {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -55,17 +55,17 @@ impl View for Menu {
         // Draw border
         let g = glyphs();
         let bx = &g.box_drawing;
-        self.state.buf.hline(0, 0, w, bx.h, normal);
-        self.state.buf.hline(0, h.saturating_sub(1), w, bx.h, normal);
+        self.state.buffer_mut().hline(0, 0, w, bx.h, normal);
+        self.state.buffer_mut().hline(0, h.saturating_sub(1), w, bx.h, normal);
         for row in 1..h.saturating_sub(1) {
-            self.state.buf.put(0, row, bx.v, normal);
-            self.state.buf.put(w.saturating_sub(1), row, bx.v, normal);
+            self.state.buffer_mut().put(0, row, bx.v, normal);
+            self.state.buffer_mut().put(w.saturating_sub(1), row, bx.v, normal);
         }
-        self.state.buf.put(0, 0, bx.tl, normal);
-        self.state.buf.put(w.saturating_sub(1), 0, bx.tr, normal);
-        self.state.buf.put(0, h.saturating_sub(1), bx.bl, normal);
+        self.state.buffer_mut().put(0, 0, bx.tl, normal);
+        self.state.buffer_mut().put(w.saturating_sub(1), 0, bx.tr, normal);
+        self.state.buffer_mut().put(0, h.saturating_sub(1), bx.bl, normal);
         self.state
-            .buf
+            .buffer_mut()
             .put(w.saturating_sub(1), h.saturating_sub(1), bx.br, normal);
 
         // Draw items
@@ -82,8 +82,8 @@ impl View for Menu {
             } else {
                 normal
             };
-            self.state.buf.hline(1, row, inner_w, ' ', style);
-            self.state.buf.print(2, row, &item.label, style);
+            self.state.buffer_mut().hline(1, row, inner_w, ' ', style);
+            self.state.buffer_mut().print(2, row, &item.label, style);
         }
     }
 

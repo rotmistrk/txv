@@ -6,8 +6,8 @@ use super::tab_group::TabGroup;
 
 impl TabGroup {
     pub(crate) fn draw_chrome(&mut self) {
-        let w = self.group.view.buf.width();
-        let h = self.group.view.buf.height();
+        let w = self.group.buffer_mut().width();
+        let h = self.group.buffer_mut().height();
         if w == 0 || h == 0 || self.titles.is_empty() {
             return;
         }
@@ -16,7 +16,7 @@ impl TabGroup {
         let dim = pal.base.dim.to_style();
         let focused_style = pal.chrome.tab_focused.to_style();
         let arrow_style = pal.chrome.tab_focused_arrow.to_style();
-        self.group.view.buf.hline(0, 0, w, g.ui.separator_h, dim);
+        self.group.buffer_mut().hline(0, 0, w, g.ui.separator_h, dim);
         let mut x = 0u16;
         let active_idx = self.group.focused_index();
         for (i, title) in self.titles.iter().enumerate() {
@@ -31,11 +31,11 @@ impl TabGroup {
                 if x + left_len + label_len + right_len > w {
                     break;
                 }
-                self.group.view.buf.print(x, 0, left, arrow_style);
+                self.group.buffer_mut().print(x, 0, left, arrow_style);
                 x += left_len;
-                self.group.view.buf.print(x, 0, &label, focused_style);
+                self.group.buffer_mut().print(x, 0, &label, focused_style);
                 x += label_len;
-                self.group.view.buf.print(x, 0, right, arrow_style);
+                self.group.buffer_mut().print(x, 0, right, arrow_style);
                 x += right_len;
             } else {
                 let label = format!(" {title} ");
@@ -43,7 +43,7 @@ impl TabGroup {
                 if x + len > w {
                     break;
                 }
-                self.group.view.buf.print(x, 0, &label, dim);
+                self.group.buffer_mut().print(x, 0, &label, dim);
                 x += len;
             }
         }
@@ -51,7 +51,7 @@ impl TabGroup {
             let count = format!("❨{}❩", self.titles.len());
             let clen = count.chars().count() as u16;
             if x + clen < w {
-                self.group.view.buf.print(x + 1, 0, &count, dim);
+                self.group.buffer_mut().print(x + 1, 0, &count, dim);
             }
         }
     }
@@ -61,8 +61,8 @@ impl View for TabGroup {
     delegate_group_state!(group, override { set_bounds, draw, handle });
 
     fn set_bounds(&mut self, r: Rect) {
-        self.group.view.set_bounds(r);
-        self.group.view.mark_dirty();
+        self.group.set_bounds(r);
+        self.group.mark_dirty();
         let content = self.content_rect();
         if let Some(child) = self.group.focused_child_mut() {
             child.set_bounds(content);
@@ -70,9 +70,9 @@ impl View for TabGroup {
     }
 
     fn draw(&mut self) {
-        self.group.view.buf.fill(' ', Style::default());
+        self.group.buffer_mut().fill(' ', Style::default());
         self.draw_chrome();
-        let my_bounds = self.group.view.bounds();
+        let my_bounds = self.group.bounds();
         // Draw and blit focused child
         let fi = self.group.focused_index();
         if let Some(child) = self.group.child_mut(fi) {
@@ -80,7 +80,7 @@ impl View for TabGroup {
         }
         // Blit child buffer into own buffer.
         // Safety: children and view.buf are disjoint fields of GroupState.
-        let buf_ptr = &mut self.group.view.buf as *mut Buffer;
+        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         if let Some(child) = self.group.child(fi) {
             let cb = child.bounds();
             let dx = cb.x.saturating_sub(my_bounds.x);
@@ -116,7 +116,7 @@ impl View for TabGroup {
                     };
                     if *stored != new_title {
                         *stored = new_title;
-                        self.group.view.mark_dirty();
+                        self.group.mark_dirty();
                     }
                 }
             }

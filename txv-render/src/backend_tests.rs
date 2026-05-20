@@ -1,6 +1,6 @@
 use super::*;
 use crate::diff::diff_cells;
-use txv_core::cell::Style;
+use txv_core::cell::{Attrs, Style};
 use txv_core::surface::Surface;
 
 #[test]

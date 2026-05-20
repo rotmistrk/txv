@@ -41,7 +41,7 @@ impl<D: TreeData> TreeView<D> {
     }
 
     pub fn buffer_mut(&mut self) -> &mut Buffer {
-        &mut self.state.buf
+        self.state.buffer_mut()
     }
 
     pub fn is_focused(&self) -> bool {
@@ -64,8 +64,8 @@ impl<D: TreeData> View for TreeView<D> {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -109,15 +109,19 @@ impl<D: TreeData> View for TreeView<D> {
                 node_style
             };
             let y = row as u16;
-            self.state.buf.hline(0, y, w, ' ', style);
+            self.state.buffer_mut().hline(0, y, w, ' ', style);
             let x = indent;
-            self.state.buf.print(x, y, marker, style);
-            self.state.buf.print(x + 2, y, self.data.label(id), style);
+            self.state.buffer_mut().print(x, y, marker, style);
+            self.state.buffer_mut().print(x + 2, y, self.data.label(id), style);
         }
         // Clear remaining rows below the last item
-        let drawn = self.data.visible_count().saturating_sub(self.scroll.offset).min(h as usize);
+        let drawn = self
+            .data
+            .visible_count()
+            .saturating_sub(self.scroll.offset)
+            .min(h as usize);
         for row in drawn..h as usize {
-            self.state.buf.hline(0, row as u16, w, ' ', Style::default());
+            self.state.buffer_mut().hline(0, row as u16, w, ' ', Style::default());
         }
     }
 

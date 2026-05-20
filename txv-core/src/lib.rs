@@ -17,7 +17,7 @@
 //!     delegate_view_state!(state);
 //!
 //!     fn draw(&mut self) {
-//!         self.state.buf.print(0, 0, "Hello", Style::default());
+//!         self.state.buffer_mut().print(0, 0, "Hello", Style::default());
 //!     }
 //!
 //!     fn handle(

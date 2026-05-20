@@ -8,6 +8,7 @@ pub mod backend;
 pub mod color;
 pub mod diff;
 mod event_translate;
+mod style_emit;
 pub mod termbuf;
 pub mod text;
 

@@ -202,26 +202,27 @@ impl Program {
         for child in &mut self.group.children {
             child.draw();
         }
-        let pb = self.group.view.bounds();
-        self.group.view.buf.fill(' ', Style::default());
+        let pb = self.group.bounds();
+        self.group.buffer_mut().fill(' ', Style::default());
+        // Safety: children (immutable) and buffer (mutable) are disjoint fields of GroupState.
+        let buf_ptr = self.group.buffer_mut() as *mut crate::buffer::Buffer;
         for child in &self.group.children {
             let cb = child.bounds();
-            self.group
-                .view
-                .buf
-                .blit(child.buffer(), cb.x.saturating_sub(pb.x), cb.y.saturating_sub(pb.y));
+            unsafe {
+                (*buf_ptr).blit(child.buffer(), cb.x.saturating_sub(pb.x), cb.y.saturating_sub(pb.y));
+            }
         }
-        self.group.view.mark_redrawn();
+        self.group.mark_redrawn();
         for child in &mut self.group.children {
             child.mark_redrawn();
         }
-        backend.flush(&self.group.view.buf);
+        backend.flush(self.group.buffer());
     }
 
     /// Compute layout: desktop gets all but last row, status gets last row.
     fn layout(&mut self, w: u16, h: u16) {
         let full = Rect::new(0, 0, w, h);
-        self.group.view.set_bounds(full);
+        self.group.set_bounds(full);
 
         if h >= 2 {
             self.group.children[1].set_bounds(Rect::new(0, 0, w, h - 1));

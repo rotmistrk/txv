@@ -42,12 +42,12 @@ impl TabGroup {
         self.lru.push(0);
         self.group.set_focused_index(self.group.child_count() - 1);
         self.touch_lru();
-        if self.group.view.is_focused() {
+        if self.group.is_focused() {
             if let Some(child) = self.group.focused_child_mut() {
                 child.select();
             }
         }
-        self.group.view.mark_dirty();
+        self.group.mark_dirty();
     }
 
     pub fn tab_count(&self) -> usize {
@@ -63,10 +63,10 @@ impl TabGroup {
         self.touch_lru();
         let r = self.content_rect();
         self.group.set_child_bounds(self.group.focused_index(), r);
-        if self.group.view.is_focused() {
+        if self.group.is_focused() {
             self.group.select_focused();
         }
-        self.group.view.mark_dirty();
+        self.group.mark_dirty();
     }
 
     pub fn active_title(&self) -> Option<&str> {
@@ -189,7 +189,7 @@ impl TabGroup {
     }
 
     pub(crate) fn content_rect(&self) -> Rect {
-        let b = self.group.view.bounds();
+        let b = self.group.bounds();
         Rect::new(b.x, b.y + 1, b.w, b.h.saturating_sub(1))
     }
 
@@ -200,7 +200,7 @@ impl TabGroup {
     pub fn rename_active(&mut self, new_title: impl Into<String>) {
         if let Some(title) = self.titles.get_mut(self.group.focused_index()) {
             *title = new_title.into();
-            self.group.view.mark_dirty();
+            self.group.mark_dirty();
         }
     }
 
@@ -261,14 +261,14 @@ impl TabGroup {
             self.group.set_focused_index(mru);
         }
         let r = self.content_rect();
-        let is_focused = self.group.view.is_focused();
+        let is_focused = self.group.is_focused();
         if let Some(child) = self.group.focused_child_mut() {
             child.set_bounds(r);
             if is_focused {
                 child.select();
             }
         }
-        self.group.view.mark_dirty();
+        self.group.mark_dirty();
     }
 }
 
