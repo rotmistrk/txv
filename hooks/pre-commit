@@ -58,7 +58,7 @@ fi
 
 # 5. No hardcoded colors in widget/view code (only palette and render internals allowed)
 echo "  hardcoded colors..."
-ALLOWED_PATHS="txv-core/src/palette|txv-render/src/color\.rs|txv-render/src/backend\.rs|txv-render/src/termbuf|_tests\.rs$"
+ALLOWED_PATHS="txv-core/src/palette|txv-render/src/color\.rs|txv-render/src/style_emit\.rs|txv-render/src/termbuf|_tests\.rs$"
 COLOR_VIOLATIONS=""
 for f in $(find txv-core/src txv-render/src txv-widgets/src -name '*.rs' | grep -Ev "$ALLOWED_PATHS"); do
     HITS=$(grep -n 'Color::Ansi\|Color::Rgb' "$f" | grep -v '^\s*//' || true)

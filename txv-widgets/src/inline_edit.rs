@@ -240,6 +240,15 @@ impl InlineEditor {
             self.buffer.drain(self.cursor..next);
         }
     }
+
+    /// Return a cursor request relative to the draw origin (x, y).
+    pub fn cursor_request(&self, x: u16, y: u16) -> Option<txv_core::cursor::CursorRequest> {
+        Some(txv_core::cursor::CursorRequest {
+            x: x + self.cursor as u16,
+            y,
+            shape: txv_core::cursor::CursorShape::Bar,
+        })
+    }
 }
 
 #[cfg(test)]

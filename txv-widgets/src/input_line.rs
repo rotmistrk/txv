@@ -50,7 +50,25 @@ impl Default for InputLine {
 }
 
 impl View for InputLine {
-    delegate_view_state!(state);
+    delegate_view_state!(state, override { cursor });
+
+    fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
+        if !self.state.is_focused() {
+            return None;
+        }
+        let w = self.state.bounds().w as usize;
+        let start = if self.cursor >= w {
+            self.cursor - w + 1
+        } else {
+            0
+        };
+        let cx = (self.cursor - start) as u16;
+        Some(txv_core::cursor::CursorRequest {
+            x: cx,
+            y: 0,
+            shape: txv_core::cursor::CursorShape::Bar,
+        })
+    }
 
     fn draw(&mut self) {
         let w = self.state.buffer_mut().width();

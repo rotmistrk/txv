@@ -247,6 +247,17 @@ impl GroupState {
     pub fn put_command(&self, id: crate::event::CommandId, data: Option<Box<dyn std::any::Any + Send>>) {
         self.view.put_command(id, data);
     }
+
+    /// Query the focused child's cursor request and translate to group-relative coords.
+    pub fn cursor(&self) -> Option<crate::cursor::CursorRequest> {
+        let child = self.focused_child()?;
+        let mut req = child.cursor()?;
+        let cb = child.bounds();
+        let gb = self.view.bounds();
+        req.x = req.x.saturating_add(cb.x).saturating_sub(gb.x);
+        req.y = req.y.saturating_add(cb.y).saturating_sub(gb.y);
+        Some(req)
+    }
 }
 
 impl Default for GroupState {

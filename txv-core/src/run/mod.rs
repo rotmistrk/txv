@@ -24,6 +24,8 @@ pub trait Backend: Send {
     fn waker(&self) -> Waker {
         Waker::noop()
     }
+    /// Show or hide the hardware cursor. Position is absolute (screen coords).
+    fn set_cursor(&mut self, _cursor: Option<crate::cursor::CursorRequest>) {}
 }
 
 /// A handle that wakes the event loop from any thread.

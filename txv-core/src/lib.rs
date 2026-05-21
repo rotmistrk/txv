@@ -56,6 +56,7 @@ pub mod buffer;
 pub mod cell;
 pub mod commands;
 pub mod complete;
+pub mod cursor;
 pub mod dialog;
 pub mod event;
 pub mod geometry;
@@ -77,6 +78,7 @@ pub mod prelude {
     pub use crate::cell::{Attrs, Cell, Color, Style};
     pub use crate::commands::*;
     pub use crate::complete::{Completer, Completion};
+    pub use crate::cursor::{CursorRequest, CursorShape};
     pub use crate::dialog::DialogState;
     pub use crate::event::{CommandId, Event, KeyCode, KeyEvent, KeyMod, MouseAction, MouseButton, MouseEvent};
     pub use crate::geometry::{Point, Rect};

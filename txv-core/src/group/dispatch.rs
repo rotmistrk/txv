@@ -83,6 +83,9 @@ macro_rules! delegate_group_state {
             self.$field.set_focused(false); self.$field.mark_dirty();
             if let Some(child) = self.$field.focused_child_mut() { child.unselect(); }
         }
+        fn cursor(&self) -> Option<$crate::cursor::CursorRequest> {
+            self.$field.cursor()
+        }
         fn buffer(&self) -> &$crate::buffer::Buffer {
             self.$field.buffer()
         }
@@ -112,6 +115,11 @@ macro_rules! delegate_group_state {
             fn unselect(&mut self) {
                 self.$field.set_focused(false); self.$field.mark_dirty();
                 if let Some(child) = self.$field.focused_child_mut() { child.unselect(); }
+            }
+        });
+        $crate::__dvs_maybe!(cursor, [$($skip),*], {
+            fn cursor(&self) -> Option<$crate::cursor::CursorRequest> {
+                self.$field.cursor()
             }
         });
         $crate::__dvs_maybe!(buffer, [$($skip),*], {

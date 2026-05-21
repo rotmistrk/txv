@@ -99,6 +99,10 @@ pub trait View: Send {
     fn as_any_mut(&mut self) -> Option<&mut dyn Any> {
         None
     }
+    /// Hardware cursor request (position relative to own bounds).
+    fn cursor(&self) -> Option<crate::cursor::CursorRequest> {
+        None
+    }
     /// Access the view's buffer after draw().
     fn buffer(&self) -> &Buffer;
 }

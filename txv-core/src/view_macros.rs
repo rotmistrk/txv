@@ -127,6 +127,7 @@ macro_rules! __dvs_maybe {
     (select, [select $(, $rest:ident)*], { $($body:tt)* }) => {};
     (unselect, [unselect $(, $rest:ident)*], { $($body:tt)* }) => {};
     (buffer, [buffer $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (cursor, [cursor $(, $rest:ident)*], { $($body:tt)* }) => {};
     ($method:ident, [$head:ident $(, $rest:ident)*], { $($body:tt)* }) => {
         $crate::__dvs_maybe!($method, [$($rest),*], { $($body)* });
     };
@@ -195,6 +196,7 @@ macro_rules! __dv_maybe {
     (draw, [draw $(, $rest:ident)*], { $($body:tt)* }) => {};
     (handle, [handle $(, $rest:ident)*], { $($body:tt)* }) => {};
     (buffer, [buffer $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (cursor, [cursor $(, $rest:ident)*], { $($body:tt)* }) => {};
     ($method:ident, [$head:ident $(, $rest:ident)*], { $($body:tt)* }) => {
         $crate::__dv_maybe!($method, [$($rest),*], { $($body)* });
     };

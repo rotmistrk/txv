@@ -10,12 +10,13 @@ use crossterm::{
 };
 use txv_core::buffer::Buffer;
 use txv_core::cell::Style;
+use txv_core::cursor::{CursorRequest, CursorShape};
 use txv_core::event::Event;
 use txv_core::run::{Backend, Waker};
 
-use crate::color::{downgrade, ColorMode};
+use crate::color::ColorMode;
 use crate::event_translate::{translate_key, translate_mouse};
-use crate::style_emit::emit_attrs;
+use crate::style_emit::{apply_color_mode, emit_style};
 
 /// Crossterm-based terminal backend with dual-buffer diffing.
 pub struct CrosstermBackend {
@@ -243,6 +244,26 @@ impl Backend for CrosstermBackend {
     fn waker(&self) -> Waker {
         Waker::from_fd(self.wake_write)
     }
+
+    fn set_cursor(&mut self, req: Option<CursorRequest>) {
+        let mut out = io::stdout().lock();
+        match req {
+            Some(c) if c.shape != CursorShape::Hidden => {
+                let seq = match c.shape {
+                    CursorShape::Block => "\x1b[2 q",
+                    CursorShape::Underline => "\x1b[4 q",
+                    CursorShape::Bar => "\x1b[6 q",
+                    CursorShape::Hidden => unreachable!(),
+                };
+                queue!(out, cursor::MoveTo(c.x, c.y), cursor::Show).ok();
+                out.write_all(seq.as_bytes()).ok();
+            }
+            _ => {
+                queue!(out, cursor::Hide).ok();
+            }
+        }
+        out.flush().ok();
+    }
 }
 
 impl Drop for CrosstermBackend {
@@ -251,32 +272,6 @@ impl Drop for CrosstermBackend {
             libc::close(self.wake_read);
             libc::close(self.wake_write);
         }
-    }
-}
-
-fn apply_color_mode(s: Style, mode: ColorMode) -> Style {
-    Style {
-        fg: downgrade(s.fg, mode),
-        bg: downgrade(s.bg, mode),
-        attrs: s.attrs,
-    }
-}
-
-fn emit_style(out: &mut impl Write, s: &Style) {
-    queue!(out, SetAttribute(Attribute::Reset)).ok();
-    let fg = to_crossterm_color(s.fg);
-    queue!(out, style::SetForegroundColor(fg)).ok();
-    let bg = to_crossterm_color(s.bg);
-    queue!(out, style::SetBackgroundColor(bg)).ok();
-    emit_attrs(out, s.attrs);
-}
-
-fn to_crossterm_color(color: txv_core::cell::Color) -> style::Color {
-    match color {
-        txv_core::cell::Color::Reset => style::Color::Reset,
-        txv_core::cell::Color::Ansi(n) => style::Color::AnsiValue(n),
-        txv_core::cell::Color::Palette(n) => style::Color::AnsiValue(n),
-        txv_core::cell::Color::Rgb(r, g, b) => style::Color::Rgb { r, g, b },
     }
 }
 

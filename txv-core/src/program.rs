@@ -217,6 +217,7 @@ impl Program {
             child.mark_redrawn();
         }
         backend.flush(self.group.buffer());
+        backend.set_cursor(self.group.cursor());
     }
 
     /// Compute layout: desktop gets all but last row, status gets last row.

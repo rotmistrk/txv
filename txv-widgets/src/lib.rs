@@ -66,3 +66,7 @@ mod palette_integration_tests;
 #[cfg(test)]
 #[path = "glyphs_integration_tests.rs"]
 mod glyphs_integration_tests;
+
+#[cfg(test)]
+#[path = "cursor_integration_tests.rs"]
+mod cursor_integration_tests;
