@@ -1,4 +1,13 @@
 //! Overlay — positioned popup container that wraps a child View.
+//!
+//! Overlay is intentionally NOT a GroupState. It is a thin positioning wrapper
+//! around a single child — no focus management, no three-phase dispatch, no
+//! multi-child coordination. GroupState would add unused complexity here.
+//!
+//! Because it bypasses GroupState, it must manually forward:
+//! - `set_sink` → propagate to child
+//! - `draw` → draw child, blit into own buffer
+//! - `cursor` → translate child's cursor request to own coordinates
 
 use txv_core::prelude::*;
 
@@ -39,7 +48,7 @@ impl Overlay {
 }
 
 impl View for Overlay {
-    delegate_view_state!(state, override { draw, set_sink });
+    delegate_view_state!(state, override { draw, set_sink, cursor });
 
     fn draw(&mut self) {
         self.child.draw();
@@ -53,6 +62,16 @@ impl View for Overlay {
     fn set_sink(&mut self, sink: EventSink) {
         self.state.set_sink(sink.clone());
         self.child.set_sink(sink);
+    }
+
+    /// Forward cursor from child, translating to overlay-relative coordinates.
+    fn cursor(&self) -> Option<CursorRequest> {
+        let mut req = self.child.cursor()?;
+        let cb = self.child.bounds();
+        let my = self.state.bounds();
+        req.x = req.x.saturating_add(cb.x).saturating_sub(my.x);
+        req.y = req.y.saturating_add(cb.y).saturating_sub(my.y);
+        Some(req)
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

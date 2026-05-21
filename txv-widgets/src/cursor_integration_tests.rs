@@ -3,6 +3,7 @@
 use txv_core::cursor::{CursorRequest, CursorShape};
 use txv_core::prelude::*;
 
+use crate::input_dialog::InputDialog;
 use crate::input_line::InputLine;
 use crate::split_pane::{SplitDirection, SplitPane};
 
@@ -95,4 +96,19 @@ fn cursor_propagates_through_program_group() {
             shape: CursorShape::Bar
         })
     );
+}
+
+#[test]
+fn cursor_propagates_through_input_dialog() {
+    let mut dlg = InputDialog::new("Test");
+    dlg.set_bounds(Rect::new(0, 0, 40, 5));
+    dlg.select();
+
+    let req = dlg.cursor();
+    // InputLine is at offset (2, 2) inside the dialog, cursor at x=0
+    assert!(req.is_some(), "cursor should propagate through InputDialog");
+    let r = req.unwrap();
+    assert_eq!(r.shape, CursorShape::Bar);
+    assert_eq!(r.x, 2); // inner padding
+    assert_eq!(r.y, 2); // row 2 inside dialog
 }
