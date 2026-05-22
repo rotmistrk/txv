@@ -28,7 +28,7 @@ pub fn detect_color_mode() -> ColorMode {
 /// Downgrade a Color to fit the given ColorMode.
 pub fn downgrade(color: Color, mode: ColorMode) -> Color {
     match (color, mode) {
-        (Color::Reset, _) => Color::Reset,
+        (Color::Reset | Color::Transparent, _) => color,
         (Color::Ansi(n), _) => Color::Ansi(n),
         (Color::Palette(n), ColorMode::TrueColor | ColorMode::Palette256) => Color::Palette(n),
         (Color::Palette(n), ColorMode::Ansi16) => Color::Ansi(palette_to_ansi(n)),

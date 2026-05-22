@@ -141,11 +141,16 @@ impl Buffer {
 
     /// Blit another buffer onto this one at (dx, dy) with clipping.
     pub fn blit(&mut self, src: &Buffer, dx: u16, dy: u16) {
+        use crate::cell::Color;
         let src_w = src.width.min(self.width.saturating_sub(dx));
         let src_h = src.height.min(self.height.saturating_sub(dy));
         for row in 0..src_h {
             for col in 0..src_w {
                 let cell = &src.cells[src.idx(col, row)];
+                // Skip fully transparent cells
+                if cell.style.fg == Color::Transparent && cell.style.bg == Color::Transparent {
+                    continue;
+                }
                 let di = self.idx(dx + col, dy + row);
                 self.cells[di] = cell.clone();
             }
@@ -196,6 +201,35 @@ mod tests {
         assert_eq!(dst.cell(8, 8).ch, 'A');
         // (4,4) at offset (8,8) = (12,12) — out of bounds, not blitted
         assert_eq!(dst.cell(9, 9).ch, ' ');
+    }
+
+    #[test]
+    fn blit_skips_transparent() {
+        use crate::cell::Color;
+        let mut dst = Buffer::new(10, 1);
+        dst.put(0, 0, '─', Style::default());
+        dst.put(1, 0, '─', Style::default());
+        dst.put(2, 0, '─', Style::default());
+
+        let mut src = Buffer::new(3, 1);
+        let transparent = Style {
+            fg: Color::Transparent,
+            bg: Color::Transparent,
+            ..Style::default()
+        };
+        // Cell 0: transparent (should not overwrite dst)
+        src.cells_mut()[0].ch = ' ';
+        src.cells_mut()[0].style = transparent;
+        // Cell 1: visible (should overwrite dst)
+        src.put(1, 0, 'X', Style::default());
+        // Cell 2: transparent
+        src.cells_mut()[2].ch = ' ';
+        src.cells_mut()[2].style = transparent;
+
+        dst.blit(&src, 0, 0);
+        assert_eq!(dst.cell(0, 0).ch, '─', "transparent should not overwrite");
+        assert_eq!(dst.cell(1, 0).ch, 'X', "visible should overwrite");
+        assert_eq!(dst.cell(2, 0).ch, '─', "transparent should not overwrite");
     }
 
     #[test]

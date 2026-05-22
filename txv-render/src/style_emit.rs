@@ -45,7 +45,7 @@ pub(crate) fn emit_style(out: &mut impl Write, s: &Style) {
 
 pub(crate) fn to_crossterm_color(color: txv_core::cell::Color) -> style::Color {
     match color {
-        txv_core::cell::Color::Reset => style::Color::Reset,
+        txv_core::cell::Color::Reset | txv_core::cell::Color::Transparent => style::Color::Reset,
         txv_core::cell::Color::Ansi(n) => style::Color::AnsiValue(n),
         txv_core::cell::Color::Palette(n) => style::Color::AnsiValue(n),
         txv_core::cell::Color::Rgb(r, g, b) => style::Color::Rgb { r, g, b },
