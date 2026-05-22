@@ -83,6 +83,7 @@ pub fn run(root: &mut dyn View, backend: &mut dyn Backend) {
             root.draw();
             root.mark_redrawn();
             backend.flush(root.buffer());
+            backend.set_cursor(root.cursor());
         }
 
         if let Some(event) = backend.poll_event(Duration::from_millis(50)) {
@@ -123,6 +124,13 @@ pub fn exec_view(root: &mut dyn View, modal: &mut dyn View, backend: &mut dyn Ba
         let mb = modal.bounds();
         combined.blit(modal.buffer(), mb.x, mb.y);
         backend.flush(&combined);
+        // Hardware cursor from modal, translated to absolute coords
+        let cursor = modal.cursor().map(|mut c| {
+            c.x = c.x.saturating_add(mb.x);
+            c.y = c.y.saturating_add(mb.y);
+            c
+        });
+        backend.set_cursor(cursor);
 
         match backend.poll_event(Duration::from_millis(50)) {
             Some(Event::Key(ref k)) => {
