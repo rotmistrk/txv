@@ -73,6 +73,11 @@ impl View for TiledWorkspace {
             return self.group.dispatch(event);
         };
 
+        // Skip key handling if disabled (app/status bar owns keys)
+        if !self.handle_keys {
+            return self.group.dispatch(event);
+        }
+
         // Key dispatch → internal method calls
         let km = self.keymap.clone();
 
@@ -160,7 +165,7 @@ impl View for TiledWorkspace {
 }
 
 impl TiledWorkspace {
-    fn find_panel_by_position(&self, pos: PanelPosition) -> Option<usize> {
+    pub(crate) fn find_panel_by_position(&self, pos: PanelPosition) -> Option<usize> {
         self.configs.iter().position(|c| c.position == pos)
     }
 

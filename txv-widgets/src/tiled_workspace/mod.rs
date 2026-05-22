@@ -17,12 +17,18 @@ mod handle_cmd;
 mod layout;
 mod view_impl;
 
+use std::any::Any;
+
+use txv_core::event::CommandId;
 use txv_core::prelude::*;
 
 use crate::tab_group::TabGroup;
 
 use keymap::WorkspaceKeymap;
-use types::{LayoutMode, PanelConfig, PanelId, SplitNode, WorkspaceState};
+use types::{LayoutMode, PanelConfig, PanelId, SplitDir, SplitNode, WorkspaceState};
+
+/// A key binding entry: (key, command_id, optional payload).
+pub type KeyBinding = (KeyEvent, CommandId, Option<Box<dyn Any + Send>>);
 
 /// IDE-style tiled workspace with configurable panels and layout.
 pub struct TiledWorkspace {
@@ -36,6 +42,7 @@ pub struct TiledWorkspace {
     pub(crate) wide_threshold: u16,
     pub(crate) layout_mode: LayoutMode,
     pub(crate) is_wide: bool,
+    pub(crate) handle_keys: bool,
 }
 
 impl TiledWorkspace {
@@ -69,12 +76,72 @@ impl TiledWorkspace {
             wide_threshold,
             layout_mode: LayoutMode::Auto,
             is_wide: true,
+            handle_keys: true,
         }
     }
 
     /// Set a custom keymap.
     pub fn set_keymap(&mut self, keymap: WorkspaceKeymap) {
         self.keymap = keymap;
+    }
+
+    /// Disable internal key handling. When false, the workspace only
+    /// responds to command events — the app/status bar owns key dispatch.
+    pub fn set_handle_keys(&mut self, enabled: bool) {
+        self.handle_keys = enabled;
+    }
+
+    /// Export default key→command bindings for registration with a status bar
+    /// or application-level keymap. Each entry is (key, command_id, payload).
+    pub fn default_bindings(&self) -> Vec<KeyBinding> {
+        use commands::*;
+        use types::PanelPosition;
+        let km = &self.keymap;
+        let tree_id = self.find_panel_by_position(PanelPosition::Left);
+        let tools_id = self
+            .find_panel_by_position(PanelPosition::Right)
+            .or_else(|| self.find_panel_by_position(PanelPosition::Bottom));
+
+        let mut bindings: Vec<KeyBinding> = Vec::new();
+
+        if let Some(id) = tree_id {
+            bindings.push((km.toggle_tree, CM_TOGGLE_PANEL, Some(Box::new(id))));
+        }
+        if let Some(id) = tools_id {
+            bindings.push((km.toggle_tools, CM_TOGGLE_PANEL, Some(Box::new(id))));
+        }
+        bindings.push((km.zoom, CM_ZOOM, None));
+        bindings.push((km.layout_cycle, CM_LAYOUT_CYCLE, None));
+        bindings.push((km.focus_left, CM_FOCUS_DIRECTION, Some(Box::new((-1i16, 0i16)))));
+        bindings.push((km.focus_right, CM_FOCUS_DIRECTION, Some(Box::new((1i16, 0i16)))));
+        bindings.push((km.focus_up, CM_FOCUS_DIRECTION, Some(Box::new((0i16, -1i16)))));
+        bindings.push((km.focus_down, CM_FOCUS_DIRECTION, Some(Box::new((0i16, 1i16)))));
+        bindings.push((
+            km.resize_left,
+            CM_RESIZE_PANEL,
+            Some(Box::new((SplitDir::Horizontal, -1i16))),
+        ));
+        bindings.push((
+            km.resize_right,
+            CM_RESIZE_PANEL,
+            Some(Box::new((SplitDir::Horizontal, 1i16))),
+        ));
+        bindings.push((
+            km.resize_up,
+            CM_RESIZE_PANEL,
+            Some(Box::new((SplitDir::Vertical, -1i16))),
+        ));
+        bindings.push((
+            km.resize_down,
+            CM_RESIZE_PANEL,
+            Some(Box::new((SplitDir::Vertical, 1i16))),
+        ));
+        bindings.push((km.tab_dropdown, CM_TAB_DROPDOWN, None));
+        bindings.push((km.subpanel_focus, CM_CYCLE_SUBPANEL, None));
+        bindings.push((km.subpanel_move_tab, CM_MOVE_TAB_SUBPANEL, None));
+        bindings.push((km.subpanel_grow, CM_GROW_SUBPANEL, None));
+        bindings.push((km.subpanel_shrink, CM_SHRINK_SUBPANEL, None));
+        bindings
     }
 
     /// Access a panel's TabGroup.
