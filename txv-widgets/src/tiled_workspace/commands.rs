@@ -55,6 +55,8 @@ pub const CM_CYCLE_SUBPANEL: CommandId = CM_WORKSPACE_BASE + 16;
 pub const CM_GROW_SUBPANEL: CommandId = CM_WORKSPACE_BASE + 17;
 /// Shrink focused subpanel. No payload.
 pub const CM_SHRINK_SUBPANEL: CommandId = CM_WORKSPACE_BASE + 18;
+/// Cycle layout mode (Auto → Wide → Narrow → Auto). No payload.
+pub const CM_LAYOUT_CYCLE: CommandId = CM_WORKSPACE_BASE + 19;
 
 /// End of workspace command range.
 pub const CM_WORKSPACE_MAX: CommandId = CM_WORKSPACE_BASE + 49;

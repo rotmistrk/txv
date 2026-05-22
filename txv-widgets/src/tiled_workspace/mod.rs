@@ -22,7 +22,7 @@ use txv_core::prelude::*;
 use crate::tab_group::TabGroup;
 
 use keymap::WorkspaceKeymap;
-use types::{PanelConfig, PanelId, SplitNode, WorkspaceState};
+use types::{LayoutMode, PanelConfig, PanelId, SplitNode, WorkspaceState};
 
 /// IDE-style tiled workspace with configurable panels and layout.
 pub struct TiledWorkspace {
@@ -34,6 +34,7 @@ pub struct TiledWorkspace {
     pub(crate) hidden: Vec<bool>,
     pub(crate) zoomed: Option<PanelId>,
     pub(crate) wide_threshold: u16,
+    pub(crate) layout_mode: LayoutMode,
     pub(crate) is_wide: bool,
 }
 
@@ -66,6 +67,7 @@ impl TiledWorkspace {
             hidden,
             zoomed: None,
             wide_threshold,
+            layout_mode: LayoutMode::Auto,
             is_wide: true,
         }
     }
@@ -116,6 +118,16 @@ impl TiledWorkspace {
             None
         } else {
             Some(self.group.focused_index())
+        };
+        self.recompute_layout();
+    }
+
+    /// Cycle layout mode: Auto → Wide → Narrow → Auto.
+    pub fn cycle_layout(&mut self) {
+        self.layout_mode = match self.layout_mode {
+            LayoutMode::Auto => LayoutMode::Wide,
+            LayoutMode::Wide => LayoutMode::Narrow,
+            LayoutMode::Narrow => LayoutMode::Auto,
         };
         self.recompute_layout();
     }

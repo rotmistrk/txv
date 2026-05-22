@@ -56,6 +56,17 @@ pub enum SplitDir {
     Vertical,
 }
 
+/// Layout mode — how the workspace decides wide vs narrow.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LayoutMode {
+    /// Automatically switch based on terminal width threshold.
+    Auto,
+    /// Force wide layout regardless of width.
+    Wide,
+    /// Force narrow layout regardless of width.
+    Narrow,
+}
+
 /// Layout tree node — defines how panels are arranged.
 #[derive(Clone, Debug)]
 pub enum SplitNode {

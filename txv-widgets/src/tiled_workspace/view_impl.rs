@@ -133,6 +133,10 @@ impl View for TiledWorkspace {
             }
             return HandleResult::Consumed;
         }
+        if km.matches(key, &km.layout_cycle) {
+            self.cycle_layout();
+            return HandleResult::Consumed;
+        }
 
         // Alt+digit for tab switching
         if key.modifiers.alt && !key.modifiers.ctrl && !key.modifiers.shift {

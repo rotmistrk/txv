@@ -12,7 +12,11 @@ impl TiledWorkspace {
         if bounds.w == 0 || bounds.h == 0 {
             return;
         }
-        self.is_wide = bounds.w >= self.wide_threshold;
+        self.is_wide = match self.layout_mode {
+            super::types::LayoutMode::Auto => bounds.w >= self.wide_threshold,
+            super::types::LayoutMode::Wide => true,
+            super::types::LayoutMode::Narrow => false,
+        };
 
         if let Some(z) = self.zoomed {
             // Zoomed: give full bounds to the zoomed panel, zero others

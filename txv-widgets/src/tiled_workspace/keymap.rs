@@ -21,6 +21,7 @@ pub struct WorkspaceKeymap {
     pub subpanel_move_tab: KeyEvent,
     pub subpanel_grow: KeyEvent,
     pub subpanel_shrink: KeyEvent,
+    pub layout_cycle: KeyEvent,
 }
 
 impl WorkspaceKeymap {
@@ -103,6 +104,7 @@ impl Default for WorkspaceKeymap {
             subpanel_move_tab: ctrl_alt(KeyCode::Char('w')),
             subpanel_grow: alt(KeyCode::Char('=')),
             subpanel_shrink: alt(KeyCode::Char('-')),
+            layout_cycle: alt(KeyCode::Char(';')),
         }
     }
 }

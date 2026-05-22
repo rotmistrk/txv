@@ -78,6 +78,10 @@ impl TiledWorkspace {
                 }
                 true
             }
+            CM_LAYOUT_CYCLE => {
+                self.cycle_layout();
+                true
+            }
             _ => false,
         }
     }
