@@ -1,4 +1,7 @@
 //! Tests verifying widgets use palette colors (no hardcoded values).
+//!
+//! These tests share global palette state, so they run as a single test
+//! to avoid race conditions from parallel execution.
 
 use txv_core::prelude::*;
 
@@ -24,7 +27,8 @@ impl View for Dummy {
 }
 
 #[test]
-fn inline_edit_selection_uses_palette() {
+fn palette_integration() {
+    // --- inline_edit_selection_uses_palette ---
     set_palette(Palette::default());
     let pal = palette();
     let expected_bg = pal.interactive.edit_selection.bg.unwrap();
@@ -34,13 +38,10 @@ fn inline_edit_selection_uses_palette() {
     let style = Style::default();
     ed.draw(&mut surface, 0, 0, 20, style);
 
-    // Selected chars (0..4) should have palette selection bg
     let cell = surface.cell(1, 0);
     assert_eq!(cell.style.bg, expected_bg, "selection bg should come from palette");
-}
 
-#[test]
-fn split_pane_separator_uses_palette_dim() {
+    // --- split_pane_separator_uses_palette_dim ---
     set_palette(Palette::default());
     let pal = palette();
     let expected_fg = pal.base.dim.fg.unwrap();
@@ -51,19 +52,15 @@ fn split_pane_separator_uses_palette_dim() {
         Box::new(Dummy::new()),
     );
     sp.set_bounds(Rect::new(0, 0, 20, 10));
-
     sp.draw();
 
-    // Separator at x=10 should use dim fg
     let cell = sp.buffer().cell(10, 0);
     assert_eq!(cell.style.fg, expected_fg, "separator should use palette dim color");
-}
 
-#[test]
-fn palette_change_affects_widget_rendering() {
-    // Set a custom palette with different selection color
+    // --- palette_change_affects_widget_rendering ---
+    let custom_bg = Color::Ansi(5);
     let mut p = Palette::default();
-    p.interactive.edit_selection = PaletteStyle::bg(Color::Ansi(5));
+    p.interactive.edit_selection = PaletteStyle::bg(custom_bg);
     set_palette(p);
 
     let ed = InlineEditor::new_selected(0, "test");
@@ -71,8 +68,8 @@ fn palette_change_affects_widget_rendering() {
     ed.draw(&mut surface, 0, 0, 20, Style::default());
 
     let cell = surface.cell(1, 0);
-    assert_eq!(cell.style.bg, Color::Ansi(5), "widget should reflect updated palette");
+    assert_eq!(cell.style.bg, custom_bg, "widget should reflect updated palette");
 
-    // Restore
+    // Restore default
     set_palette(Palette::default());
 }
