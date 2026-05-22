@@ -8,11 +8,14 @@ use txv_core::prelude::*;
 
 use crate::tab_bar::{TabBar, TabBarMode};
 
+mod compat;
+mod dropdown;
+
 /// A tabbed panel: TabBar on top, stacked children below.
 pub struct TabPanel {
     state: ViewState,
-    bar: TabBar,
-    children: Vec<Box<dyn View>>,
+    pub(crate) bar: TabBar,
+    pub(crate) children: Vec<Box<dyn View>>,
 }
 
 impl TabPanel {
@@ -27,25 +30,23 @@ impl TabPanel {
         }
     }
 
-    /// Access the tab bar.
     pub fn bar(&self) -> &TabBar {
         &self.bar
     }
 
-    /// Access the tab bar mutably.
     pub fn bar_mut(&mut self) -> &mut TabBar {
         &mut self.bar
     }
 
-    /// Insert a tab with a title and child view.
+    /// Insert a tab with a title and child view. Activates the new tab.
     pub fn insert_tab(&mut self, title: impl Into<String>, view: Box<dyn View>) {
+        let new_idx = self.children.len();
         self.bar.add_tab(title);
         self.children.push(view);
-        // Activate the new tab if it's the first
-        if self.children.len() == 1 {
-            self.bar.set_active(0);
+        if let Some(sink) = self.state.sink() {
+            self.children[new_idx].set_sink(sink.clone());
         }
-        self.relayout();
+        self.set_active(new_idx);
     }
 
     /// Remove a tab by index. Returns the removed view.
@@ -74,7 +75,18 @@ impl TabPanel {
 
     /// Set active tab by index.
     pub fn set_active(&mut self, idx: usize) {
+        let prev = self.bar.active_index();
+        if prev != idx {
+            if let Some(child) = self.children.get_mut(prev) {
+                child.unselect();
+            }
+        }
         self.bar.set_active(idx);
+        if self.state.is_focused() {
+            if let Some(child) = self.children.get_mut(idx) {
+                child.select();
+            }
+        }
         self.relayout();
     }
 
@@ -98,7 +110,7 @@ impl TabPanel {
         self.bar.set_title(idx, title);
     }
 
-    /// Set whether this panel is focused (affects tab bar styling).
+    /// Set whether this panel is focused.
     pub fn set_focused(&mut self, focused: bool) {
         self.bar.set_focused(focused);
     }
@@ -108,14 +120,41 @@ impl TabPanel {
         self.children.get(self.bar.active_index()).map(|v| &**v)
     }
 
-    /// Access active child view mutably.
+    /// Access active child view mutably (Box).
     pub fn active_child_mut(&mut self) -> Option<&mut Box<dyn View>> {
         let idx = self.bar.active_index();
         self.children.get_mut(idx)
     }
 
-    /// Content rect (below the tab bar).
-    fn content_rect(&self) -> Rect {
+    /// Access active child view mutably (dyn View).
+    pub fn active_view_mut(&mut self) -> Option<&mut (dyn View + '_)> {
+        let idx = self.bar.active_index();
+        match self.children.get_mut(idx) {
+            Some(v) => Some(&mut **v),
+            None => None,
+        }
+    }
+
+    /// Access a child view mutably by tab index.
+    pub fn view_at_mut(&mut self, idx: usize) -> Option<&mut (dyn View + '_)> {
+        match self.children.get_mut(idx) {
+            Some(v) => Some(&mut **v),
+            None => None,
+        }
+    }
+
+    /// Title of the active tab.
+    pub fn active_title(&self) -> Option<&str> {
+        let idx = self.bar.active_index();
+        self.bar.titles.get(idx).map(|s| s.as_str())
+    }
+
+    /// Tab title by index.
+    pub fn tab_title(&self, idx: usize) -> Option<&str> {
+        self.bar.titles.get(idx).map(|s| s.as_str())
+    }
+
+    pub(crate) fn content_rect(&self) -> Rect {
         let b = self.state.bounds();
         if b.h <= 1 {
             return Rect::new(b.x, b.y, b.w, 0);
@@ -123,14 +162,12 @@ impl TabPanel {
         Rect::new(b.x, b.y + 1, b.w, b.h - 1)
     }
 
-    fn relayout(&mut self) {
+    pub(crate) fn relayout(&mut self) {
         let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
-        // TabBar gets row 0
         self.bar.set_bounds(Rect::new(b.x, b.y, b.w, 1));
-        // Active child gets the rest
         let cr = self.content_rect();
         let active = self.bar.active_index();
         for (i, child) in self.children.iter_mut().enumerate() {
@@ -145,11 +182,35 @@ impl TabPanel {
 }
 
 impl View for TabPanel {
-    delegate_view_state!(state, override { set_bounds, draw, handle });
+    delegate_view_state!(state, override { set_bounds, set_sink, draw, handle, select, unselect });
 
     fn set_bounds(&mut self, r: Rect) {
         self.state.set_bounds(r);
         self.relayout();
+    }
+
+    fn set_sink(&mut self, sink: EventSink) {
+        self.state.set_sink(sink.clone());
+        self.bar.set_sink(sink.clone());
+        for child in &mut self.children {
+            child.set_sink(sink.clone());
+        }
+    }
+
+    fn select(&mut self) {
+        self.state.set_focused(true);
+        self.state.mark_dirty();
+        if let Some(child) = self.children.get_mut(self.bar.active_index()) {
+            child.select();
+        }
+    }
+
+    fn unselect(&mut self) {
+        self.state.set_focused(false);
+        self.state.mark_dirty();
+        if let Some(child) = self.children.get_mut(self.bar.active_index()) {
+            child.unselect();
+        }
     }
 
     fn draw(&mut self) {
@@ -158,14 +219,11 @@ impl View for TabPanel {
             return;
         }
         self.state.buffer_mut().fill(' ', Style::default());
-
-        // Draw and blit TabBar
         self.bar.draw();
         let bar_buf = self.bar.buffer();
         let buf_ptr = self.state.buffer_mut() as *mut Buffer;
         unsafe { (*buf_ptr).blit(bar_buf, 0, 0) };
 
-        // Draw and blit active child
         let active = self.bar.active_index();
         if let Some(child) = self.children.get_mut(active) {
             child.draw();
@@ -176,29 +234,28 @@ impl View for TabPanel {
                 unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
             }
         }
+
+        // Draw dropdown overlay on top of content
+        if self.bar.dropdown_open() {
+            self.draw_dropdown_overlay();
+        }
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        // Tick goes to all children
         if matches!(event, Event::Tick) {
             for child in &mut self.children {
                 child.handle(event);
             }
             return HandleResult::Ignored;
         }
-
-        // Let TabBar handle dropdown and M-digit first
         let prev_active = self.bar.active_index();
         let result = self.bar.handle(event);
         if result == HandleResult::Consumed {
-            // If active changed, relayout
             if self.bar.active_index() != prev_active {
                 self.relayout();
             }
             return HandleResult::Consumed;
         }
-
-        // Dispatch to active child
         let active = self.bar.active_index();
         if let Some(child) = self.children.get_mut(active) {
             return child.handle(event);

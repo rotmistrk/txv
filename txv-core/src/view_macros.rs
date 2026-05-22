@@ -16,6 +16,9 @@
 #[macro_export]
 macro_rules! delegate_view_state {
     ($field:ident) => {
+        fn view_id(&self) -> $crate::view::ViewId {
+            self.$field.id()
+        }
         fn bounds(&self) -> $crate::geometry::Rect {
             self.$field.bounds()
         }
@@ -53,6 +56,11 @@ macro_rules! delegate_view_state {
         }
     };
     ($field:ident, override { $($skip:ident),* $(,)? }) => {
+        $crate::__dvs_maybe!(view_id, [$($skip),*], {
+            fn view_id(&self) -> $crate::view::ViewId {
+                self.$field.id()
+            }
+        });
         $crate::__dvs_maybe!(bounds, [$($skip),*], {
             fn bounds(&self) -> $crate::geometry::Rect {
                 self.$field.bounds()

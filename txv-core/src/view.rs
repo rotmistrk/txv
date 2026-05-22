@@ -1,11 +1,21 @@
 //! View trait, ViewState, EventSink, and the delegate_view_state! macro.
 
 use std::any::Any;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::buffer::Buffer;
 use crate::event::{CommandId, Event};
 use crate::geometry::Rect;
+
+/// Unique view identifier, auto-assigned at creation.
+pub type ViewId = u64;
+
+static NEXT_VIEW_ID: AtomicU64 = AtomicU64::new(1);
+
+fn next_view_id() -> ViewId {
+    NEXT_VIEW_ID.fetch_add(1, Ordering::Relaxed)
+}
 
 /// Options flags for a View.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -74,6 +84,10 @@ pub trait View: Send {
     fn bounds(&self) -> Rect;
     fn set_bounds(&mut self, rect: Rect);
     fn set_sink(&mut self, sink: EventSink);
+    /// Unique view identifier, auto-assigned at creation.
+    fn view_id(&self) -> ViewId {
+        0
+    }
     fn options(&self) -> ViewOptions {
         ViewOptions {
             focusable: true,
@@ -109,6 +123,7 @@ pub trait View: Send {
 
 /// Common view state — embed in every view.
 pub struct ViewState {
+    id: ViewId,
     bounds: Rect,
     pub(crate) options: ViewOptions,
     dirty: bool,
@@ -122,6 +137,7 @@ pub struct ViewState {
 impl ViewState {
     pub fn new(options: ViewOptions) -> Self {
         Self {
+            id: next_view_id(),
             bounds: Rect::default(),
             options,
             dirty: true,
@@ -130,6 +146,11 @@ impl ViewState {
             buf: Buffer::default(),
             sink: None,
         }
+    }
+
+    /// Unique identifier for this view, auto-assigned at creation.
+    pub fn id(&self) -> ViewId {
+        self.id
     }
 
     pub fn bounds(&self) -> Rect {

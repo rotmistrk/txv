@@ -29,10 +29,10 @@ fn insert_and_active() {
     panel.insert_tab("A", Box::new(Dummy::new()));
     panel.insert_tab("B", Box::new(Dummy::new()));
     assert_eq!(panel.tab_count(), 2);
-    assert_eq!(panel.active_index(), 0);
+    assert_eq!(panel.active_index(), 1); // last inserted is active
 
-    panel.set_active(1);
-    assert_eq!(panel.active_index(), 1);
+    panel.set_active(0);
+    assert_eq!(panel.active_index(), 0);
 }
 
 #[test]
