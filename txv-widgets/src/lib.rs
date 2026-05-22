@@ -27,6 +27,7 @@ pub mod status_bar;
 pub mod status_indicators;
 pub mod status_items;
 pub mod tab_bar;
+pub mod tab_bar_new;
 pub mod tab_group;
 mod tab_group_dropdown;
 mod tab_group_view;
