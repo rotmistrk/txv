@@ -33,6 +33,7 @@ mod tab_group_view;
 pub mod table;
 pub mod text_area;
 pub mod tiled_workspace;
+pub mod tools_panel;
 pub mod tree_view;
 
 pub use command_item::CommandItem;

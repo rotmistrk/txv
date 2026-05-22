@@ -219,6 +219,21 @@ impl TiledWorkspace {
         }
     }
 
+    /// Run a closure on the focused panel's ToolsPanel (if it is one).
+    pub(crate) fn with_tools_panel(&mut self, f: impl FnOnce(&mut crate::tools_panel::ToolsPanel)) {
+        let idx = self.group.focused_index();
+        if idx < self.configs.len() && self.configs[idx].splittable {
+            if let Some(child) = self.group.child_mut(idx) {
+                if let Some(tp) = child
+                    .as_any_mut()
+                    .and_then(|a| a.downcast_mut::<crate::tools_panel::ToolsPanel>())
+                {
+                    f(tp);
+                }
+            }
+        }
+    }
+
     /// Export state for persistence.
     pub fn save_state(&self) -> WorkspaceState {
         WorkspaceState {

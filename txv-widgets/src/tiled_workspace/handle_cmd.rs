@@ -82,6 +82,22 @@ impl TiledWorkspace {
                 self.cycle_layout();
                 true
             }
+            CM_CYCLE_SUBPANEL => {
+                self.with_tools_panel(|tp| tp.cycle_focus());
+                true
+            }
+            CM_MOVE_TAB_SUBPANEL => {
+                self.with_tools_panel(|tp| tp.move_tab_to_next());
+                true
+            }
+            CM_GROW_SUBPANEL => {
+                self.with_tools_panel(|tp| tp.grow_focused());
+                true
+            }
+            CM_SHRINK_SUBPANEL => {
+                self.with_tools_panel(|tp| tp.shrink_focused());
+                true
+            }
             _ => false,
         }
     }
