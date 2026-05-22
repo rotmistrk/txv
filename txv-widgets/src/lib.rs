@@ -31,6 +31,7 @@ pub mod tab_bar_new;
 pub mod tab_group;
 mod tab_group_dropdown;
 mod tab_group_view;
+pub mod tab_panel;
 pub mod table;
 pub mod text_area;
 pub mod tiled_workspace;
