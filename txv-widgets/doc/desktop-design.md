@@ -32,24 +32,107 @@ TabGroup. This mirrors vim's window splitting within a single panel.
 
 ## Layout Modes
 
-Layout adapts automatically based on terminal width:
+The developer defines the layout as a **split tree** at construction. This
+determines how panels are arranged and how the layout transitions between
+wide and narrow modes.
 
+### Split Tree
+
+```rust
+pub enum SplitNode {
+    Leaf(PanelId),
+    Split {
+        direction: SplitDir,  // Horizontal | Vertical
+        children: Vec<(f32, SplitNode)>,  // (proportion, child)
+    },
+}
 ```
-Wide (≥ threshold_wide):          Narrow (< threshold_narrow):
-┌──────┬──────────┬───────┐      ┌──────┬──────────────────┐
-│ Tree │   Main   │ Tools │      │ Tree │      Main        │
-│      │          │       │      │      ├──────────────────┤
-│      │          │       │      │      │      Tools       │
-└──────┴──────────┴───────┘      └──────┴──────────────────┘
+
+The developer provides two split trees:
+- `wide_layout` — used when terminal width ≥ threshold
+- `narrow_layout` — used when terminal width < threshold
+
+Example (kairn):
+```rust
+// Wide: tree | main | tools (left to right)
+let wide = Split(Horizontal, vec![
+    (0.15, Leaf(Tree)),
+    (0.55, Leaf(Main)),
+    (0.30, Leaf(Tools)),
+]);
+
+// Narrow: tree | (main / tools) stacked
+let narrow = Split(Horizontal, vec![
+    (0.20, Leaf(Tree)),
+    (0.80, Split(Vertical, vec![
+        (0.60, Leaf(Main)),
+        (0.40, Leaf(Tools)),
+    ])),
+]);
 ```
 
-Hysteresis prevents flapping at boundary widths.
+### Proportional Resize
 
-## Keyboard Bindings (Defaults)
+- Panel sizes are stored as **proportions** (f32, 0.0..1.0) within their
+  parent split, not absolute pixel values.
+- When the window resizes, all panels grow/shrink proportionally.
+- User resize (`M-S-Arrow`) adjusts the proportion between adjacent panels.
+- Minimum size constraints are enforced in absolute cells (e.g., min 10 cols).
 
-All bindings are configurable. Defaults:
+### State Persistence
 
-### Panel Level (Desktop scope)
+The widget exposes its layout state for save/restore:
+
+```rust
+/// Serializable layout state — developer saves/loads this.
+pub struct WorkspaceState {
+    /// Proportions for wide layout.
+    pub wide_proportions: Vec<f32>,
+    /// Proportions for narrow layout.
+    pub narrow_proportions: Vec<f32>,
+    /// Which panels are currently hidden.
+    pub hidden: Vec<PanelId>,
+}
+
+impl TiledWorkspace {
+    /// Export current proportions for persistence.
+    pub fn save_state(&self) -> WorkspaceState;
+    /// Restore proportions from saved state.
+    pub fn restore_state(&mut self, state: &WorkspaceState);
+}
+```
+
+The developer is responsible for serializing `WorkspaceState` to/from a file.
+The widget does not do I/O.
+
+## Keyboard Bindings
+
+**All bindings are fully configurable.** The developer provides a `WorkspaceKeymap`
+at construction. A `Default` impl provides sensible defaults. Any action can be
+rebound or unbound.
+
+```rust
+pub struct WorkspaceKeymap {
+    pub toggle_panel: Vec<(PanelId, KeyEvent)>,  // per-panel toggle keys
+    pub zoom: KeyEvent,
+    pub focus_left: KeyEvent,
+    pub focus_right: KeyEvent,
+    pub focus_up: KeyEvent,
+    pub focus_down: KeyEvent,
+    pub resize_left: KeyEvent,
+    pub resize_right: KeyEvent,
+    pub resize_up: KeyEvent,
+    pub resize_down: KeyEvent,
+    pub tab_dropdown: KeyEvent,
+    pub tab_by_index: [Option<KeyEvent>; 9],
+    pub subpanel_focus: KeyEvent,
+    pub subpanel_move_tab: KeyEvent,
+    pub subpanel_grow: KeyEvent,
+    pub subpanel_shrink: KeyEvent,
+}
+```
+
+### Defaults
 
 | Action | Default Key | Description |
 |--------|-------------|-------------|
@@ -58,18 +141,8 @@ All bindings are configurable. Defaults:
 | Zoom focused | `M-/` | Toggle zoom on focused panel |
 | Panel focus | `C-S-Arrow` | Move focus between visible panels |
 | Panel resize | `M-S-Arrow` | Grow/shrink panel in arrow direction |
-
-### Tab Level (within focused TabGroup)
-
-| Action | Default Key | Description |
-|--------|-------------|-------------|
 | Tab by index | `M-1`..`M-9` | Switch to tab N in focused TabGroup |
 | Tab dropdown | `M-0` | Open searchable tab list |
-
-### Subpanel Level (within Tools panel)
-
-| Action | Default Key | Description |
-|--------|-------------|-------------|
 | Subpanel focus | `C-w` | Cycle focus between subpanels |
 | Move tab | `C-M-w` | Move active tab to next subpanel |
 | Grow subpanel | `M-=` | Grow focused subpanel |
@@ -162,6 +235,9 @@ Each TabGroup renders a horizontal tab bar as its chrome row:
 
 ## Resize
 
-- `M-S-Arrow` adjusts the border between panels
-- Minimum panel width/height enforced (configurable)
-- Resize is persisted in panel size fields (not recomputed from ratio)
+- All sizes are proportional (f32) within their parent split
+- Window resize: all panels grow/shrink proportionally — no layout jumps
+- `M-S-Arrow` adjusts the proportion boundary between adjacent panels
+- Minimum size constraints in absolute cells (configurable per panel)
+- Separate proportions stored for wide and narrow layouts
+- Developer can save/restore proportions via `save_state()`/`restore_state()`
