@@ -6,7 +6,7 @@
 
 use txv_core::prelude::*;
 
-use crate::tab_bar_new::{TabBar, TabBarMode};
+use crate::tab_bar::{TabBar, TabBarMode};
 
 /// A tabbed panel: TabBar on top, stacked children below.
 pub struct TabPanel {

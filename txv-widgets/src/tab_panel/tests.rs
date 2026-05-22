@@ -2,7 +2,7 @@
 
 use txv_core::prelude::*;
 
-use crate::tab_bar_new::TabBarMode;
+use crate::tab_bar::TabBarMode;
 use crate::tab_panel::TabPanel;
 
 struct Dummy {

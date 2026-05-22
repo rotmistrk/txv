@@ -2,7 +2,7 @@
 
 use txv_core::prelude::*;
 
-use crate::tab_bar_new::{TabBar, TabBarMode};
+use crate::tab_bar::{TabBar, TabBarMode};
 
 #[test]
 fn static_mode_all_numbered() {
