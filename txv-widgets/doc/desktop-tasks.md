@@ -1,4 +1,4 @@
-# Desktop Widget — Implementation Tasks
+# TiledWorkspace Widget — Implementation Tasks
 
 ## Phase 1: TabGroup Enhancements
 
@@ -30,11 +30,12 @@
 
 ## Phase 3: Desktop Widget Core
 
-### 3.1 Desktop Struct
-- Three children: tree (TabGroup), main (TabGroup), tools (ToolsPanel)
-- Uses GroupState with 3 children
+### 3.1 TiledWorkspace Struct
+- N children based on PanelConfig list provided at construction
+- Uses GroupState with N children
 - Stores: panel sizes, visibility flags, zoom state, layout thresholds
 - Keymap field
+- PanelConfig per panel (closeable, hideable, splittable, position)
 
 ### 3.2 Layout Engine
 - `compute_layout()` based on bounds width and visibility flags
@@ -44,7 +45,7 @@
 - Zoom: focused panel gets full bounds
 
 ### 3.3 Panel Visibility Toggle
-- `M-,` toggles tree visibility
+- `M-,` toggles tree visibility (hideable panels only)
 - `M-.` toggles tools visibility
 - Focus management on hide/show
 - Size restoration on show
@@ -61,7 +62,7 @@
 
 ### 3.6 Zoom
 - `M-/` toggles zoom on focused panel
-- Zoomed panel gets full Desktop bounds
+- Zoomed panel gets full TiledWorkspace bounds
 - `C-S-Arrow` while zoomed cycles which panel is zoomed
 
 ## Phase 4: Tools Panel (ToolsPanel widget)

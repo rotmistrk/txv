@@ -1,10 +1,16 @@
-# Desktop Widget — Design Document
+# TiledWorkspace Widget — Design Document
 
 ## Overview
 
-`Desktop` is a reusable IDE-style layout widget for `txv-widgets`. It manages
-three panels (tree, main, tools) with automatic layout adaptation, panel
-visibility toggling, zoom, and configurable keybindings.
+`TiledWorkspace` is a reusable IDE-style layout widget for `txv-widgets`. It
+manages three panels (tree, main, tools) with automatic layout adaptation,
+panel visibility toggling, zoom, and configurable keybindings.
+
+The application defines the panel configuration at construction:
+- Which panels exist and their roles
+- Whether each panel's tabs are **closeable** (user can close tabs, e.g. editor
+  buffers) or **fixed** (tabs are managed by the app, e.g. file tree, git tree)
+- What types of views each panel accepts
 
 ## Panels
 
@@ -72,17 +78,40 @@ All bindings are configurable. Defaults:
 ## Architecture
 
 ```
-Desktop (View)
-├── Tree: TabGroup
-├── Main: TabGroup
-└── Tools: SplitPane<TabGroup>  (or custom ToolsPanel)
-    ├── Subpanel 0: TabGroup
+TiledWorkspace (View)
+├── Tree: TabGroup (fixed — app manages tabs)
+├── Main: TabGroup (closeable — user manages tabs)
+└── Tools: ToolsPanel
+    ├── Subpanel 0: TabGroup (closeable or fixed, per app config)
     ├── Subpanel 1: TabGroup (if split)
     └── ...
 ```
 
-Desktop uses `GroupState` with 3 children. The tools panel is itself a
-container that manages its subpanels.
+### Panel Configuration
+
+Each panel is defined by a `PanelConfig`:
+
+```rust
+pub struct PanelConfig {
+    /// Panel role identifier (for keybinding dispatch).
+    pub role: PanelRole,
+    /// Whether users can close tabs (true) or tabs are app-managed (false).
+    pub closeable: bool,
+    /// Preferred position (Left, Center, Right/Bottom).
+    pub position: PanelPosition,
+    /// Whether the panel can be hidden by the user.
+    pub hideable: bool,
+    /// Whether the panel supports internal splitting.
+    pub splittable: bool,
+}
+```
+
+The application constructs `TiledWorkspace` with a list of panel configs.
+The widget handles layout, focus, and keybindings generically — it doesn't
+know about "files" or "editors", only about panels with tabs.
+
+TiledWorkspace uses `GroupState` with N children (one per panel). The tools
+panel is itself a container that manages its subpanels.
 
 ### Key Dispatch
 
