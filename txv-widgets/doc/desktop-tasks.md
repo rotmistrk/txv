@@ -1,49 +1,64 @@
-# TiledWorkspace Widget — Implementation Status
+# TiledWorkspace v2 — Redesign Tasks
 
-## Completed
+## Phase 0: Core — Color::Transparent
 
-### Phase 1: TabGroup Enhancements ✓
-- Horizontal tab bar chrome with glyph separators (│Tab1│Tab2│)
-- Active tab highlighting, dirty indicator (•), overflow badge (…N)
-- Searchable tab dropdown with fuzzy filter
-- `set_dirty()` / `is_tab_dirty()` API
+- [ ] Add `Color::Transparent` variant to `txv-core::cell::Color`
+- [ ] Update `Buffer::blit()` to skip cells where fg+bg are both Transparent
+- [ ] Update terminal backend to never emit Transparent (treat as no-op)
+- [ ] Tests for transparent blit behavior
 
-### Phase 2: WorkspaceKeymap ✓
-- Fully configurable `WorkspaceKeymap` struct
-- Default bindings for all actions
-- `matches()` helper for key comparison
+## Phase 1: TabBar (new widget)
 
-### Phase 3: TiledWorkspace Core ✓
-- `PanelConfig` (closeable, hideable, splittable, position)
-- `SplitNode` split trees for wide/narrow layouts
-- Proportional layout engine with hidden panel redistribution
-- Panel visibility toggle, zoom, spatial focus navigation
-- Proportional resize via split tree adjustment
-- `LayoutMode` (Auto/Wide/Narrow) with `M-;` cycle
-- `WorkspaceState` save/restore for persistence
-- Command-based API (CM_* events) for scripting/MCP
-- Dual-mode key handling (internal or app-owned)
-- `default_bindings()` export for status bar registration
-- `CM_CORE_MAX` / `CM_TXV_MAX` range separation
+- [ ] Create `TabBar` struct: labels, active index, dirty flags, dropdown state
+- [ ] Implement powerline rendering with `TabBarPalette` lookup
+- [ ] Number labels: subscript (₁₂₃) or `N:` fallback based on glyph tier
+- [ ] Overflow: scroll to active, left `…N` indicator, right `▾…N` badge
+- [ ] Searchable dropdown (fuzzy filter, same as current)
+- [ ] Configurable fill (transparent / `─` / space)
+- [ ] M-0 opens dropdown, M-1..9 activates tab (when handle_keys=true)
+- [ ] Emits CM_ACTIVATE_TAB / CM_TAB_DROPDOWN commands
+- [ ] Tests: rendering, overflow, scroll, dropdown filter
 
-### Phase 4: ToolsPanel ✓
-- Split-on-move (`C-M-w` creates split if single subpanel)
-- Focus cycling (`C-w`) between subpanels
-- Proportional resize (`M-=`/`M--`) between subpanels
-- Auto-unsplit when subpanel becomes empty
-- Configurable split direction (horizontal/vertical)
-- Wired into TiledWorkspace via `with_tools_panel()` downcast
+## Phase 2: TabPanel (replaces TabGroup)
 
-## Test Coverage
+- [ ] Create `TabPanel` struct: TabBar + Vec<Box<dyn View>> children
+- [ ] Content rect = bounds minus 1 row (TabBar height)
+- [ ] Tab switching: set_active, insert_tab, remove_tab, close_tab
+- [ ] Dirty state, LRU ordering (optional)
+- [ ] Tick dispatch to all children
+- [ ] View impl: draw TabBar + blit active child
+- [ ] Works standalone (no TiledWorkspace dependency)
+- [ ] Tests: tab management, draw, focus
 
-- 10 TiledWorkspace tests (layout, toggle, zoom, commands, keys, state)
-- 6 ToolsPanel tests (split, unsplit, cycle, resize, edge cases)
-- 5 cursor integration tests
-- 1 palette integration test (consolidated to avoid race)
+## Phase 3: SplitPanel (replaces ToolsPanel)
 
-## Future Work
+- [ ] Create `SplitPanel` struct: Vec<Box<dyn View>> + proportions + direction
+- [ ] `set_direction()` switchable at runtime
+- [ ] `cycle_focus()`, `grow_focused()`, `shrink_focused()`
+- [ ] View impl: layout children, draw, dispatch to focused
+- [ ] Tests: split, resize, direction switch
 
-- PtyTerminal cursor exposure
-- Status bar integration helpers
-- Mouse support for tab bar / panel resize
-- Tab drag-and-drop between panels
+## Phase 4: TiledWorkspace update
+
+- [ ] Replace TabGroup usage with TabPanel
+- [ ] Replace ToolsPanel usage with SplitPanel
+- [ ] Update handle_cmd.rs for new types
+- [ ] Split-on-move helper (creates SplitPanel from TabPanel when needed)
+- [ ] Update all existing tests
+
+## Phase 5: Cleanup
+
+- [ ] Delete old TabGroup (tab_group.rs, tab_group_view.rs, tab_group_dropdown.rs)
+- [ ] Delete old TabBar (tab_bar.rs)
+- [ ] Delete old ToolsPanel (tools_panel.rs)
+- [ ] Update lib.rs exports
+- [ ] Update design docs final
+
+## Dependencies
+
+- Phase 0 has no dependencies (txv-core only)
+- Phase 1 depends on Phase 0 (transparent fill)
+- Phase 2 depends on Phase 1 (uses TabBar)
+- Phase 3 has no dependencies (generic container)
+- Phase 4 depends on Phase 2 + 3
+- Phase 5 depends on Phase 4
