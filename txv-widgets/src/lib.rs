@@ -23,6 +23,7 @@ mod pty_terminal_scroll;
 pub mod scroll_view;
 pub mod scrollbar;
 pub mod split_pane;
+pub mod split_panel;
 pub mod status_bar;
 pub mod status_indicators;
 pub mod status_items;
