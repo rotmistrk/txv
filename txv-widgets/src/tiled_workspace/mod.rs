@@ -22,7 +22,8 @@ use std::any::Any;
 use txv_core::event::CommandId;
 use txv_core::prelude::*;
 
-use crate::tab_group::TabGroup;
+use crate::tab_bar_new::TabBarMode;
+use crate::tab_panel::TabPanel;
 
 use keymap::WorkspaceKeymap;
 use types::{LayoutMode, PanelConfig, PanelId, SplitDir, SplitNode, WorkspaceState};
@@ -49,7 +50,7 @@ impl TiledWorkspace {
     /// Create a new workspace.
     ///
     /// `configs` defines each panel. `wide_layout` and `narrow_layout` are
-    /// split trees referencing panel indices. A TabGroup is created per panel.
+    /// split trees referencing panel indices. A TabPanel is created per panel.
     pub fn new(
         configs: Vec<PanelConfig>,
         wide_layout: SplitNode,
@@ -62,7 +63,7 @@ impl TiledWorkspace {
             ..ViewOptions::default()
         });
         for _ in 0..panel_count {
-            group.insert(Box::new(TabGroup::new()));
+            group.insert(Box::new(TabPanel::new(TabBarMode::Lru)));
         }
         let hidden = vec![false; panel_count];
         Self {
@@ -144,18 +145,18 @@ impl TiledWorkspace {
         bindings
     }
 
-    /// Access a panel's TabGroup.
-    pub fn panel(&self, id: PanelId) -> Option<&TabGroup> {
+    /// Access a panel's TabPanel.
+    pub fn panel(&self, id: PanelId) -> Option<&TabPanel> {
         let child = self.group.child(id)?;
-        // SAFETY: we only insert TabGroup instances
-        Some(unsafe { &*(child as *const dyn View as *const TabGroup) })
+        // SAFETY: we only insert TabPanel instances
+        Some(unsafe { &*(child as *const dyn View as *const TabPanel) })
     }
 
-    /// Access a panel's TabGroup mutably.
-    pub fn panel_mut(&mut self, id: PanelId) -> Option<&mut TabGroup> {
+    /// Access a panel's TabPanel mutably.
+    pub fn panel_mut(&mut self, id: PanelId) -> Option<&mut TabPanel> {
         let child = self.group.child_mut(id)?;
         let ptr: *mut dyn View = &mut **child;
-        Some(unsafe { &mut *(ptr as *mut TabGroup) })
+        Some(unsafe { &mut *(ptr as *mut TabPanel) })
     }
 
     /// Insert a tab into a panel.
@@ -219,16 +220,16 @@ impl TiledWorkspace {
         }
     }
 
-    /// Run a closure on the focused panel's ToolsPanel (if it is one).
-    pub(crate) fn with_tools_panel(&mut self, f: impl FnOnce(&mut crate::tools_panel::ToolsPanel)) {
+    /// Run a closure on the focused panel's SplitPanel (if it is one).
+    pub(crate) fn with_split_panel(&mut self, f: impl FnOnce(&mut crate::split_panel::SplitPanel)) {
         let idx = self.group.focused_index();
         if idx < self.configs.len() && self.configs[idx].splittable {
             if let Some(child) = self.group.child_mut(idx) {
-                if let Some(tp) = child
+                if let Some(sp) = child
                     .as_any_mut()
-                    .and_then(|a| a.downcast_mut::<crate::tools_panel::ToolsPanel>())
+                    .and_then(|a| a.downcast_mut::<crate::split_panel::SplitPanel>())
                 {
-                    f(tp);
+                    f(sp);
                 }
             }
         }

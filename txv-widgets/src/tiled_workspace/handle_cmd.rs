@@ -74,7 +74,7 @@ impl TiledWorkspace {
             }
             CM_TAB_DROPDOWN => {
                 if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                    panel.open_dropdown();
+                    panel.bar_mut().open_dropdown();
                 }
                 true
             }
@@ -83,19 +83,19 @@ impl TiledWorkspace {
                 true
             }
             CM_CYCLE_SUBPANEL => {
-                self.with_tools_panel(|tp| tp.cycle_focus());
+                self.with_split_panel(|sp| sp.cycle_focus());
                 true
             }
             CM_MOVE_TAB_SUBPANEL => {
-                self.with_tools_panel(|tp| tp.move_tab_to_next());
+                // Split-on-move not yet wired for SplitPanel
                 true
             }
             CM_GROW_SUBPANEL => {
-                self.with_tools_panel(|tp| tp.grow_focused());
+                self.with_split_panel(|sp| sp.grow_focused());
                 true
             }
             CM_SHRINK_SUBPANEL => {
-                self.with_tools_panel(|tp| tp.shrink_focused());
+                self.with_split_panel(|sp| sp.shrink_focused());
                 true
             }
             _ => false,

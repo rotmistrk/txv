@@ -134,7 +134,7 @@ impl View for TiledWorkspace {
         }
         if km.matches(key, &km.tab_dropdown) {
             if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                panel.open_dropdown();
+                panel.bar_mut().open_dropdown();
             }
             return HandleResult::Consumed;
         }
