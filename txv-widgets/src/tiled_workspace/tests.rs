@@ -146,3 +146,91 @@ fn focus_direction_spatial() {
     ws.focus_direction(1, 0); // right again
     assert_eq!(ws.group.focused_index(), 2, "should focus tools");
 }
+
+#[test]
+fn layout_cycle_changes_mode() {
+    let mut ws = three_panel_workspace();
+    ws.insert_tab(0, "Files", Box::new(Dummy::new()));
+    ws.insert_tab(1, "Editor", Box::new(Dummy::new()));
+    ws.insert_tab(2, "Shell", Box::new(Dummy::new()));
+    ws.set_bounds(Rect::new(0, 0, 80, 40)); // narrow by threshold
+
+    // Auto mode: narrow terminal → narrow layout (tools below)
+    let b2 = ws.group.child(2).unwrap().bounds();
+    let b1 = ws.group.child(1).unwrap().bounds();
+    assert!(b2.y > b1.y, "narrow auto: tools below main");
+
+    // Force wide
+    ws.cycle_layout(); // Auto → Wide
+    let b2 = ws.group.child(2).unwrap().bounds();
+    let b1 = ws.group.child(1).unwrap().bounds();
+    assert_eq!(b2.y, b1.y, "forced wide: tools beside main");
+
+    // Force narrow
+    ws.cycle_layout(); // Wide → Narrow
+    ws.set_bounds(Rect::new(0, 0, 200, 50)); // wide terminal but forced narrow
+    let b2 = ws.group.child(2).unwrap().bounds();
+    let b1 = ws.group.child(1).unwrap().bounds();
+    assert!(b2.y > b1.y, "forced narrow: tools below even on wide terminal");
+
+    // Back to auto
+    ws.cycle_layout(); // Narrow → Auto
+    let b2 = ws.group.child(2).unwrap().bounds();
+    let b1 = ws.group.child(1).unwrap().bounds();
+    assert_eq!(b2.y, b1.y, "auto on wide terminal: tools beside");
+}
+
+#[test]
+fn command_events_control_workspace() {
+    let mut ws = three_panel_workspace();
+    ws.insert_tab(0, "Files", Box::new(Dummy::new()));
+    ws.insert_tab(1, "Editor", Box::new(Dummy::new()));
+    ws.set_bounds(Rect::new(0, 0, 200, 50));
+
+    // Focus via command
+    let data: Option<Box<dyn std::any::Any + Send>> = Some(Box::new(1usize));
+    ws.handle_command(crate::tiled_workspace::commands::CM_FOCUS_PANEL, &data);
+    assert_eq!(ws.group.focused_index(), 1);
+
+    // Toggle panel via command
+    let data: Option<Box<dyn std::any::Any + Send>> = Some(Box::new(0usize));
+    ws.handle_command(crate::tiled_workspace::commands::CM_TOGGLE_PANEL, &data);
+    assert!(ws.hidden[0]);
+
+    // Zoom via command
+    ws.handle_command(crate::tiled_workspace::commands::CM_ZOOM, &None);
+    assert!(ws.zoomed.is_some());
+
+    // Layout cycle via command
+    ws.handle_command(crate::tiled_workspace::commands::CM_LAYOUT_CYCLE, &None);
+    assert_eq!(ws.layout_mode, crate::tiled_workspace::types::LayoutMode::Wide);
+}
+
+#[test]
+fn handle_keys_disabled_ignores_keystrokes() {
+    let mut ws = three_panel_workspace();
+    ws.insert_tab(0, "Files", Box::new(Dummy::new()));
+    ws.insert_tab(1, "Editor", Box::new(Dummy::new()));
+    ws.set_bounds(Rect::new(0, 0, 200, 50));
+    ws.set_handle_keys(false);
+
+    // M-/ (zoom) should NOT be consumed when keys disabled
+    let zoom_key = Event::Key(KeyEvent {
+        code: KeyCode::Char('/'),
+        modifiers: KeyMod {
+            alt: true,
+            ctrl: false,
+            shift: false,
+        },
+    });
+    let result = ws.handle(&zoom_key);
+    assert_eq!(result, HandleResult::Ignored);
+    assert!(ws.zoomed.is_none(), "zoom should not trigger with keys disabled");
+}
+
+#[test]
+fn default_bindings_returns_entries() {
+    let ws = three_panel_workspace();
+    let bindings = ws.default_bindings();
+    assert!(bindings.len() >= 15, "should have at least 15 bindings");
+}
