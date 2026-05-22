@@ -10,10 +10,13 @@ use txv_core::prelude::*;
 pub struct TabGroup {
     pub(crate) group: GroupState,
     pub(crate) titles: Vec<String>,
+    pub(crate) dirty: Vec<bool>,
     pub(crate) lru: Vec<u64>,
     pub(crate) lru_counter: u64,
     /// Dropdown menu state: Some(cursor_index) when open.
     pub dropdown_cursor: Option<usize>,
+    /// Dropdown filter string for fuzzy search.
+    pub dropdown_filter: String,
 }
 
 impl TabGroup {
@@ -24,9 +27,11 @@ impl TabGroup {
                 ..ViewOptions::default()
             }),
             titles: Vec::new(),
+            dirty: Vec::new(),
             lru: Vec::new(),
             lru_counter: 0,
             dropdown_cursor: None,
+            dropdown_filter: String::new(),
         }
     }
 
@@ -39,6 +44,7 @@ impl TabGroup {
         }
         self.group.insert(view);
         self.titles.push(title.into());
+        self.dirty.push(false);
         self.lru.push(0);
         self.group.set_focused_index(self.group.child_count() - 1);
         self.touch_lru();
@@ -125,6 +131,7 @@ impl TabGroup {
         }
         self.group.remove(fi);
         self.titles.remove(fi);
+        self.dirty.remove(fi);
         self.lru.remove(fi);
         self.adjust_after_remove();
         true
@@ -141,6 +148,7 @@ impl TabGroup {
         }
         self.group.remove(idx);
         self.titles.remove(idx);
+        self.dirty.remove(idx);
         self.lru.remove(idx);
         self.adjust_after_remove();
         true
@@ -153,6 +161,7 @@ impl TabGroup {
         }
         self.group.remove(idx);
         self.titles.remove(idx);
+        self.dirty.remove(idx);
         self.lru.remove(idx);
         self.adjust_after_remove();
     }
@@ -164,6 +173,7 @@ impl TabGroup {
         }
         let view = self.group.remove(idx);
         self.titles.remove(idx);
+        self.dirty.remove(idx);
         self.lru.remove(idx);
         self.adjust_after_remove();
         Some(view)
@@ -175,6 +185,7 @@ impl TabGroup {
         view.set_bounds(content_rect);
         self.group.insert_at(idx, view);
         self.titles.insert(idx, title.into());
+        self.dirty.insert(idx, false);
         self.lru.insert(idx, 0);
         self.set_active(idx);
     }
@@ -191,38 +202,6 @@ impl TabGroup {
     pub(crate) fn content_rect(&self) -> Rect {
         let b = self.group.bounds();
         Rect::new(b.x, b.y + 1, b.w, b.h.saturating_sub(1))
-    }
-
-    pub fn has_tab_starting_with(&self, prefix: &str) -> bool {
-        self.titles.iter().any(|t| t.starts_with(prefix))
-    }
-
-    pub fn rename_active(&mut self, new_title: impl Into<String>) {
-        if let Some(title) = self.titles.get_mut(self.group.focused_index()) {
-            *title = new_title.into();
-            self.group.mark_dirty();
-        }
-    }
-
-    /// Generate next available name like "Shell:0", "Shell:1", etc.
-    pub fn next_tab_name(&self, prefix: &str) -> String {
-        for n in 0..10 {
-            let candidate = format!("{prefix}:{n}");
-            if !self.has_tab_starting_with(&candidate) {
-                return candidate;
-            }
-        }
-        format!("{prefix}:0")
-    }
-
-    /// Rename active tab, keeping the "prefix:" part and replacing the user part.
-    pub fn rename_user_part(&mut self, new_user_part: &str) {
-        if let Some(title) = self.titles.get(self.group.focused_index()).cloned() {
-            if let Some(colon) = title.find(':') {
-                let prefix = &title[..=colon];
-                self.rename_active(format!("{prefix}{new_user_part}"));
-            }
-        }
     }
 
     fn touch_lru(&mut self) {
@@ -243,6 +222,21 @@ impl TabGroup {
     /// Check if a tab at the given index can be closed.
     pub fn can_close_tab(&self, idx: usize) -> CloseResult {
         self.group.child(idx).map(|c| c.can_close()).unwrap_or(CloseResult::Ok)
+    }
+
+    /// Mark a tab as dirty (modified) or clean.
+    pub fn set_dirty(&mut self, idx: usize, is_dirty: bool) {
+        if let Some(d) = self.dirty.get_mut(idx) {
+            if *d != is_dirty {
+                *d = is_dirty;
+                self.group.mark_dirty();
+            }
+        }
+    }
+
+    /// Check if a tab is dirty.
+    pub fn is_tab_dirty(&self, idx: usize) -> bool {
+        self.dirty.get(idx).copied().unwrap_or(false)
     }
 
     fn adjust_after_remove(&mut self) {

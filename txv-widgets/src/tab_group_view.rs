@@ -15,43 +15,91 @@ impl TabGroup {
         let g = glyphs();
         let dim = pal.base.dim.to_style();
         let focused_style = pal.chrome.tab_focused.to_style();
-        let arrow_style = pal.chrome.tab_focused_arrow.to_style();
-        self.group.buffer_mut().hline(0, 0, w, g.ui.separator_h, dim);
-        let mut x = 0u16;
+        let sep = g.ui.separator_v;
+
+        self.group.buffer_mut().hline(0, 0, w, ' ', dim);
+
         let active_idx = self.group.focused_index();
+        let mut x = 0u16;
+        let mut rendered = 0usize;
+
         for (i, title) in self.titles.iter().enumerate() {
-            if i == active_idx {
-                // Active tab with chrome glyphs
-                let left = g.chrome.tab_left;
-                let right = g.chrome.tab_right;
-                let left_len = left.chars().count() as u16;
-                let right_len = right.chars().count() as u16;
-                let label = format!(" {title} ");
-                let label_len = label.len() as u16;
-                if x + left_len + label_len + right_len > w {
-                    break;
-                }
-                self.group.buffer_mut().print(x, 0, left, arrow_style);
-                x += left_len;
-                self.group.buffer_mut().print(x, 0, &label, focused_style);
-                x += label_len;
-                self.group.buffer_mut().print(x, 0, right, arrow_style);
-                x += right_len;
+            // Separator before each tab
+            if x >= w {
+                break;
+            }
+            self.group.buffer_mut().put(x, 0, sep, dim);
+            x += 1;
+
+            // Build label: title + dirty indicator
+            let dirty_mark = if self.dirty.get(i).copied().unwrap_or(false) {
+                " •"
             } else {
-                let label = format!(" {title} ");
-                let len = label.len() as u16;
-                if x + len > w {
-                    break;
+                ""
+            };
+            let label = format!("{title}{dirty_mark}");
+            let label_len = label.chars().count() as u16;
+
+            // Check if this tab fits (need space for label + trailing separator)
+            let needed = label_len + 1; // +1 for trailing sep or overflow
+            if x + needed > w {
+                // Overflow: show indicator for remaining tabs
+                let hidden = self.titles.len() - i;
+                let badge = format!("…{hidden}");
+                let badge_len = badge.chars().count() as u16;
+                if x + badge_len <= w {
+                    self.group.buffer_mut().print(x, 0, &badge, dim);
                 }
-                self.group.buffer_mut().print(x, 0, &label, dim);
-                x += len;
+                break;
+            }
+
+            let style = if i == active_idx {
+                focused_style
+            } else {
+                dim
+            };
+            self.group.buffer_mut().print(x, 0, &label, style);
+            x += label_len;
+            rendered += 1;
+        }
+
+        // Trailing separator
+        if x < w && rendered > 0 {
+            self.group.buffer_mut().put(x, 0, sep, dim);
+        }
+    }
+}
+
+/// Naming and utility methods.
+impl TabGroup {
+    pub fn has_tab_starting_with(&self, prefix: &str) -> bool {
+        self.titles.iter().any(|t| t.starts_with(prefix))
+    }
+
+    pub fn rename_active(&mut self, new_title: impl Into<String>) {
+        if let Some(title) = self.titles.get_mut(self.group.focused_index()) {
+            *title = new_title.into();
+            self.group.mark_dirty();
+        }
+    }
+
+    /// Generate next available name like "Shell:0", "Shell:1", etc.
+    pub fn next_tab_name(&self, prefix: &str) -> String {
+        for n in 0..10 {
+            let candidate = format!("{prefix}:{n}");
+            if !self.has_tab_starting_with(&candidate) {
+                return candidate;
             }
         }
-        if self.titles.len() > 1 {
-            let count = format!("❨{}❩", self.titles.len());
-            let clen = count.chars().count() as u16;
-            if x + clen < w {
-                self.group.buffer_mut().print(x + 1, 0, &count, dim);
+        format!("{prefix}:0")
+    }
+
+    /// Rename active tab, keeping the "prefix:" part and replacing the user part.
+    pub fn rename_user_part(&mut self, new_user_part: &str) {
+        if let Some(title) = self.titles.get(self.group.focused_index()).cloned() {
+            if let Some(colon) = title.find(':') {
+                let prefix = &title[..=colon];
+                self.rename_active(format!("{prefix}{new_user_part}"));
             }
         }
     }
