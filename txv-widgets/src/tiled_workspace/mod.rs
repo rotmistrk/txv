@@ -1,8 +1,19 @@
 //! TiledWorkspace — IDE-style tiled panel layout with configurable keybindings.
+//!
+//! ## Command-based API
+//!
+//! External integrations (scripting, MCP, TCL, ex-commands) interact with
+//! TiledWorkspace by emitting command events into the EventQueue — NOT by
+//! calling methods directly. This keeps the architecture decoupled and
+//! consistent with TXV's event-driven design.
+//!
+//! See [`commands`] for available command IDs and payload types.
 
+pub mod commands;
 pub mod keymap;
 pub mod types;
 
+mod handle_cmd;
 mod layout;
 mod view_impl;
 
