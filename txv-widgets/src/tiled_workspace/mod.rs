@@ -13,6 +13,7 @@ pub mod commands;
 pub mod keymap;
 pub mod types;
 
+mod accessors;
 mod bindings;
 mod handle_cmd;
 mod layout;
@@ -33,25 +34,20 @@ pub type KeyBinding = (KeyEvent, CommandId, Option<Box<dyn Any + Send>>);
 
 /// IDE-style tiled workspace with configurable panels and layout.
 pub struct TiledWorkspace {
-    pub group: GroupState,
-    pub(crate) configs: Vec<PanelConfig>,
-    pub(crate) wide_layout: SplitNode,
-    pub(crate) narrow_layout: SplitNode,
-    pub(crate) keymap: WorkspaceKeymap,
-    pub hidden: Vec<bool>,
-    pub zoomed: Option<PanelId>,
-    pub wide_threshold: u16,
-    /// Below this threshold, force narrow. Between narrow and wide = hysteresis.
-    pub narrow_threshold: u16,
-    pub layout_mode: LayoutMode,
-    pub is_wide: bool,
-    pub(crate) handle_keys: bool,
-    /// When false, no gap cells are reserved between split children in the
-    /// horizontal direction. Default: true.
-    pub h_divider_gaps: bool,
-    /// When false, no gap cells are reserved between split children in the
-    /// vertical direction. Default: true.
-    pub v_divider_gaps: bool,
+    group: GroupState,
+    configs: Vec<PanelConfig>,
+    wide_layout: SplitNode,
+    narrow_layout: SplitNode,
+    keymap: WorkspaceKeymap,
+    hidden: Vec<bool>,
+    zoomed: Option<PanelId>,
+    wide_threshold: u16,
+    narrow_threshold: u16,
+    layout_mode: LayoutMode,
+    is_wide: bool,
+    handle_keys: bool,
+    h_divider_gaps: bool,
+    v_divider_gaps: bool,
 }
 
 impl TiledWorkspace {
@@ -275,6 +271,8 @@ impl TiledWorkspace {
             }
         }
     }
+
+    // Field accessors are in accessors.rs
 }
 
 #[cfg(test)]
