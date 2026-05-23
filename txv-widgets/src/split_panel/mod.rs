@@ -35,7 +35,6 @@ impl SplitPanel {
     pub fn add_child(&mut self, view: Box<dyn View>, proportion: f32) {
         self.children.push(view);
         self.proportions.push(proportion);
-        self.normalize_proportions();
         self.relayout();
     }
 
@@ -142,6 +141,7 @@ impl SplitPanel {
         if b.w == 0 || b.h == 0 || self.children.is_empty() {
             return;
         }
+        self.normalize_proportions();
         let count = self.children.len();
         let dividers = count.saturating_sub(1) as u16;
         let total_size = match self.direction {
@@ -154,7 +154,7 @@ impl SplitPanel {
             let size = if is_last {
                 total_size.saturating_sub(offset)
             } else {
-                (total_size as f32 * self.proportions[i]) as u16
+                (total_size as f32 * self.proportions[i]).round() as u16
             };
             let abs_offset = offset + i as u16; // account for dividers before this child
             let rect = match self.direction {

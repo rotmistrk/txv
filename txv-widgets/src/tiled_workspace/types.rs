@@ -25,6 +25,8 @@ pub struct PanelConfig {
     pub splittable: bool,
     /// Preferred position.
     pub position: PanelPosition,
+    /// Tab bar mode for this panel.
+    pub tab_mode: crate::tab_bar::TabBarMode,
 }
 
 impl PanelConfig {
@@ -35,6 +37,7 @@ impl PanelConfig {
             hideable: true,
             splittable: false,
             position,
+            tab_mode: crate::tab_bar::TabBarMode::Lru,
         }
     }
 
@@ -45,6 +48,7 @@ impl PanelConfig {
             hideable: true,
             splittable: false,
             position,
+            tab_mode: crate::tab_bar::TabBarMode::Static,
         }
     }
 }

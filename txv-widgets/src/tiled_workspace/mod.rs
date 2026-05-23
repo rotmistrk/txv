@@ -13,6 +13,7 @@ pub mod commands;
 pub mod keymap;
 pub mod types;
 
+mod bindings;
 mod handle_cmd;
 mod layout;
 mod view_impl;
@@ -22,28 +23,35 @@ use std::any::Any;
 use txv_core::event::CommandId;
 use txv_core::prelude::*;
 
-use crate::tab_bar::TabBarMode;
 use crate::tab_panel::TabPanel;
 
 use keymap::WorkspaceKeymap;
-use types::{LayoutMode, PanelConfig, PanelId, SplitDir, SplitNode, WorkspaceState};
+use types::{LayoutMode, PanelConfig, PanelId, SplitNode, WorkspaceState};
 
 /// A key binding entry: (key, command_id, optional payload).
 pub type KeyBinding = (KeyEvent, CommandId, Option<Box<dyn Any + Send>>);
 
 /// IDE-style tiled workspace with configurable panels and layout.
 pub struct TiledWorkspace {
-    pub(crate) group: GroupState,
+    pub group: GroupState,
     pub(crate) configs: Vec<PanelConfig>,
     pub(crate) wide_layout: SplitNode,
     pub(crate) narrow_layout: SplitNode,
     pub(crate) keymap: WorkspaceKeymap,
-    pub(crate) hidden: Vec<bool>,
-    pub(crate) zoomed: Option<PanelId>,
-    pub(crate) wide_threshold: u16,
-    pub(crate) layout_mode: LayoutMode,
-    pub(crate) is_wide: bool,
+    pub hidden: Vec<bool>,
+    pub zoomed: Option<PanelId>,
+    pub wide_threshold: u16,
+    /// Below this threshold, force narrow. Between narrow and wide = hysteresis.
+    pub narrow_threshold: u16,
+    pub layout_mode: LayoutMode,
+    pub is_wide: bool,
     pub(crate) handle_keys: bool,
+    /// When false, no gap cells are reserved between split children in the
+    /// horizontal direction. Default: true.
+    pub h_divider_gaps: bool,
+    /// When false, no gap cells are reserved between split children in the
+    /// vertical direction. Default: true.
+    pub v_divider_gaps: bool,
 }
 
 impl TiledWorkspace {
@@ -62,8 +70,8 @@ impl TiledWorkspace {
             focusable: true,
             ..ViewOptions::default()
         });
-        for _ in 0..panel_count {
-            group.insert(Box::new(TabPanel::new(TabBarMode::Lru)));
+        for cfg in &configs {
+            group.insert(Box::new(TabPanel::new(cfg.tab_mode)));
         }
         let hidden = vec![false; panel_count];
         Self {
@@ -75,9 +83,12 @@ impl TiledWorkspace {
             hidden,
             zoomed: None,
             wide_threshold,
+            narrow_threshold: wide_threshold.saturating_sub(100),
             layout_mode: LayoutMode::Auto,
             is_wide: true,
             handle_keys: true,
+            h_divider_gaps: true,
+            v_divider_gaps: true,
         }
     }
 
@@ -90,59 +101,6 @@ impl TiledWorkspace {
     /// responds to command events — the app/status bar owns key dispatch.
     pub fn set_handle_keys(&mut self, enabled: bool) {
         self.handle_keys = enabled;
-    }
-
-    /// Export default key→command bindings for registration with a status bar
-    /// or application-level keymap. Each entry is (key, command_id, payload).
-    pub fn default_bindings(&self) -> Vec<KeyBinding> {
-        use commands::*;
-        use types::PanelPosition;
-        let km = &self.keymap;
-        let tree_id = self.find_panel_by_position(PanelPosition::Left);
-        let tools_id = self
-            .find_panel_by_position(PanelPosition::Right)
-            .or_else(|| self.find_panel_by_position(PanelPosition::Bottom));
-
-        let mut bindings: Vec<KeyBinding> = Vec::new();
-
-        if let Some(id) = tree_id {
-            bindings.push((km.toggle_tree, CM_TOGGLE_PANEL, Some(Box::new(id))));
-        }
-        if let Some(id) = tools_id {
-            bindings.push((km.toggle_tools, CM_TOGGLE_PANEL, Some(Box::new(id))));
-        }
-        bindings.push((km.zoom, CM_ZOOM, None));
-        bindings.push((km.layout_cycle, CM_LAYOUT_CYCLE, None));
-        bindings.push((km.focus_left, CM_FOCUS_DIRECTION, Some(Box::new((-1i16, 0i16)))));
-        bindings.push((km.focus_right, CM_FOCUS_DIRECTION, Some(Box::new((1i16, 0i16)))));
-        bindings.push((km.focus_up, CM_FOCUS_DIRECTION, Some(Box::new((0i16, -1i16)))));
-        bindings.push((km.focus_down, CM_FOCUS_DIRECTION, Some(Box::new((0i16, 1i16)))));
-        bindings.push((
-            km.resize_left,
-            CM_RESIZE_PANEL,
-            Some(Box::new((SplitDir::Horizontal, -1i16))),
-        ));
-        bindings.push((
-            km.resize_right,
-            CM_RESIZE_PANEL,
-            Some(Box::new((SplitDir::Horizontal, 1i16))),
-        ));
-        bindings.push((
-            km.resize_up,
-            CM_RESIZE_PANEL,
-            Some(Box::new((SplitDir::Vertical, -1i16))),
-        ));
-        bindings.push((
-            km.resize_down,
-            CM_RESIZE_PANEL,
-            Some(Box::new((SplitDir::Vertical, 1i16))),
-        ));
-        bindings.push((km.tab_dropdown, CM_TAB_DROPDOWN, None));
-        bindings.push((km.subpanel_focus, CM_CYCLE_SUBPANEL, None));
-        bindings.push((km.subpanel_move_tab, CM_MOVE_TAB_SUBPANEL, None));
-        bindings.push((km.subpanel_grow, CM_GROW_SUBPANEL, None));
-        bindings.push((km.subpanel_shrink, CM_SHRINK_SUBPANEL, None));
-        bindings
     }
 
     /// Access a panel's TabPanel.
@@ -211,6 +169,29 @@ impl TiledWorkspace {
                 return;
             }
         }
+    }
+
+    /// Focus the previous visible panel.
+    pub fn focus_prev_visible(&mut self) {
+        let count = self.configs.len();
+        let start = self.group.focused_index();
+        for offset in 1..count {
+            let idx = (start + count - offset) % count;
+            if !self.hidden[idx] {
+                self.group.switch_focus(idx);
+                return;
+            }
+        }
+    }
+
+    /// Get the currently focused panel ID.
+    pub fn focused_panel(&self) -> PanelId {
+        self.group.focused_index()
+    }
+
+    /// Mutable access to the workspace buffer (for chrome overlay drawing).
+    pub fn buffer_mut(&mut self) -> &mut Buffer {
+        self.group.buffer_mut()
     }
 
     /// Focus a specific panel by ID.

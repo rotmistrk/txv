@@ -7,13 +7,22 @@ use super::TiledWorkspace;
 
 impl TiledWorkspace {
     /// Recompute and apply layout based on current bounds.
-    pub(crate) fn recompute_layout(&mut self) {
+    pub fn recompute_layout(&mut self) {
         let bounds = self.group.bounds();
         if bounds.w == 0 || bounds.h == 0 {
             return;
         }
         self.is_wide = match self.layout_mode {
-            super::types::LayoutMode::Auto => bounds.w >= self.wide_threshold,
+            super::types::LayoutMode::Auto => {
+                let w = bounds.w;
+                if w >= self.wide_threshold {
+                    true
+                } else if w <= self.narrow_threshold {
+                    false
+                } else {
+                    self.is_wide // hysteresis: stay in current mode
+                }
+            }
             super::types::LayoutMode::Wide => true,
             super::types::LayoutMode::Narrow => false,
         };
@@ -69,9 +78,18 @@ impl TiledWorkspace {
                 let total: f32 = visible.iter().map(|(p, _)| p).sum();
                 let mut result = Vec::new();
                 let mut offset = 0u16;
+                let has_gaps = match direction {
+                    SplitDir::Horizontal => self.h_divider_gaps,
+                    SplitDir::Vertical => self.v_divider_gaps,
+                };
+                let dividers = if has_gaps {
+                    visible.len().saturating_sub(1) as u16
+                } else {
+                    0
+                };
                 let total_size = match direction {
-                    SplitDir::Horizontal => bounds.w,
-                    SplitDir::Vertical => bounds.h,
+                    SplitDir::Horizontal => bounds.w.saturating_sub(dividers),
+                    SplitDir::Vertical => bounds.h.saturating_sub(dividers),
                 };
 
                 for (i, (prop, child)) in visible.iter().enumerate() {
@@ -82,9 +100,15 @@ impl TiledWorkspace {
                     } else {
                         (total_size as f32 * normalized) as u16
                     };
+                    let gap = if has_gaps {
+                        i as u16
+                    } else {
+                        0
+                    };
+                    let abs_offset = offset + gap;
                     let child_bounds = match direction {
-                        SplitDir::Horizontal => Rect::new(bounds.x + offset, bounds.y, size, bounds.h),
-                        SplitDir::Vertical => Rect::new(bounds.x, bounds.y + offset, bounds.w, size),
+                        SplitDir::Horizontal => Rect::new(bounds.x + abs_offset, bounds.y, size, bounds.h),
+                        SplitDir::Vertical => Rect::new(bounds.x, bounds.y + abs_offset, bounds.w, size),
                     };
                     result.extend(self.compute_rects(child, child_bounds));
                     offset += size;

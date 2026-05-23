@@ -59,7 +59,8 @@ fn wide_layout_three_columns() {
     assert!(b0.w > 0, "tree should have width");
     assert!(b1.w > 0, "main should have width");
     assert!(b2.w > 0, "tools should have width");
-    assert_eq!(b0.w + b1.w + b2.w, 200);
+    // 2 divider gaps (1 cell each) between 3 panels
+    assert_eq!(b0.w + b1.w + b2.w + 2, 200);
     assert!(b0.x < b1.x, "tree left of main");
     assert!(b1.x < b2.x, "main left of tools");
 }
@@ -67,6 +68,7 @@ fn wide_layout_three_columns() {
 #[test]
 fn narrow_layout_stacked() {
     let mut ws = three_panel_workspace();
+    ws.layout_mode = LayoutMode::Narrow;
     ws.insert_tab(0, "Files", Box::new(Dummy::new()));
     ws.insert_tab(1, "Editor", Box::new(Dummy::new()));
     ws.insert_tab(2, "Shell", Box::new(Dummy::new()));
@@ -80,7 +82,7 @@ fn narrow_layout_stacked() {
     assert!(b0.w > 0);
     assert!(b1.w > 0);
     assert!(b2.w > 0);
-    assert!(b1.y < b2.y, "main above tools in narrow mode");
+    assert!(b1.y < b2.y, "main above tools in narrow mode: b1={b1:?} b2={b2:?}");
 }
 
 #[test]
@@ -150,6 +152,7 @@ fn focus_direction_spatial() {
 #[test]
 fn layout_cycle_changes_mode() {
     let mut ws = three_panel_workspace();
+    ws.is_wide = false; // start narrow for 80-col terminal
     ws.insert_tab(0, "Files", Box::new(Dummy::new()));
     ws.insert_tab(1, "Editor", Box::new(Dummy::new()));
     ws.insert_tab(2, "Shell", Box::new(Dummy::new()));
