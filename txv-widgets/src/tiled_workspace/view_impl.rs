@@ -21,6 +21,7 @@ impl View for TiledWorkspace {
             return;
         }
         self.group.buffer_mut().fill(' ', Style::default());
+        self.draw_chrome();
         let my_bounds = self.group.bounds();
 
         for i in 0..self.configs.len() {
@@ -57,13 +58,11 @@ impl View for TiledWorkspace {
             }
         }
 
-        // Tick goes to all visible panels
+        // Tick is broadcast to ALL children (state update, not rendering)
         if matches!(event, Event::Tick) {
             for i in 0..self.configs.len() {
-                if !self.hidden[i] {
-                    if let Some(child) = self.group.child_mut(i) {
-                        child.handle(event);
-                    }
+                if let Some(child) = self.group.child_mut(i) {
+                    child.handle(event);
                 }
             }
             return HandleResult::Ignored;
@@ -140,6 +139,22 @@ impl View for TiledWorkspace {
         }
         if km.matches(key, &km.layout_cycle) {
             self.cycle_layout();
+            return HandleResult::Consumed;
+        }
+        if km.matches(key, &km.subpanel_focus) {
+            self.with_split_panel(|sp| sp.cycle_focus());
+            return HandleResult::Consumed;
+        }
+        if km.matches(key, &km.subpanel_move_tab) {
+            // Split-on-move: handled via command
+            return HandleResult::Consumed;
+        }
+        if km.matches(key, &km.subpanel_grow) {
+            self.with_split_panel(|sp| sp.grow_focused());
+            return HandleResult::Consumed;
+        }
+        if km.matches(key, &km.subpanel_shrink) {
+            self.with_split_panel(|sp| sp.shrink_focused());
             return HandleResult::Consumed;
         }
 

@@ -90,6 +90,20 @@ impl TiledWorkspace {
         self.group.dispatch(event)
     }
 
+    /// Process a command through TiledWorkspace's command handler.
+    /// Returns Consumed if TiledWorkspace handled it, Ignored otherwise.
+    pub fn handle_command_event(
+        &mut self,
+        id: CommandId,
+        data: &Option<Box<dyn std::any::Any + Send>>,
+    ) -> HandleResult {
+        if self.handle_command(id, data) {
+            HandleResult::Consumed
+        } else {
+            HandleResult::Ignored
+        }
+    }
+
     /// Emit a command through the group's event sink.
     pub fn put_command(&mut self, id: CommandId, data: Option<Box<dyn std::any::Any + Send>>) {
         self.group.put_command(id, data);

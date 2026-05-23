@@ -15,6 +15,7 @@ pub mod types;
 
 mod accessors;
 mod bindings;
+mod chrome;
 mod handle_cmd;
 mod layout;
 mod view_impl;
