@@ -102,11 +102,20 @@ impl Default for ChromePalette {
             },
             tab_active: PaletteStyle {
                 fg: Some(ansi(15)),
-                bg: Some(ansi(8)),
+                bg: Some(Color::Rgb(0x00, 0x5f, 0x5f)),
                 attrs: Some(attrs_bold()),
             },
             tab_active_arrow: ps_fgbg(7, 8),
             tab_active_badge: ps_fgbg(15, 8),
+            tab_inactive_gradient: {
+                let fg = Color::Ansi(15);
+                let mut g = [(fg, Color::Reset); 10];
+                for (i, slot) in g.iter_mut().enumerate() {
+                    let gray = (0x70u8).saturating_sub((i as u8) * 8).max(0x20);
+                    slot.1 = Color::Rgb(gray, gray, gray);
+                }
+                g
+            },
             status_bar: PaletteStyle {
                 attrs: Some(attrs_reverse()),
                 ..Default::default()

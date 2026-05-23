@@ -77,10 +77,32 @@ pub struct ProgressGlyphs {
 /// Chrome/tab bar characters.
 #[derive(Clone, Debug)]
 pub struct ChromeGlyphs {
-    /// Left separator for active tab (e.g., filled left half-circle).
+    /// Left separator for active tab.
+    /// - Nerd: E0B6 (filled left half-circle / rounded left cap)
+    /// - Unicode: │
+    /// - ASCII: [
     pub tab_left: &'static str,
-    /// Right separator for active tab (e.g., filled right half-circle).
+    /// Right separator for active tab.
+    /// - Nerd: E0B4 (filled right half-circle / rounded right cap)
+    /// - Unicode: │
+    /// - ASCII: ]
     pub tab_right: &'static str,
-    /// Separator between inactive tabs.
+    /// Separator between inactive tabs (right of active).
+    /// - Nerd: E0B1 (powerline thin right arrow)
+    /// - Unicode: │
+    /// - ASCII: |
     pub tab_separator: &'static str,
+    /// Separator between inactive tabs (left of active).
+    /// - Nerd: E0B3 (powerline thin left arrow)
+    /// - Unicode: │
+    /// - ASCII: |
+    pub tab_separator_left: &'static str,
+    /// Dropdown arrow indicator (shown when multiple tabs exist).
+    pub dropdown_arrow: &'static str,
+    /// Activity badge: process running / busy.
+    pub badge_busy: &'static str,
+    /// Activity badge: process idle / waiting for input.
+    pub badge_idle: &'static str,
+    /// Activity badge: process exited / terminated.
+    pub badge_exited: &'static str,
 }

@@ -40,6 +40,12 @@ pub struct TabBarPalette {
     pub inactive: [TabStyle; 10],
     /// Dim foreground for thin separators and fill.
     pub dim_fg: Color,
+    /// Badge bg when panel is focused.
+    pub badge_focused_bg: Color,
+    /// Badge fg.
+    pub badge_fg: Color,
+    /// Separator fg between inactive tabs.
+    pub separator_fg: Color,
 }
 
 impl TabBarPalette {
@@ -47,16 +53,21 @@ impl TabBarPalette {
     pub fn from_global_palette() -> Self {
         use txv_core::palette::palette;
         let pal = palette();
-        let focused_bg = pal.chrome.tab_focused.bg.unwrap_or(Color::Reset);
         let focused_fg = pal.chrome.tab_focused.fg.unwrap_or(Color::Reset);
+        let focused_bg = pal.chrome.tab_focused.bg.unwrap_or(Color::Reset);
+        let unfocused_fg = pal.chrome.tab_active.fg.unwrap_or(Color::Reset);
+        let unfocused_bg = pal.chrome.tab_active.bg.unwrap_or(Color::Reset);
         let dim_fg = pal.base.dim.fg.unwrap_or(Color::Reset);
-        let unfocused_bg = pal.interactive.cursor_unfocused.bg.unwrap_or(Color::Reset);
-        let unfocused_fg = pal.base.dim.fg.unwrap_or(Color::Reset);
+        let badge_focused_bg = pal.chrome.tab_focused_badge.bg.unwrap_or(Color::Reset);
+        let badge_fg = pal.chrome.tab_focused_badge.fg.unwrap_or(Color::Reset);
+        let separator_fg = pal.base.text.bg.unwrap_or(Color::Reset);
 
+        // Read gradient from palette
         let mut inactive = [TabStyle::default(); 10];
-        for s in &mut inactive {
-            s.bg = Color::Reset;
-            s.fg = dim_fg;
+        for (i, s) in inactive.iter_mut().enumerate() {
+            let (fg, bg) = pal.chrome.tab_inactive_gradient[i];
+            s.fg = fg;
+            s.bg = bg;
         }
         Self {
             active_focused: TabStyle {
@@ -69,6 +80,9 @@ impl TabBarPalette {
             },
             inactive,
             dim_fg,
+            badge_focused_bg,
+            badge_fg,
+            separator_fg,
         }
     }
 }

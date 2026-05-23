@@ -28,7 +28,7 @@ mod tests;
 
 use std::sync::OnceLock;
 
-pub use defs::{BoxGlyphs, GlyphSet, GlyphTier, ProgressGlyphs, TreeGlyphs, UiGlyphs};
+pub use defs::{BoxGlyphs, ChromeGlyphs, GlyphSet, GlyphTier, ProgressGlyphs, TreeGlyphs, UiGlyphs};
 
 static GLYPHS: OnceLock<std::sync::RwLock<GlyphSet>> = OnceLock::new();
 

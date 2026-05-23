@@ -105,3 +105,27 @@ fn m_digit_switches_tab() {
     panel.handle(&key);
     assert_eq!(panel.active_index(), 1);
 }
+
+#[test]
+fn row_0_non_tab_cells_are_transparent() {
+    let mut panel = TabPanel::new(TabBarMode::Single);
+    panel.insert_tab("Hi", Box::new(Dummy::new()));
+    panel.set_bounds(Rect::new(0, 0, 40, 10));
+    panel.draw();
+
+    let buf = panel.buffer();
+    // Check a position well past the tab content (should be transparent)
+    let cell = buf.cell(30, 0);
+    assert_eq!(
+        cell.style.fg,
+        Color::Transparent,
+        "non-tab cell at x=30 should have transparent fg, got {:?} ch={:?}",
+        cell.style.fg,
+        cell.ch
+    );
+    assert_eq!(
+        cell.style.bg,
+        Color::Transparent,
+        "non-tab cell at x=30 should have transparent bg"
+    );
+}

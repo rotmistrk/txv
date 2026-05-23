@@ -12,39 +12,49 @@ impl TabBar {
         self.state.mark_dirty();
     }
 
+    /// Close the dropdown.
+    pub fn close_dropdown(&mut self) {
+        if self.dropdown_cursor.is_some() {
+            self.dropdown_cursor = None;
+            self.dropdown_filter.clear();
+            self.state.mark_dirty();
+        }
+    }
+
     /// Whether dropdown is open.
     pub fn dropdown_open(&self) -> bool {
         self.dropdown_cursor.is_some()
     }
 
     /// Filtered tab list for dropdown display.
-    pub(crate) fn dropdown_entries(&self) -> Vec<(usize, String)> {
+    /// Returns (tab_index, label, numbered).
+    pub(crate) fn dropdown_entries(&self) -> Vec<(usize, String, bool)> {
         let order = self.display_order_for_dropdown();
         let query = self.dropdown_filter.to_lowercase();
         order
             .into_iter()
-            .filter(|(_, label)| query.is_empty() || fuzzy_match(label, &query))
+            .filter(|(_, label, _)| query.is_empty() || fuzzy_match(label, &query))
             .collect()
     }
 
     /// Display order for dropdown with numbering per mode.
-    fn display_order_for_dropdown(&self) -> Vec<(usize, String)> {
+    fn display_order_for_dropdown(&self) -> Vec<(usize, String, bool)> {
         match self.mode {
             TabBarMode::Single | TabBarMode::Static => (0..self.titles.len())
                 .map(|i| {
                     let num = i + 1;
-                    (i, format!("{num}:{}", self.titles[i]))
+                    (i, format!("{num}:{}", self.titles[i]), true)
                 })
                 .collect(),
             TabBarMode::Lru => {
                 let mut entries = Vec::new();
                 // Active first, no number
-                entries.push((self.active, self.titles[self.active].clone()));
+                entries.push((self.active, self.titles[self.active].clone(), false));
                 // Rest by LRU order, numbered
                 let mut num = 1;
                 for &i in &self.lru_order {
                     if i != self.active && i < self.titles.len() {
-                        entries.push((i, format!("{num}:{}", self.titles[i])));
+                        entries.push((i, format!("{num}:{}", self.titles[i]), true));
                         num += 1;
                     }
                 }
@@ -100,7 +110,7 @@ impl TabBar {
             }
             KeyCode::Enter => {
                 let entries = self.dropdown_entries();
-                if let Some(&(tab_idx, _)) = entries.get(cursor) {
+                if let Some(&(tab_idx, _, _)) = entries.get(cursor) {
                     self.set_active(tab_idx);
                 }
                 self.dropdown_cursor = None;
@@ -144,7 +154,9 @@ impl TabBar {
     }
 
     /// Activate tab by M-digit number (1-based).
-    fn activate_by_number(&mut self, n: usize) {
+    /// Static mode: M-1→tab 0, M-2→tab 1, etc.
+    /// LRU mode: M-1→most recent other, M-2→next recent, etc.
+    pub fn activate_by_number(&mut self, n: usize) {
         match self.mode {
             TabBarMode::Single | TabBarMode::Static => {
                 let idx = n.saturating_sub(1);

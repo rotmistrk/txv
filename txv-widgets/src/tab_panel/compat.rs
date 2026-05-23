@@ -10,6 +10,7 @@ impl TabPanel {
         let pos = idx.min(self.children.len());
         self.bar.titles.insert(pos, title.into());
         self.bar.dirty.insert(pos, false);
+        self.bar.badges.insert(pos, None);
         self.bar.lru_order.push(pos);
         self.children.insert(pos, view);
         if let Some(sink) = self.state.sink() {

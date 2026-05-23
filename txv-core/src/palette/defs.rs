@@ -44,6 +44,8 @@ pub struct ChromePalette {
     pub tab_active: PaletteStyle,
     pub tab_active_arrow: PaletteStyle,
     pub tab_active_badge: PaletteStyle,
+    /// Inactive tab gradient: 10 positional styles (nearest to farthest from active).
+    pub tab_inactive_gradient: [(Color, Color); 10],
     pub status_bar: PaletteStyle,
     pub scrollbar_track: PaletteStyle,
     pub scrollbar_thumb: PaletteStyle,

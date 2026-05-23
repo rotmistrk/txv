@@ -132,3 +132,45 @@ fn activate_by_number_static() {
     bar.handle(&key);
     assert_eq!(bar.active_index(), 1);
 }
+
+#[test]
+fn draw_single_uses_glyph_set() {
+    let mut bar = TabBar::new(TabBarMode::Single);
+    bar.add_tab("Files");
+    bar.add_tab("Git");
+    bar.add_tab("Tools");
+    bar.set_active(0);
+    bar.set_bounds(Rect::new(0, 0, 40, 1));
+    bar.draw();
+
+    let mut row = String::new();
+    for x in 0..40u16 {
+        row.push(bar.buffer().cell(x, 0).ch);
+    }
+    let g = txv_core::glyphs::glyphs();
+    let left = g.chrome.tab_left.chars().next().unwrap();
+    let right = g.chrome.tab_right.chars().next().unwrap();
+    assert!(row.contains(left), "should contain tab_left glyph: {:?}", row);
+    assert!(row.contains(right), "should contain tab_right glyph: {:?}", row);
+}
+
+#[test]
+fn draw_multi_first_inactive_has_left_cap() {
+    let mut bar = TabBar::new(TabBarMode::Static);
+    bar.add_tab("Files");
+    bar.add_tab("Git");
+    bar.add_tab("Tools");
+    bar.set_active(1); // Git is active, Files is first but inactive
+    bar.set_bounds(Rect::new(0, 0, 60, 1));
+    bar.draw();
+
+    let g = txv_core::glyphs::glyphs();
+    let left_cap = g.chrome.tab_left.chars().next().unwrap();
+    // First cell should be the left cap for the first (inactive) tab
+    let first_ch = bar.buffer().cell(0, 0).ch;
+    assert_eq!(
+        first_ch, left_cap,
+        "first inactive tab must have left cap, got {:?}",
+        first_ch
+    );
+}

@@ -212,6 +212,11 @@ impl ChromeGlyphs {
             tab_left: "[",
             tab_right: "]",
             tab_separator: "|",
+            tab_separator_left: "|",
+            dropdown_arrow: "v",
+            badge_busy: "*",
+            badge_idle: "o",
+            badge_exited: "x",
         }
     }
 
@@ -220,14 +225,24 @@ impl ChromeGlyphs {
             tab_left: "│",
             tab_right: "│",
             tab_separator: "│",
+            tab_separator_left: "│",
+            dropdown_arrow: "▾",
+            badge_busy: "◉",
+            badge_idle: "●",
+            badge_exited: "✗",
         }
     }
 
     pub fn nerd() -> Self {
         Self {
-            tab_left: "\u{E0B6}",      // Powerline left half-circle (filled)
-            tab_right: "\u{E0B4}",     // Powerline right half-circle (filled)
-            tab_separator: "\u{E0B1}", // Powerline thin separator
+            tab_left: "\u{E0B6}",            // Powerline left half-circle
+            tab_right: "\u{E0B4}",           // Powerline right half-circle
+            tab_separator: " \u{E0B1}",      // space + Powerline thin right arrow
+            tab_separator_left: "\u{E0B3} ", // Powerline thin left arrow + space
+            dropdown_arrow: "▾",
+            badge_busy: "◉",
+            badge_idle: "●",
+            badge_exited: "✗",
         }
     }
 }

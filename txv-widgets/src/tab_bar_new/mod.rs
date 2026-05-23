@@ -7,6 +7,7 @@
 use txv_core::prelude::*;
 
 mod draw;
+mod draw_multi;
 mod dropdown;
 pub mod types;
 
@@ -18,6 +19,9 @@ pub struct TabBar {
     pub(crate) state: ViewState,
     pub(crate) titles: Vec<String>,
     pub(crate) dirty: Vec<bool>,
+    /// Per-tab badge string (e.g. activity indicator from glyphs).
+    /// None = no badge for that tab.
+    pub(crate) badges: Vec<Option<String>>,
     pub(crate) active: usize,
     pub(crate) lru_order: Vec<usize>,
     pub(crate) mode: TabBarMode,
@@ -40,6 +44,7 @@ impl TabBar {
             }),
             titles: Vec::new(),
             dirty: Vec::new(),
+            badges: Vec::new(),
             active: 0,
             lru_order: Vec::new(),
             mode,
@@ -70,9 +75,14 @@ impl TabBar {
         self.handle_keys = enabled;
     }
 
+    pub fn handle_keys(&self) -> bool {
+        self.handle_keys
+    }
+
     pub fn add_tab(&mut self, title: impl Into<String>) {
         self.titles.push(title.into());
         self.dirty.push(false);
+        self.badges.push(None);
         self.lru_order.push(self.titles.len() - 1);
         self.state.mark_dirty();
     }
@@ -83,6 +93,7 @@ impl TabBar {
         }
         self.titles.remove(idx);
         self.dirty.remove(idx);
+        self.badges.remove(idx);
         self.lru_order.retain(|&i| i != idx);
         for v in &mut self.lru_order {
             if *v > idx {
@@ -123,6 +134,21 @@ impl TabBar {
             *t = title.into();
             self.state.mark_dirty();
         }
+    }
+
+    /// Set a badge string for a tab (e.g. activity indicator).
+    /// Use `glyphs().chrome.badge_busy` etc. for standard glyphs.
+    /// Pass `None` to clear.
+    pub fn set_badge(&mut self, idx: usize, badge: Option<String>) {
+        if let Some(b) = self.badges.get_mut(idx) {
+            *b = badge;
+            self.state.mark_dirty();
+        }
+    }
+
+    /// Current dropdown filter text (for rendering search indicator).
+    pub fn dropdown_filter(&self) -> &str {
+        &self.dropdown_filter
     }
 
     fn touch_lru(&mut self, idx: usize) {
@@ -179,12 +205,23 @@ impl TabBar {
                 self.palette.active_unfocused
             }
         } else {
-            let inactive_pos = if self.mode == TabBarMode::Lru {
-                display_pos.saturating_sub(1)
-            } else {
-                display_pos
+            // Gradient based on distance from active tab
+            let active_pos = match self.mode {
+                TabBarMode::Lru => 0, // active is always first in LRU
+                _ => self.active,
             };
-            self.palette.inactive[inactive_pos.min(9)]
+            let distance = display_pos.abs_diff(active_pos);
+            let idx = distance.saturating_sub(1).min(9);
+            self.palette.inactive[idx]
+        }
+    }
+
+    /// Background color of the active tab (for dropdown border matching).
+    pub fn active_tab_bg(&self) -> Color {
+        if self.focused {
+            self.palette.active_focused.bg
+        } else {
+            self.palette.active_unfocused.bg
         }
     }
 }
