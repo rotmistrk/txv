@@ -32,7 +32,8 @@ fn horizontal_split_divides_width() {
 
     let b0 = sp.child(0).unwrap().bounds();
     let b1 = sp.child(1).unwrap().bounds();
-    assert_eq!(b0.w + b1.w, 100);
+    // 1 column reserved for divider
+    assert_eq!(b0.w + b1.w + 1, 100);
     assert_eq!(b0.h, 40);
     assert_eq!(b1.h, 40);
     assert_eq!(b0.x, 0);
@@ -48,7 +49,8 @@ fn vertical_split_divides_height() {
 
     let b0 = sp.child(0).unwrap().bounds();
     let b1 = sp.child(1).unwrap().bounds();
-    assert_eq!(b0.h + b1.h, 40);
+    // 1 row reserved for divider
+    assert_eq!(b0.h + b1.h + 1, 40);
     assert_eq!(b0.w, 80);
     assert_eq!(b0.y, 0);
     assert!(b1.y > 0);

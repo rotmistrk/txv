@@ -142,11 +142,12 @@ impl SplitPanel {
         if b.w == 0 || b.h == 0 || self.children.is_empty() {
             return;
         }
-        let total_size = match self.direction {
-            SplitDir::Horizontal => b.w,
-            SplitDir::Vertical => b.h,
-        };
         let count = self.children.len();
+        let dividers = count.saturating_sub(1) as u16;
+        let total_size = match self.direction {
+            SplitDir::Horizontal => b.w.saturating_sub(dividers),
+            SplitDir::Vertical => b.h.saturating_sub(dividers),
+        };
         let mut offset = 0u16;
         for (i, child) in self.children.iter_mut().enumerate() {
             let is_last = i == count - 1;
@@ -155,9 +156,10 @@ impl SplitPanel {
             } else {
                 (total_size as f32 * self.proportions[i]) as u16
             };
+            let abs_offset = offset + i as u16; // account for dividers before this child
             let rect = match self.direction {
-                SplitDir::Horizontal => Rect::new(b.x + offset, b.y, size, b.h),
-                SplitDir::Vertical => Rect::new(b.x, b.y + offset, b.w, size),
+                SplitDir::Horizontal => Rect::new(b.x + abs_offset, b.y, size, b.h),
+                SplitDir::Vertical => Rect::new(b.x, b.y + abs_offset, b.w, size),
             };
             child.set_bounds(rect);
             offset += size;
@@ -167,11 +169,32 @@ impl SplitPanel {
 }
 
 impl View for SplitPanel {
-    delegate_view_state!(state, override { set_bounds, draw, handle });
+    delegate_view_state!(state, override { set_bounds, set_sink, select, unselect, draw, handle });
 
     fn set_bounds(&mut self, r: Rect) {
         self.state.set_bounds(r);
         self.relayout();
+    }
+
+    fn set_sink(&mut self, sink: EventSink) {
+        self.state.set_sink(sink.clone());
+        for child in &mut self.children {
+            child.set_sink(sink.clone());
+        }
+    }
+
+    fn select(&mut self) {
+        self.state.set_focused(true);
+        if let Some(child) = self.children.get_mut(self.focused) {
+            child.select();
+        }
+    }
+
+    fn unselect(&mut self) {
+        self.state.set_focused(false);
+        if let Some(child) = self.children.get_mut(self.focused) {
+            child.unselect();
+        }
     }
 
     fn draw(&mut self) {
@@ -188,6 +211,24 @@ impl View for SplitPanel {
                 let dx = cb.x.saturating_sub(b.x);
                 let dy = cb.y.saturating_sub(b.y);
                 unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
+            }
+        }
+        // Draw dividers between children
+        if self.children.len() > 1 {
+            let dim = txv_core::palette::palette().base.dim.to_style();
+            let g = txv_core::glyphs::glyphs();
+            for i in 0..self.children.len() - 1 {
+                let cb = self.children[i].bounds();
+                match self.direction {
+                    SplitDir::Horizontal => {
+                        let x = (cb.x + cb.w).saturating_sub(b.x);
+                        self.state.buffer_mut().vline(x, 0, b.h, g.ui.separator_v, dim);
+                    }
+                    SplitDir::Vertical => {
+                        let y = (cb.y + cb.h).saturating_sub(b.y);
+                        self.state.buffer_mut().hline(0, y, b.w, g.ui.separator_h, dim);
+                    }
+                }
             }
         }
     }
