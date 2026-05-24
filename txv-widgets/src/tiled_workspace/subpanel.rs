@@ -25,7 +25,7 @@ impl TiledWorkspace {
         new_tp.insert_tab(title, view);
         sp.add_child(Box::new(new_tp), 0.5);
         sp.set_proportion(0, 0.5);
-        sp.set_focused(1); // focus the new subpanel
+        sp.set_focused(0); // keep focus on original pane
         self.recompute_layout();
         true
     }
