@@ -149,6 +149,7 @@ impl TabBar {
             let badge_fg = self.palette.badge_fg;
 
             if x + tab_right_len + badge_len + tab_right_len <= w {
+                // Full badge: left cap + badge text + right cap
                 let cap = Style {
                     fg: prev_bg,
                     bg: badge_bg,
@@ -169,13 +170,31 @@ impl TabBar {
                     ..Style::default()
                 };
                 self.state.buffer_mut().print(x, 0, tab_right, end);
-            } else {
-                let dim = Style {
-                    fg: self.palette.dim_fg,
-                    bg: fill_bg,
+            } else if x + tab_right_len + badge_len <= w {
+                // Tight: left cap + badge text (no trailing cap)
+                let cap = Style {
+                    fg: prev_bg,
+                    bg: badge_bg,
                     ..Style::default()
                 };
-                self.state.buffer_mut().print(x, 0, &badge, dim);
+                self.state.buffer_mut().print(x, 0, tab_right, cap);
+                x += tab_right_len;
+                let bs = Style {
+                    fg: badge_fg,
+                    bg: badge_bg,
+                    ..Style::default()
+                };
+                self.state.buffer_mut().print(x, 0, &badge, bs);
+            } else {
+                // Very tight: just badge text with proper background
+                let bs = Style {
+                    fg: badge_fg,
+                    bg: badge_bg,
+                    ..Style::default()
+                };
+                let avail = (w - x) as usize;
+                let truncated: String = badge.chars().take(avail).collect();
+                self.state.buffer_mut().print(x, 0, &truncated, bs);
             }
         }
     }
