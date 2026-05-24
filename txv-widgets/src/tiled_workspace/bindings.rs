@@ -27,10 +27,7 @@ impl TiledWorkspace {
             (km.tab_next, CM_TW_TAB_NEXT, None),
             (km.tab_prev, CM_TW_TAB_PREV, None),
             (km.tab_close, CM_TW_TAB_CLOSE, None),
-            (km.subpanel_focus, CM_TW_CYCLE_SUBPANEL, None),
             (km.subpanel_move_tab, CM_TW_MOVE_TAB_SUBPANEL, None),
-            (km.subpanel_grow, CM_TW_GROW_SUBPANEL, None),
-            (km.subpanel_shrink, CM_TW_SHRINK_SUBPANEL, None),
         ]
     }
 }

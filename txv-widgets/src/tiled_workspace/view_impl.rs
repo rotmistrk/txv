@@ -163,20 +163,8 @@ impl View for TiledWorkspace {
             }
             return HandleResult::Consumed;
         }
-        if km.matches(key, &km.subpanel_focus) {
-            self.with_split_panel(|sp| sp.cycle_focus());
-            return HandleResult::Consumed;
-        }
         if km.matches(key, &km.subpanel_move_tab) {
             self.move_tab_to_subpanel();
-            return HandleResult::Consumed;
-        }
-        if km.matches(key, &km.subpanel_grow) {
-            self.with_split_panel(|sp| sp.grow_focused());
-            return HandleResult::Consumed;
-        }
-        if km.matches(key, &km.subpanel_shrink) {
-            self.with_split_panel(|sp| sp.shrink_focused());
             return HandleResult::Consumed;
         }
 

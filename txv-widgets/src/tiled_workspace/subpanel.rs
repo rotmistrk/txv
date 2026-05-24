@@ -57,6 +57,28 @@ impl TiledWorkspace {
             .and_then(|tp| tp.close_active())
     }
 
+    /// Close the OTHER subpanel (keep focused). Like vim's :only.
+    pub fn collapse_other_subpanel(&mut self) -> Option<Box<dyn txv_core::prelude::View>> {
+        let idx = self.group.focused_index();
+        if idx >= self.configs.len() || !self.configs[idx].splittable {
+            return None;
+        }
+        let sp = self.split_panel_mut(idx)?;
+        if sp.child_count() < 2 {
+            return None;
+        }
+        let other = 1 - sp.focused_index();
+        let mut removed = sp.remove_child(other)?;
+        while sp.child_count() > 1 {
+            sp.remove_child(sp.child_count() - 1);
+        }
+        self.recompute_layout();
+        removed
+            .as_any_mut()
+            .and_then(|a| a.downcast_mut::<TabPanel>())
+            .and_then(|tp| tp.close_active())
+    }
+
     pub fn move_tab_to_subpanel(&mut self) {
         let idx = self.group.focused_index();
         if idx >= self.configs.len() || !self.configs[idx].splittable {

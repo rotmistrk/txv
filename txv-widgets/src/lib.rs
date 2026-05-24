@@ -16,6 +16,7 @@ pub mod key_encode;
 pub mod list_view;
 pub mod menu;
 pub mod overlay;
+pub mod prefix_item;
 pub mod progress_bar;
 pub mod pty_session;
 pub mod pty_terminal;

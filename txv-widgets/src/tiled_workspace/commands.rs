@@ -78,6 +78,16 @@ pub const CM_TW_MOVE_TAB_SUBPANEL: CommandId = CM_TW_BASE + 17;
 pub const CM_TW_GROW_SUBPANEL: CommandId = CM_TW_BASE + 18;
 /// Shrink focused subpanel. No payload.
 pub const CM_TW_SHRINK_SUBPANEL: CommandId = CM_TW_BASE + 19;
+/// Split focused panel horizontally (top/bottom). No payload.
+pub const CM_TW_SPLIT_H: CommandId = CM_TW_BASE + 27;
+/// Split focused panel vertically (left/right). No payload.
+pub const CM_TW_SPLIT_V: CommandId = CM_TW_BASE + 28;
+/// Close focused subpanel. No payload.
+pub const CM_TW_CLOSE_SUBPANEL: CommandId = CM_TW_BASE + 29;
+/// Close other subpanel (keep focused). No payload.
+pub const CM_TW_CLOSE_OTHER_SUBPANEL: CommandId = CM_TW_BASE + 30;
+/// Equalize subpanel proportions. No payload.
+pub const CM_TW_EQUALIZE_SUBPANEL: CommandId = CM_TW_BASE + 31;
 
 /// End of workspace command range.
 pub const CM_TW_MAX: CommandId = CM_TW_BASE + 49;

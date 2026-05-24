@@ -131,6 +131,19 @@ impl SplitPanel {
         self.adjust_size(-0.05);
     }
 
+    /// Equalize all children's proportions.
+    pub fn equalize(&mut self) {
+        let n = self.group.child_count();
+        if n == 0 {
+            return;
+        }
+        let equal = 1.0 / n as f32;
+        for p in &mut self.proportions {
+            *p = equal;
+        }
+        self.relayout();
+    }
+
     fn adjust_size(&mut self, delta: f32) {
         if self.group.child_count() < 2 {
             return;
