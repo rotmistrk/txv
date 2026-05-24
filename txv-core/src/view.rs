@@ -165,6 +165,10 @@ impl ViewState {
         self.options
     }
 
+    pub fn set_preprocess(&mut self, enabled: bool) {
+        self.options.preprocess = enabled;
+    }
+
     pub fn title(&self) -> &str {
         &self.title
     }

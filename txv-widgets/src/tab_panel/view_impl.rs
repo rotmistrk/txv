@@ -1,83 +1,69 @@
-//! View trait implementation for TabPanel.
+//! View trait implementation for TabPanel using GroupState.
 
 use txv_core::prelude::*;
 
 use super::TabPanel;
 
 impl View for TabPanel {
-    delegate_view_state!(state, override { set_bounds, set_sink, draw, handle, select, unselect, needs_redraw, mark_redrawn, as_any_mut });
-
-    fn needs_redraw(&self) -> bool {
-        self.state.is_dirty() || self.children.iter().any(|c| c.needs_redraw())
-    }
-
-    fn mark_redrawn(&mut self) {
-        self.state.mark_redrawn();
-        for child in &mut self.children {
-            child.mark_redrawn();
-        }
-    }
+    delegate_group_state!(group, override { set_bounds, draw, handle, select, unselect, as_any_mut });
 
     fn set_bounds(&mut self, r: Rect) {
-        self.state.set_bounds(r);
+        self.group.set_bounds(r);
         self.relayout();
     }
 
-    fn set_sink(&mut self, sink: EventSink) {
-        self.state.set_sink(sink.clone());
-        self.bar.set_sink(sink.clone());
-        for child in &mut self.children {
-            child.set_sink(sink.clone());
-        }
-    }
-
     fn select(&mut self) {
-        self.state.set_focused(true);
-        self.bar.set_focused(true);
-        self.state.mark_dirty();
-        if let Some(child) = self.children.get_mut(self.bar.active_index()) {
+        self.group.set_focused(true);
+        self.group.mark_dirty();
+        self.bar_mut().set_focused(true);
+        let gi = self.bar().active_index() + 1;
+        if let Some(child) = self.group.child_mut(gi) {
             child.select();
         }
     }
 
     fn unselect(&mut self) {
-        self.state.set_focused(false);
-        self.bar.set_focused(false);
-        self.bar.close_dropdown();
-        self.state.mark_dirty();
-        if let Some(child) = self.children.get_mut(self.bar.active_index()) {
+        self.group.set_focused(false);
+        self.group.mark_dirty();
+        self.bar_mut().set_focused(false);
+        self.bar_mut().close_dropdown();
+        let gi = self.bar().active_index() + 1;
+        if let Some(child) = self.group.child_mut(gi) {
             child.unselect();
         }
     }
 
     fn draw(&mut self) {
-        let b = self.state.bounds();
+        let b = self.group.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
-        // Row 0: transparent so parent's chrome background shows through
+        // Row 0: transparent so parent's chrome shows through
         let transparent = Style {
             fg: Color::Transparent,
             bg: Color::Transparent,
             ..Style::default()
         };
         for col in 0..b.w {
-            self.state.buffer_mut().put(col, 0, ' ', transparent);
+            self.group.buffer_mut().put(col, 0, ' ', transparent);
         }
         // Content area: opaque fill
         for row in 1..b.h {
             for col in 0..b.w {
-                self.state.buffer_mut().put(col, row, ' ', Style::default());
+                self.group.buffer_mut().put(col, row, ' ', Style::default());
             }
         }
 
-        self.bar.draw();
-        let bar_buf = self.bar.buffer();
-        let buf_ptr = self.state.buffer_mut() as *mut Buffer;
-        unsafe { (*buf_ptr).blit(bar_buf, 0, 0) };
+        // Draw bar (child 0)
+        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
+        if let Some(bar) = self.group.child_mut(0) {
+            bar.draw();
+            unsafe { (*buf_ptr).blit(bar.buffer(), 0, 0) };
+        }
 
-        let active = self.bar.active_index();
-        if let Some(child) = self.children.get_mut(active) {
+        // Draw active content child
+        let active_gi = self.bar().active_index() + 1;
+        if let Some(child) = self.group.child_mut(active_gi) {
             child.draw();
             let cb = child.bounds();
             if cb.w > 0 && cb.h > 0 {
@@ -87,31 +73,29 @@ impl View for TabPanel {
             }
         }
 
-        if self.bar.dropdown_open() {
+        if self.bar().dropdown_open() {
             self.draw_dropdown_overlay();
         }
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
+        // Tick: broadcast to ALL children (background tabs need updates)
         if matches!(event, Event::Tick) {
-            for child in &mut self.children {
-                child.handle(event);
+            for i in 0..self.group.child_count() {
+                if let Some(child) = self.group.child_mut(i) {
+                    child.handle(event);
+                }
             }
             return HandleResult::Ignored;
         }
-        let prev_active = self.bar.active_index();
-        let result = self.bar.handle(event);
-        if result == HandleResult::Consumed {
-            if self.bar.active_index() != prev_active {
-                self.relayout();
-            }
-            return HandleResult::Consumed;
+        // Three-phase dispatch: bar (preprocess) → active tab (focused) → postprocess
+        let prev_active = self.bar().active_index();
+        let result = self.group.dispatch(event);
+        // If bar changed active tab, sync layout
+        if self.bar().active_index() != prev_active {
+            self.sync_focus_from_bar(prev_active);
         }
-        let active = self.bar.active_index();
-        if let Some(child) = self.children.get_mut(active) {
-            return child.handle(event);
-        }
-        HandleResult::Ignored
+        result
     }
 
     fn as_any(&self) -> Option<&dyn std::any::Any> {
@@ -120,15 +104,5 @@ impl View for TabPanel {
 
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
         Some(self)
-    }
-
-    fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
-        let child = self.children.get(self.bar.active_index())?;
-        let mut req = child.cursor()?;
-        let cb = child.bounds();
-        let b = self.state.bounds();
-        req.x = req.x.saturating_add(cb.x).saturating_sub(b.x);
-        req.y = req.y.saturating_add(cb.y).saturating_sub(b.y);
-        Some(req)
     }
 }

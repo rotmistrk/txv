@@ -5,6 +5,58 @@ use super::{TiledWorkspace, WorkspaceState};
 use crate::tab_panel::TabPanel;
 
 impl TiledWorkspace {
+    /// Split the focused panel in place: places `view` in a new second
+    /// TabPanel subpanel. The original TabPanel stays in place.
+    /// Returns true if split was created.
+    pub fn split_in_place(&mut self, view: Box<dyn txv_core::prelude::View>, title: &str) -> bool {
+        let idx = self.group.focused_index();
+        if idx >= self.configs.len() || !self.configs[idx].splittable {
+            return false;
+        }
+        let mode = self.configs[idx].tab_mode;
+        let Some(sp) = self.split_panel_mut(idx) else {
+            return false;
+        };
+        // Only split if currently unsplit (1 child = single TabPanel)
+        if sp.child_count() != 1 {
+            return false;
+        }
+        let mut new_tp = TabPanel::new(mode);
+        new_tp.insert_tab(title, view);
+        sp.add_child(Box::new(new_tp), 0.5);
+        sp.set_proportion(0, 0.5);
+        sp.set_focused(1); // focus the new subpanel
+        self.recompute_layout();
+        true
+    }
+
+    /// Collapse the focused panel's subpanel split: removes the focused
+    /// subpanel's TabPanel and promotes the remaining one as the sole child.
+    /// Returns the removed TabPanel's active view (if any).
+    pub fn collapse_subpanel(&mut self) -> Option<Box<dyn txv_core::prelude::View>> {
+        let idx = self.group.focused_index();
+        if idx >= self.configs.len() || !self.configs[idx].splittable {
+            return None;
+        }
+        let sp = self.split_panel_mut(idx)?;
+        if sp.child_count() < 2 {
+            return None;
+        }
+        let focused = sp.focused_index();
+        // Remove the focused subpanel
+        let mut removed = sp.remove_child(focused)?;
+        // Remove any postprocess children (ScrollSyncView etc.)
+        while sp.child_count() > 1 {
+            sp.remove_child(sp.child_count() - 1);
+        }
+        self.recompute_layout();
+        // Extract the active view from the removed TabPanel
+        removed
+            .as_any_mut()
+            .and_then(|a| a.downcast_mut::<TabPanel>())
+            .and_then(|tp| tp.close_active())
+    }
+
     pub fn move_tab_to_subpanel(&mut self) {
         let idx = self.group.focused_index();
         if idx >= self.configs.len() || !self.configs[idx].splittable {

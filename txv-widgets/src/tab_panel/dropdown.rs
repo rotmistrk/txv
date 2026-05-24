@@ -12,15 +12,16 @@ use super::TabPanel;
 impl TabPanel {
     /// Draw the dropdown overlay into the panel's buffer (below row 0).
     pub(crate) fn draw_dropdown_overlay(&mut self) {
-        let entries = self.bar.dropdown_entries();
+        let entries = self.bar().dropdown_entries();
         if entries.is_empty() {
             return;
         }
-        let cursor = self.bar.dropdown_cursor.unwrap_or(0);
+        let cursor = self.bar().dropdown_cursor.unwrap_or(0);
+        let active_bg = self.bar().active_tab_bg();
+        let filter = self.bar().dropdown_filter().to_string();
         let g = glyphs();
 
         // Border color = active tab background for visual unity
-        let active_bg = self.bar.active_tab_bg();
         let border_style = Style {
             fg: active_bg,
             bg: Color::Reset,
@@ -38,7 +39,7 @@ impl TabPanel {
             ..Style::default()
         };
 
-        let buf = self.state.buffer_mut();
+        let buf = self.group.buffer_mut();
         let buf_w = buf.width();
         let buf_h = buf.height();
         let max_rows = (buf_h.saturating_sub(2)) as usize;
@@ -59,7 +60,6 @@ impl TabPanel {
         let x_off = 1u16;
 
         // Search filter line (shown when filter is non-empty)
-        let filter = self.bar.dropdown_filter();
         let has_filter = !filter.is_empty();
         let content_start_y = if has_filter {
             2u16

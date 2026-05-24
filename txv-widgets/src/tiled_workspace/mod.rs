@@ -235,19 +235,33 @@ impl TiledWorkspace {
         }
     }
 
-    /// Run a closure on the focused panel's SplitPanel (if it is one).
-    pub(crate) fn with_split_panel(&mut self, f: impl FnOnce(&mut crate::split_panel::SplitPanel)) {
-        let idx = self.group.focused_index();
-        if idx < self.configs.len() && self.configs[idx].splittable {
-            if let Some(child) = self.group.child_mut(idx) {
-                if let Some(sp) = child
-                    .as_any_mut()
-                    .and_then(|a| a.downcast_mut::<crate::split_panel::SplitPanel>())
-                {
-                    f(sp);
-                }
-            }
+    /// Run a closure on the focused panel's SplitPanel (if it is one and splittable).
+    pub fn with_split_panel(&mut self, f: impl FnOnce(&mut crate::split_panel::SplitPanel)) {
+        if let Some(sp) = self.split_panel_mut(self.group.focused_index()) {
+            f(sp);
         }
+    }
+
+    /// Get mutable access to a panel's underlying SplitPanel by panel ID.
+    pub fn split_panel_mut(&mut self, id: PanelId) -> Option<&mut crate::split_panel::SplitPanel> {
+        if id >= self.configs.len() || !self.configs[id].splittable {
+            return None;
+        }
+        self.group
+            .child_mut(id)?
+            .as_any_mut()
+            .and_then(|a| a.downcast_mut::<crate::split_panel::SplitPanel>())
+    }
+
+    /// Get immutable access to a panel's underlying SplitPanel by panel ID.
+    pub fn split_panel(&self, id: PanelId) -> Option<&crate::split_panel::SplitPanel> {
+        if id >= self.configs.len() || !self.configs[id].splittable {
+            return None;
+        }
+        self.group
+            .child(id)?
+            .as_any()
+            .and_then(|a| a.downcast_ref::<crate::split_panel::SplitPanel>())
     }
 
     // move_tab_to_subpanel, save_state, restore_state are in subpanel.rs

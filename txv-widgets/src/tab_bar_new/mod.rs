@@ -227,7 +227,7 @@ impl TabBar {
 }
 
 impl View for TabBar {
-    delegate_view_state!(state, override { draw, handle });
+    delegate_view_state!(state, override { draw, handle, as_any_mut });
 
     fn draw(&mut self) {
         self.draw_bar();
@@ -235,6 +235,14 @@ impl View for TabBar {
 
     fn handle(&mut self, event: &Event) -> HandleResult {
         self.handle_event(event)
+    }
+
+    fn as_any(&self) -> Option<&dyn std::any::Any> {
+        Some(self)
+    }
+
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(self)
     }
 }
 
