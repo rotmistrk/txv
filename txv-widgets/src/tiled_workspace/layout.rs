@@ -53,6 +53,26 @@ impl TiledWorkspace {
         for (id, rect) in rects {
             self.group.set_child_bounds(id, rect);
         }
+
+        // Sync split direction for splittable panels based on layout
+        for i in 0..self.configs.len() {
+            if !self.configs[i].splittable {
+                continue;
+            }
+            let dir = if self.is_wide {
+                super::types::SplitDir::Vertical
+            } else {
+                super::types::SplitDir::Horizontal
+            };
+            if let Some(child) = self.group.child_mut(i) {
+                if let Some(sp) = child
+                    .as_any_mut()
+                    .and_then(|a| a.downcast_mut::<crate::split_panel::SplitPanel>())
+                {
+                    sp.set_direction(dir);
+                }
+            }
+        }
     }
 
     /// Compute panel rects from a split tree, skipping hidden panels.
@@ -147,33 +167,26 @@ impl TiledWorkspace {
             };
 
             if *direction == dir && children.len() > 1 {
-                // Adjust boundary between pos and pos+1 (or pos-1)
-                let neighbor = if delta > 0 && pos + 1 < children.len() {
-                    pos + 1
-                } else if delta < 0 && pos > 0 {
-                    pos - 1
+                // Always use the same boundary for a given panel:
+                // - first/middle panels: boundary after (pos)
+                // - last panel: boundary before (pos - 1)
+                let boundary = if pos + 1 < children.len() {
+                    pos
                 } else {
-                    // Try recursing into the child
-                    return Self::adjust_proportion(&mut children[pos].1, target, dir, delta);
+                    pos - 1
                 };
                 let step = 0.02 * delta.unsigned_abs() as f32;
-                let (lo, hi) = if pos < neighbor {
-                    (pos, neighbor)
+                // Pure directional: delta>0 moves boundary right/down,
+                // delta<0 moves boundary left/up. Same border, opposite directions.
+                if delta > 0 {
+                    // Boundary moves right/down: panel before grows, panel after shrinks
+                    children[boundary].0 = (children[boundary].0 + step).min(0.9);
+                    children[boundary + 1].0 = (children[boundary + 1].0 - step).max(0.05);
                 } else {
-                    (neighbor, pos)
-                };
-                let grow_idx = if delta > 0 {
-                    lo
-                } else {
-                    hi
-                };
-                let shrink_idx = if delta > 0 {
-                    hi
-                } else {
-                    lo
-                };
-                children[grow_idx].0 = (children[grow_idx].0 + step).min(0.9);
-                children[shrink_idx].0 = (children[shrink_idx].0 - step).max(0.05);
+                    // Boundary moves left/up: panel before shrinks, panel after grows
+                    children[boundary].0 = (children[boundary].0 - step).max(0.05);
+                    children[boundary + 1].0 = (children[boundary + 1].0 + step).min(0.9);
+                }
                 return true;
             }
             // Recurse into the child containing target

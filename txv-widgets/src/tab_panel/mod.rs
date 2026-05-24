@@ -91,6 +91,25 @@ impl TabPanel {
         self.relayout();
     }
 
+    /// Activate tab by its label position (₁=1, ₂=2, etc).
+    /// Maps through display_order so M-n always matches the visible label.
+    pub fn activate_by_label(&mut self, label_pos: usize) {
+        let prev = self.bar.active_index();
+        self.bar.activate_by_number(label_pos);
+        let new = self.bar.active_index();
+        if prev != new {
+            if let Some(child) = self.children.get_mut(prev) {
+                child.unselect();
+            }
+            if self.state.is_focused() {
+                if let Some(child) = self.children.get_mut(new) {
+                    child.select();
+                }
+            }
+            self.relayout();
+        }
+    }
+
     /// Activate tab by M-digit number (mode-aware: Static=1-indexed, LRU=by recency).
     pub fn activate_by_number(&mut self, n: usize) {
         let prev = self.bar.active_index();

@@ -15,6 +15,8 @@ pub struct SplitPanel {
     proportions: Vec<f32>,
     direction: SplitDir,
     focused: usize,
+    /// If true, row 0 is reserved for chrome (divider starts at row 1).
+    chrome_row: bool,
 }
 
 impl SplitPanel {
@@ -28,6 +30,7 @@ impl SplitPanel {
             proportions: Vec::new(),
             direction,
             focused: 0,
+            chrome_row: false,
         }
     }
 
@@ -36,6 +39,15 @@ impl SplitPanel {
         self.children.push(view);
         self.proportions.push(proportion);
         self.relayout();
+    }
+
+    /// Set the proportion of a child by index.
+    pub fn set_proportion(&mut self, idx: usize, proportion: f32) {
+        if idx < self.proportions.len() {
+            self.proportions[idx] = proportion;
+            self.normalize_proportions();
+            self.relayout();
+        }
     }
 
     /// Remove a child by index. Returns the removed view.
@@ -73,12 +85,29 @@ impl SplitPanel {
         self.children.get_mut(idx)
     }
 
+    /// Downcast the focused child to a specific type (immutable).
+    pub fn focused_child_as<T: 'static>(&self) -> Option<&T> {
+        let child = self.children.get(self.focused)?;
+        child.as_any().and_then(|a| a.downcast_ref::<T>())
+    }
+
+    /// Downcast the focused child to a specific type (mutable).
+    pub fn focused_child_as_mut<T: 'static>(&mut self) -> Option<&mut T> {
+        let child = self.children.get_mut(self.focused)?;
+        child.as_any_mut().and_then(|a| a.downcast_mut::<T>())
+    }
+
     /// Set split direction (relayouts immediately).
     pub fn set_direction(&mut self, dir: SplitDir) {
         if self.direction != dir {
             self.direction = dir;
             self.relayout();
         }
+    }
+
+    /// Set whether row 0 is reserved for chrome (divider starts at row 1).
+    pub fn set_chrome_row(&mut self, enabled: bool) {
+        self.chrome_row = enabled;
     }
 
     /// Current direction.
@@ -89,15 +118,19 @@ impl SplitPanel {
     /// Cycle focus to the next child.
     pub fn cycle_focus(&mut self) {
         if self.children.len() > 1 {
+            self.children[self.focused].unselect();
             self.focused = (self.focused + 1) % self.children.len();
+            self.children[self.focused].select();
             self.state.mark_dirty();
         }
     }
 
     /// Focus a specific child.
     pub fn set_focused(&mut self, idx: usize) {
-        if idx < self.children.len() {
+        if idx < self.children.len() && idx != self.focused {
+            self.children[self.focused].unselect();
             self.focused = idx;
+            self.children[self.focused].select();
             self.state.mark_dirty();
         }
     }
@@ -157,6 +190,8 @@ impl SplitPanel {
                 (total_size as f32 * self.proportions[i]).round() as u16
             };
             let abs_offset = offset + i as u16; // account for dividers before this child
+                                                // Non-first children overlap the divider in vertical splits
+                                                // (tab bar sits on the horizontal separator line)
             let rect = match self.direction {
                 SplitDir::Horizontal => Rect::new(b.x + abs_offset, b.y, size, b.h),
                 SplitDir::Vertical => Rect::new(b.x, b.y + abs_offset, b.w, size),
@@ -168,84 +203,7 @@ impl SplitPanel {
     }
 }
 
-impl View for SplitPanel {
-    delegate_view_state!(state, override { set_bounds, set_sink, select, unselect, draw, handle });
-
-    fn set_bounds(&mut self, r: Rect) {
-        self.state.set_bounds(r);
-        self.relayout();
-    }
-
-    fn set_sink(&mut self, sink: EventSink) {
-        self.state.set_sink(sink.clone());
-        for child in &mut self.children {
-            child.set_sink(sink.clone());
-        }
-    }
-
-    fn select(&mut self) {
-        self.state.set_focused(true);
-        if let Some(child) = self.children.get_mut(self.focused) {
-            child.select();
-        }
-    }
-
-    fn unselect(&mut self) {
-        self.state.set_focused(false);
-        if let Some(child) = self.children.get_mut(self.focused) {
-            child.unselect();
-        }
-    }
-
-    fn draw(&mut self) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
-            return;
-        }
-        self.state.buffer_mut().fill(' ', Style::default());
-        let buf_ptr = self.state.buffer_mut() as *mut Buffer;
-        for child in &mut self.children {
-            child.draw();
-            let cb = child.bounds();
-            if cb.w > 0 && cb.h > 0 {
-                let dx = cb.x.saturating_sub(b.x);
-                let dy = cb.y.saturating_sub(b.y);
-                unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
-            }
-        }
-        // Draw dividers between children
-        if self.children.len() > 1 {
-            let dim = txv_core::palette::palette().base.dim.to_style();
-            let g = txv_core::glyphs::glyphs();
-            for i in 0..self.children.len() - 1 {
-                let cb = self.children[i].bounds();
-                match self.direction {
-                    SplitDir::Horizontal => {
-                        let x = (cb.x + cb.w).saturating_sub(b.x);
-                        self.state.buffer_mut().vline(x, 0, b.h, g.ui.separator_v, dim);
-                    }
-                    SplitDir::Vertical => {
-                        let y = (cb.y + cb.h).saturating_sub(b.y);
-                        self.state.buffer_mut().hline(0, y, b.w, g.ui.separator_h, dim);
-                    }
-                }
-            }
-        }
-    }
-
-    fn handle(&mut self, event: &Event) -> HandleResult {
-        if matches!(event, Event::Tick) {
-            for child in &mut self.children {
-                child.handle(event);
-            }
-            return HandleResult::Ignored;
-        }
-        if let Some(child) = self.children.get_mut(self.focused) {
-            return child.handle(event);
-        }
-        HandleResult::Ignored
-    }
-}
+mod view_impl;
 
 #[cfg(test)]
 mod tests;

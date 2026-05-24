@@ -101,8 +101,8 @@ impl Default for ChromePalette {
                 attrs: Some(attrs_bold()),
             },
             tab_active: PaletteStyle {
-                fg: Some(ansi(15)),
-                bg: Some(Color::Rgb(0x00, 0x5f, 0x5f)),
+                fg: Some(ansi(0)),
+                bg: Some(Color::Rgb(0xc0, 0xc0, 0xc0)),
                 attrs: Some(attrs_bold()),
             },
             tab_active_arrow: ps_fgbg(7, 8),

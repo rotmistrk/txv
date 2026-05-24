@@ -101,6 +101,13 @@ impl PtyTerminal {
         })
     }
 
+    /// Write raw bytes to the PTY (for programmatic input).
+    pub fn write_input(&mut self, data: &[u8]) {
+        if let Some(session) = self.session.as_mut() {
+            session.write(data);
+        }
+    }
+
     fn poll_and_feed(&mut self) {
         if self.exited {
             return;

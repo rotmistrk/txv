@@ -147,6 +147,12 @@ fn focus_direction_spatial() {
 
     ws.focus_direction(1, 0); // right again
     assert_eq!(ws.group.focused_index(), 2, "should focus tools");
+
+    ws.focus_direction(1, 0); // right wraps to tree
+    assert_eq!(ws.group.focused_index(), 0, "should wrap to tree");
+
+    ws.focus_direction(-1, 0); // left wraps to tools
+    assert_eq!(ws.group.focused_index(), 2, "should wrap to tools");
 }
 
 #[test]
@@ -190,22 +196,20 @@ fn command_events_control_workspace() {
     ws.insert_tab(1, "Editor", Box::new(Dummy::new()));
     ws.set_bounds(Rect::new(0, 0, 200, 50));
 
-    // Focus via command
-    let data: Option<Box<dyn std::any::Any + Send>> = Some(Box::new(1usize));
-    ws.handle_command(crate::tiled_workspace::commands::CM_FOCUS_PANEL, &data);
-    assert_eq!(ws.group.focused_index(), 1);
+    // Focus via command (focus right)
+    ws.handle_command(crate::tiled_workspace::commands::CM_TW_FOCUS_RIGHT, &None);
+    assert_ne!(ws.group.focused_index(), 0);
 
-    // Toggle panel via command
-    let data: Option<Box<dyn std::any::Any + Send>> = Some(Box::new(0usize));
-    ws.handle_command(crate::tiled_workspace::commands::CM_TOGGLE_PANEL, &data);
+    // Toggle tree panel via command
+    ws.handle_command(crate::tiled_workspace::commands::CM_TW_TOGGLE_TREE, &None);
     assert!(ws.hidden[0]);
 
     // Zoom via command
-    ws.handle_command(crate::tiled_workspace::commands::CM_ZOOM, &None);
+    ws.handle_command(crate::tiled_workspace::commands::CM_TW_ZOOM, &None);
     assert!(ws.zoomed.is_some());
 
     // Layout cycle via command
-    ws.handle_command(crate::tiled_workspace::commands::CM_LAYOUT_CYCLE, &None);
+    ws.handle_command(crate::tiled_workspace::commands::CM_TW_LAYOUT_CYCLE, &None);
     assert_eq!(ws.layout_mode, crate::tiled_workspace::types::LayoutMode::Wide);
 }
 

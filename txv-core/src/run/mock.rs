@@ -46,6 +46,7 @@ pub struct MockBackend {
     height: u16,
     events: Vec<Event>,
     last_buffer: Option<Buffer>,
+    last_cursor: Option<crate::cursor::CursorRequest>,
 }
 
 impl MockBackend {
@@ -55,6 +56,7 @@ impl MockBackend {
             height,
             events: Vec::new(),
             last_buffer: None,
+            last_cursor: None,
         }
     }
 
@@ -143,6 +145,11 @@ impl MockBackend {
         }
         row.trim_end().to_string()
     }
+
+    /// Last cursor request set by the program.
+    pub fn cursor(&self) -> Option<crate::cursor::CursorRequest> {
+        self.last_cursor
+    }
 }
 
 impl Backend for MockBackend {
@@ -165,6 +172,9 @@ impl Backend for MockBackend {
             }
         }
         self.last_buffer = Some(copy);
+    }
+    fn set_cursor(&mut self, cursor: Option<crate::cursor::CursorRequest>) {
+        self.last_cursor = cursor;
     }
     fn enter(&mut self) {}
     fn leave(&mut self) {}

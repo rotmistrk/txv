@@ -109,6 +109,10 @@ pub trait View: Send {
     fn can_close(&self) -> CloseResult {
         CloseResult::Ok
     }
+    /// Downcast support (immutable). Override to return `self`.
+    fn as_any(&self) -> Option<&dyn Any> {
+        None
+    }
     /// Downcast support. Override to return `self`.
     fn as_any_mut(&mut self) -> Option<&mut dyn Any> {
         None

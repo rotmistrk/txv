@@ -1,62 +1,92 @@
 //! Command IDs for TiledWorkspace.
 //!
-//! External integrations (scripting, MCP, configuration) interact with
-//! TiledWorkspace by emitting these command events into the EventQueue.
-//! Direct method calls are internal implementation — use commands for
-//! decoupled interaction.
-//!
-//! Command payloads use `Box<dyn Any>`. Payload types:
-//! - `PanelId` (usize) — for panel-targeted commands
-//! - `(PanelId, usize)` — for (panel, tab_index) commands
-//! - `(SplitDir, i16)` — for resize commands
-//! - None — for commands that act on the focused panel
+//! All commands use the `CM_TW_` prefix. Commands that act on the focused
+//! panel or have a fixed semantic target require no payload.
+//! A few programmatic commands still accept a payload (marked below).
 
 use txv_core::commands::CM_CORE_MAX;
 use txv_core::event::CommandId;
 
 /// Base for workspace commands.
-pub const CM_WORKSPACE_BASE: CommandId = CM_CORE_MAX + 1;
+pub const CM_TW_BASE: CommandId = CM_CORE_MAX + 1;
 
-/// Toggle panel visibility. Payload: `PanelId`.
-pub const CM_TOGGLE_PANEL: CommandId = CM_WORKSPACE_BASE;
-/// Show a hidden panel. Payload: `PanelId`.
-pub const CM_SHOW_PANEL: CommandId = CM_WORKSPACE_BASE + 1;
-/// Hide a panel. Payload: `PanelId`.
-pub const CM_HIDE_PANEL: CommandId = CM_WORKSPACE_BASE + 2;
+// --- Panel visibility ---
+
+/// Toggle tree (left) panel. No payload.
+pub const CM_TW_TOGGLE_TREE: CommandId = CM_TW_BASE;
+/// Toggle tools (right/bottom) panel. No payload.
+pub const CM_TW_TOGGLE_TOOLS: CommandId = CM_TW_BASE + 1;
+/// Show a panel. Payload: `usize` (panel ID).
+pub const CM_TW_SHOW_PANEL: CommandId = CM_TW_BASE + 2;
+/// Hide a panel. Payload: `usize` (panel ID).
+pub const CM_TW_HIDE_PANEL: CommandId = CM_TW_BASE + 3;
+/// Focus a panel by ID. Payload: `usize` (panel ID).
+pub const CM_TW_FOCUS_PANEL: CommandId = CM_TW_BASE + 20;
+
+// --- Zoom ---
+
 /// Toggle zoom on focused panel. No payload.
-pub const CM_ZOOM: CommandId = CM_WORKSPACE_BASE + 3;
-/// Zoom a specific panel. Payload: `PanelId`.
-pub const CM_ZOOM_PANEL: CommandId = CM_WORKSPACE_BASE + 4;
-/// Exit zoom. No payload.
-pub const CM_UNZOOM: CommandId = CM_WORKSPACE_BASE + 5;
-/// Focus a panel by ID. Payload: `PanelId`.
-pub const CM_FOCUS_PANEL: CommandId = CM_WORKSPACE_BASE + 6;
-/// Focus panel in direction. Payload: `(i16, i16)` as (dx, dy).
-pub const CM_FOCUS_DIRECTION: CommandId = CM_WORKSPACE_BASE + 7;
-/// Resize panel border. Payload: `(SplitDir, i16)`.
-pub const CM_RESIZE_PANEL: CommandId = CM_WORKSPACE_BASE + 8;
-/// Activate tab by index in focused panel. Payload: `usize` (tab index).
-pub const CM_ACTIVATE_TAB: CommandId = CM_WORKSPACE_BASE + 9;
-/// Close tab by index. Payload: `(PanelId, usize)`.
-pub const CM_CLOSE_TAB: CommandId = CM_WORKSPACE_BASE + 10;
-/// Move active tab to another panel. Payload: `PanelId` (target).
-pub const CM_MOVE_TAB: CommandId = CM_WORKSPACE_BASE + 11;
+pub const CM_TW_ZOOM: CommandId = CM_TW_BASE + 4;
+
+// --- Focus navigation ---
+
+/// Focus panel to the left. No payload.
+pub const CM_TW_FOCUS_LEFT: CommandId = CM_TW_BASE + 5;
+/// Focus panel to the right. No payload.
+pub const CM_TW_FOCUS_RIGHT: CommandId = CM_TW_BASE + 6;
+/// Focus panel above. No payload.
+pub const CM_TW_FOCUS_UP: CommandId = CM_TW_BASE + 7;
+/// Focus panel below. No payload.
+pub const CM_TW_FOCUS_DOWN: CommandId = CM_TW_BASE + 8;
+
+// --- Panel resize ---
+
+/// Grow focused panel horizontally. No payload.
+pub const CM_TW_GROW_H: CommandId = CM_TW_BASE + 9;
+/// Shrink focused panel horizontally. No payload.
+pub const CM_TW_SHRINK_H: CommandId = CM_TW_BASE + 10;
+/// Grow focused panel vertically. No payload.
+pub const CM_TW_GROW_V: CommandId = CM_TW_BASE + 11;
+/// Shrink focused panel vertically. No payload.
+pub const CM_TW_SHRINK_V: CommandId = CM_TW_BASE + 12;
+
+// --- Tabs ---
+
 /// Open tab dropdown on focused panel. No payload.
-pub const CM_TAB_DROPDOWN: CommandId = CM_WORKSPACE_BASE + 12;
-/// Split focused panel's subpanel area. No payload.
-pub const CM_SPLIT_SUBPANEL: CommandId = CM_WORKSPACE_BASE + 13;
-/// Move tab to next subpanel (creates split if needed). No payload.
-pub const CM_MOVE_TAB_SUBPANEL: CommandId = CM_WORKSPACE_BASE + 14;
-/// Merge subpanels back into one. No payload.
-pub const CM_UNSPLIT: CommandId = CM_WORKSPACE_BASE + 15;
+pub const CM_TW_TAB_DROPDOWN: CommandId = CM_TW_BASE + 13;
+/// Move dropdown selection up. No payload.
+pub const CM_TW_TAB_DROPDOWN_UP: CommandId = CM_TW_BASE + 21;
+/// Move dropdown selection down. No payload.
+pub const CM_TW_TAB_DROPDOWN_DOWN: CommandId = CM_TW_BASE + 22;
+/// Close dropdown / confirm selection. No payload.
+pub const CM_TW_TAB_DROPDOWN_CLOSE: CommandId = CM_TW_BASE + 23;
+/// Activate tab by index in focused panel. Payload: `usize`.
+pub const CM_TW_ACTIVATE_TAB: CommandId = CM_TW_BASE + 14;
+
+// --- Layout ---
+
+/// Cycle layout mode. No payload.
+pub const CM_TW_LAYOUT_CYCLE: CommandId = CM_TW_BASE + 15;
+
+// --- Subpanel ---
+
 /// Cycle focus between subpanels. No payload.
-pub const CM_CYCLE_SUBPANEL: CommandId = CM_WORKSPACE_BASE + 16;
+pub const CM_TW_CYCLE_SUBPANEL: CommandId = CM_TW_BASE + 16;
+/// Move tab to next subpanel. No payload.
+pub const CM_TW_MOVE_TAB_SUBPANEL: CommandId = CM_TW_BASE + 17;
 /// Grow focused subpanel. No payload.
-pub const CM_GROW_SUBPANEL: CommandId = CM_WORKSPACE_BASE + 17;
+pub const CM_TW_GROW_SUBPANEL: CommandId = CM_TW_BASE + 18;
 /// Shrink focused subpanel. No payload.
-pub const CM_SHRINK_SUBPANEL: CommandId = CM_WORKSPACE_BASE + 18;
-/// Cycle layout mode (Auto → Wide → Narrow → Auto). No payload.
-pub const CM_LAYOUT_CYCLE: CommandId = CM_WORKSPACE_BASE + 19;
+pub const CM_TW_SHRINK_SUBPANEL: CommandId = CM_TW_BASE + 19;
 
 /// End of workspace command range.
-pub const CM_WORKSPACE_MAX: CommandId = CM_WORKSPACE_BASE + 49;
+pub const CM_TW_MAX: CommandId = CM_TW_BASE + 49;
+
+// --- Tab cycling ---
+
+/// Next tab in focused panel. No payload.
+pub const CM_TW_TAB_NEXT: CommandId = CM_TW_BASE + 24;
+/// Previous tab in focused panel. No payload.
+pub const CM_TW_TAB_PREV: CommandId = CM_TW_BASE + 25;
+/// Close active tab in focused panel. No payload.
+pub const CM_TW_TAB_CLOSE: CommandId = CM_TW_BASE + 26;

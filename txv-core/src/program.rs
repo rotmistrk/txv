@@ -73,6 +73,7 @@ impl Program {
         // Child 1: desktop (focused — gets normal events)
         group.insert(desktop);
         group.set_focused_index(1);
+        group.child_mut(1).unwrap().select();
 
         Self { group, sink }
     }

@@ -237,6 +237,24 @@ Scrollable list. Implement `ListData` trait.
 ### SplitPane
 Two children side-by-side (horizontal or vertical) with configurable ratio.
 
+### SplitPanel
+N children arranged horizontally or vertically with proportional sizing and
+divider lines. Supports dynamic resize, focus cycling, and a `chrome_row` mode
+where row 0 is reserved for parent chrome (divider starts at row 1).
+
+### TabPanel
+Tabbed container: a TabBar on top with stacked child views below. Only the
+active tab is drawn and receives events. Propagates `needs_redraw` from children.
+
+### TiledWorkspace
+Multi-panel workspace with configurable wide/narrow layouts defined as
+`SplitNode` trees. Features:
+- Automatic layout switching at a width threshold
+- Ring-based panel navigation (Ctrl+Shift+Arrow)
+- Directional panel resize (Alt+Shift+Arrow moves the adjacent border)
+- Panel zoom, tab management, and subpanel focus cycling
+- Chrome drawing with horizontal tier lines and vertical gap connectors
+
 ### StatusBar
 Bottom bar with pluggable items (clock, mode indicator, cursor position, messages).
 

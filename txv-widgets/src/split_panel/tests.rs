@@ -116,3 +116,20 @@ fn remove_child_adjusts_focus() {
     assert_eq!(sp.child_count(), 2);
     assert_eq!(sp.focused_index(), 1); // was 2, shifted
 }
+
+#[test]
+fn needs_redraw_propagates_from_children() {
+    let mut sp = SplitPanel::new(SplitDir::Horizontal);
+    sp.add_child(Box::new(Dummy::new()), 0.5);
+    sp.add_child(Box::new(Dummy::new()), 0.5);
+    sp.set_bounds(Rect::new(0, 0, 80, 40));
+
+    // After set_bounds, panel is dirty
+    assert!(sp.needs_redraw());
+    sp.mark_redrawn();
+    assert!(!sp.needs_redraw());
+
+    // Mark a child dirty — parent should report needs_redraw
+    sp.child_mut(0).unwrap().set_bounds(Rect::new(0, 0, 39, 40));
+    assert!(sp.needs_redraw());
+}

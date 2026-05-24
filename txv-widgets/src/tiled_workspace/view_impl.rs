@@ -8,6 +8,10 @@ use super::TiledWorkspace;
 impl View for TiledWorkspace {
     delegate_group_state!(group, override { set_bounds, draw, handle });
 
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(self)
+    }
+
     fn set_bounds(&mut self, r: Rect) {
         self.group.set_bounds(r);
         self.group.mark_dirty();
@@ -141,12 +145,30 @@ impl View for TiledWorkspace {
             self.cycle_layout();
             return HandleResult::Consumed;
         }
+        if km.matches(key, &km.tab_next) {
+            if let Some(panel) = self.panel_mut(self.group.focused_index()) {
+                panel.tab_next();
+            }
+            return HandleResult::Consumed;
+        }
+        if km.matches(key, &km.tab_prev) {
+            if let Some(panel) = self.panel_mut(self.group.focused_index()) {
+                panel.tab_prev();
+            }
+            return HandleResult::Consumed;
+        }
+        if km.matches(key, &km.tab_close) {
+            if let Some(panel) = self.panel_mut(self.group.focused_index()) {
+                panel.close_active();
+            }
+            return HandleResult::Consumed;
+        }
         if km.matches(key, &km.subpanel_focus) {
             self.with_split_panel(|sp| sp.cycle_focus());
             return HandleResult::Consumed;
         }
         if km.matches(key, &km.subpanel_move_tab) {
-            // Split-on-move: handled via command
+            self.move_tab_to_subpanel();
             return HandleResult::Consumed;
         }
         if km.matches(key, &km.subpanel_grow) {
@@ -164,10 +186,7 @@ impl View for TiledWorkspace {
                 if let Some(n) = c.to_digit(10) {
                     if n >= 1 {
                         if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                            let idx = (n as usize).saturating_sub(1);
-                            if idx < panel.tab_count() {
-                                panel.set_active(idx);
-                            }
+                            panel.activate_by_label(n as usize);
                         }
                         return HandleResult::Consumed;
                     }
@@ -196,37 +215,38 @@ impl TiledWorkspace {
 
     /// Focus the panel in the given direction relative to current.
     pub(crate) fn focus_direction(&mut self, dx: i16, dy: i16) {
+        // In zoom mode, cycle through visible panels and update zoom
+        if self.zoomed.is_some() {
+            if dx > 0 || dy > 0 {
+                self.focus_next_visible();
+            } else {
+                self.focus_prev_visible();
+            }
+            self.zoomed = Some(self.group.focused_index());
+            self.recompute_layout();
+            return;
+        }
+
         let current = self.group.focused_index();
-        let cur_bounds = self.group.child(current).map(|c| c.bounds()).unwrap_or_default();
-        let cur_cx = cur_bounds.x as i32 + cur_bounds.w as i32 / 2;
-        let cur_cy = cur_bounds.y as i32 + cur_bounds.h as i32 / 2;
-
-        let mut best: Option<(usize, i32)> = None;
-        for i in 0..self.configs.len() {
-            if i == current || self.hidden[i] {
-                continue;
-            }
-            let b = self.group.child(i).map(|c| c.bounds()).unwrap_or_default();
-            if b.w == 0 || b.h == 0 {
-                continue;
-            }
-            let cx = b.x as i32 + b.w as i32 / 2;
-            let cy = b.y as i32 + b.h as i32 / 2;
-
-            let in_direction = (dx > 0 && cx > cur_cx)
-                || (dx < 0 && cx < cur_cx)
-                || (dy > 0 && cy > cur_cy)
-                || (dy < 0 && cy < cur_cy);
-            if !in_direction {
-                continue;
-            }
-            let dist = (cx - cur_cx).abs() + (cy - cur_cy).abs();
-            if best.is_none() || dist < best.unwrap().1 {
-                best = Some((i, dist));
-            }
+        let visible: Vec<usize> = (0..self.configs.len())
+            .filter(|&i| !self.hidden[i])
+            .filter(|&i| {
+                self.group
+                    .child(i)
+                    .map(|c| c.bounds().w > 0 && c.bounds().h > 0)
+                    .unwrap_or(false)
+            })
+            .collect();
+        if visible.len() <= 1 {
+            return;
         }
-        if let Some((target, _)) = best {
-            self.group.switch_focus(target);
-        }
+        let pos = visible.iter().position(|&i| i == current).unwrap_or(0);
+        let forward = dx > 0 || dy > 0;
+        let next = if forward {
+            visible[(pos + 1) % visible.len()]
+        } else {
+            visible[(pos + visible.len() - 1) % visible.len()]
+        };
+        self.group.switch_focus(next);
     }
 }

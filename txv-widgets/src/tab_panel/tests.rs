@@ -129,3 +129,19 @@ fn row_0_non_tab_cells_are_transparent() {
         "non-tab cell at x=30 should have transparent bg"
     );
 }
+
+#[test]
+fn needs_redraw_propagates_from_active_child() {
+    let mut panel = TabPanel::new(TabBarMode::Static);
+    panel.insert_tab("A", Box::new(Dummy::new()));
+    panel.set_bounds(Rect::new(0, 0, 80, 24));
+
+    // After set_bounds, panel is dirty
+    assert!(panel.needs_redraw());
+    panel.mark_redrawn();
+    assert!(!panel.needs_redraw());
+
+    // Mark child dirty — panel should report needs_redraw
+    panel.active_child_mut().unwrap().set_bounds(Rect::new(0, 1, 80, 23));
+    assert!(panel.needs_redraw());
+}

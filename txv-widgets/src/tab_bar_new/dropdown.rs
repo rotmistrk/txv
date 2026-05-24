@@ -21,6 +21,32 @@ impl TabBar {
         }
     }
 
+    /// Move dropdown cursor up.
+    pub fn dropdown_move_up(&mut self) {
+        if let Some(cursor) = self.dropdown_cursor {
+            let count = self.dropdown_entries().len();
+            if count > 0 {
+                self.dropdown_cursor = Some(if cursor == 0 {
+                    count - 1
+                } else {
+                    cursor - 1
+                });
+                self.state.mark_dirty();
+            }
+        }
+    }
+
+    /// Move dropdown cursor down.
+    pub fn dropdown_move_down(&mut self) {
+        if let Some(cursor) = self.dropdown_cursor {
+            let count = self.dropdown_entries().len();
+            if count > 0 {
+                self.dropdown_cursor = Some((cursor + 1) % count);
+                self.state.mark_dirty();
+            }
+        }
+    }
+
     /// Whether dropdown is open.
     pub fn dropdown_open(&self) -> bool {
         self.dropdown_cursor.is_some()

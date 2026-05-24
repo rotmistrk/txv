@@ -1,11 +1,11 @@
-//! View trait implementation for TabPanel.
-
 use txv_core::prelude::*;
 
-use super::TabPanel;
+use crate::tiled_workspace::types::SplitDir;
 
-impl View for TabPanel {
-    delegate_view_state!(state, override { set_bounds, set_sink, draw, handle, select, unselect, needs_redraw, mark_redrawn, as_any_mut });
+use super::SplitPanel;
+
+impl View for SplitPanel {
+    delegate_view_state!(state, override { set_bounds, set_sink, select, unselect, draw, handle, needs_redraw, mark_redrawn, as_any_mut });
 
     fn needs_redraw(&self) -> bool {
         self.state.is_dirty() || self.children.iter().any(|c| c.needs_redraw())
@@ -25,7 +25,6 @@ impl View for TabPanel {
 
     fn set_sink(&mut self, sink: EventSink) {
         self.state.set_sink(sink.clone());
-        self.bar.set_sink(sink.clone());
         for child in &mut self.children {
             child.set_sink(sink.clone());
         }
@@ -33,19 +32,14 @@ impl View for TabPanel {
 
     fn select(&mut self) {
         self.state.set_focused(true);
-        self.bar.set_focused(true);
-        self.state.mark_dirty();
-        if let Some(child) = self.children.get_mut(self.bar.active_index()) {
+        if let Some(child) = self.children.get_mut(self.focused) {
             child.select();
         }
     }
 
     fn unselect(&mut self) {
         self.state.set_focused(false);
-        self.bar.set_focused(false);
-        self.bar.close_dropdown();
-        self.state.mark_dirty();
-        if let Some(child) = self.children.get_mut(self.bar.active_index()) {
+        if let Some(child) = self.children.get_mut(self.focused) {
             child.unselect();
         }
     }
@@ -55,29 +49,41 @@ impl View for TabPanel {
         if b.w == 0 || b.h == 0 {
             return;
         }
-        // Row 0: transparent so parent's chrome background shows through
         let transparent = Style {
-            fg: Color::Transparent,
-            bg: Color::Transparent,
+            fg: txv_core::cell::Color::Transparent,
+            bg: txv_core::cell::Color::Transparent,
             ..Style::default()
         };
-        for col in 0..b.w {
-            self.state.buffer_mut().put(col, 0, ' ', transparent);
-        }
-        // Content area: opaque fill
-        for row in 1..b.h {
-            for col in 0..b.w {
-                self.state.buffer_mut().put(col, row, ' ', Style::default());
+        self.state.buffer_mut().fill(' ', transparent);
+
+        // Draw dividers BEFORE children so tab bars overlay them via transparency
+        if self.children.len() > 1 {
+            let dim = txv_core::palette::palette().base.dim.to_style();
+            let g = txv_core::glyphs::glyphs();
+            for i in 0..self.children.len() - 1 {
+                let cb = self.children[i].bounds();
+                match self.direction {
+                    SplitDir::Horizontal => {
+                        let x = (cb.x + cb.w).saturating_sub(b.x);
+                        let y0 = if self.chrome_row {
+                            1
+                        } else {
+                            0
+                        };
+                        self.state
+                            .buffer_mut()
+                            .vline(x, y0, b.h.saturating_sub(y0), g.ui.separator_v, dim);
+                    }
+                    SplitDir::Vertical => {
+                        let y = (cb.y + cb.h).saturating_sub(b.y);
+                        self.state.buffer_mut().hline(0, y, b.w, g.ui.separator_h, dim);
+                    }
+                }
             }
         }
 
-        self.bar.draw();
-        let bar_buf = self.bar.buffer();
         let buf_ptr = self.state.buffer_mut() as *mut Buffer;
-        unsafe { (*buf_ptr).blit(bar_buf, 0, 0) };
-
-        let active = self.bar.active_index();
-        if let Some(child) = self.children.get_mut(active) {
+        for child in &mut self.children {
             child.draw();
             let cb = child.bounds();
             if cb.w > 0 && cb.h > 0 {
@@ -85,10 +91,6 @@ impl View for TabPanel {
                 let dy = cb.y.saturating_sub(b.y);
                 unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
             }
-        }
-
-        if self.bar.dropdown_open() {
-            self.draw_dropdown_overlay();
         }
     }
 
@@ -99,16 +101,7 @@ impl View for TabPanel {
             }
             return HandleResult::Ignored;
         }
-        let prev_active = self.bar.active_index();
-        let result = self.bar.handle(event);
-        if result == HandleResult::Consumed {
-            if self.bar.active_index() != prev_active {
-                self.relayout();
-            }
-            return HandleResult::Consumed;
-        }
-        let active = self.bar.active_index();
-        if let Some(child) = self.children.get_mut(active) {
+        if let Some(child) = self.children.get_mut(self.focused) {
             return child.handle(event);
         }
         HandleResult::Ignored
@@ -123,7 +116,7 @@ impl View for TabPanel {
     }
 
     fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
-        let child = self.children.get(self.bar.active_index())?;
+        let child = self.children.get(self.focused)?;
         let mut req = child.cursor()?;
         let cb = child.bounds();
         let b = self.state.bounds();

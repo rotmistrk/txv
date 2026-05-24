@@ -55,7 +55,8 @@ impl TiledWorkspace {
     /// Create a new workspace.
     ///
     /// `configs` defines each panel. `wide_layout` and `narrow_layout` are
-    /// split trees referencing panel indices. A TabPanel is created per panel.
+    /// split trees referencing panel indices. Each panel is a SplitPanel
+    /// containing one TabPanel (unsplit). Split adds a second TabPanel child.
     pub fn new(
         configs: Vec<PanelConfig>,
         wide_layout: SplitNode,
@@ -68,7 +69,14 @@ impl TiledWorkspace {
             ..ViewOptions::default()
         });
         for cfg in &configs {
-            group.insert(Box::new(TabPanel::new(cfg.tab_mode)));
+            let dir = match cfg.position {
+                types::PanelPosition::Right => types::SplitDir::Vertical,
+                _ => types::SplitDir::Horizontal,
+            };
+            let mut sp = crate::split_panel::SplitPanel::new(dir);
+            sp.set_chrome_row(true);
+            sp.add_child(Box::new(TabPanel::new(cfg.tab_mode)), 1.0);
+            group.insert(Box::new(sp));
         }
         let hidden = vec![false; panel_count];
         Self {
@@ -89,6 +97,11 @@ impl TiledWorkspace {
         }
     }
 
+    /// Get the current keymap.
+    pub fn keymap(&self) -> &WorkspaceKeymap {
+        &self.keymap
+    }
+
     /// Set a custom keymap.
     pub fn set_keymap(&mut self, keymap: WorkspaceKeymap) {
         self.keymap = keymap;
@@ -103,15 +116,35 @@ impl TiledWorkspace {
     /// Access a panel's TabPanel.
     pub fn panel(&self, id: PanelId) -> Option<&TabPanel> {
         let child = self.group.child(id)?;
-        // SAFETY: we only insert TabPanel instances
-        Some(unsafe { &*(child as *const dyn View as *const TabPanel) })
+        // Try direct TabPanel first, then look inside SplitPanel
+        if let Some(tp) = child.as_any().and_then(|a| a.downcast_ref::<TabPanel>()) {
+            return Some(tp);
+        }
+        if let Some(sp) = child
+            .as_any()
+            .and_then(|a| a.downcast_ref::<crate::split_panel::SplitPanel>())
+        {
+            return sp.focused_child_as::<TabPanel>();
+        }
+        None
     }
 
     /// Access a panel's TabPanel mutably.
     pub fn panel_mut(&mut self, id: PanelId) -> Option<&mut TabPanel> {
         let child = self.group.child_mut(id)?;
-        let ptr: *mut dyn View = &mut **child;
-        Some(unsafe { &mut *(ptr as *mut TabPanel) })
+        // Try direct TabPanel first
+        if child.as_any_mut().and_then(|a| a.downcast_mut::<TabPanel>()).is_some() {
+            // Re-borrow to satisfy borrow checker
+            return child.as_any_mut().and_then(|a| a.downcast_mut::<TabPanel>());
+        }
+        // Try inside SplitPanel
+        if let Some(sp) = child
+            .as_any_mut()
+            .and_then(|a| a.downcast_mut::<crate::split_panel::SplitPanel>())
+        {
+            return sp.focused_child_as_mut::<TabPanel>();
+        }
+        None
     }
 
     /// Insert a tab into a panel.
@@ -195,6 +228,10 @@ impl TiledWorkspace {
     pub fn focus_panel(&mut self, id: PanelId) {
         if id < self.configs.len() && !self.hidden[id] {
             self.group.switch_focus(id);
+            if self.zoomed.is_some() {
+                self.zoomed = Some(id);
+                self.recompute_layout();
+            }
         }
     }
 
@@ -213,68 +250,10 @@ impl TiledWorkspace {
         }
     }
 
-    /// Export state for persistence.
-    pub fn save_state(&self) -> WorkspaceState {
-        WorkspaceState {
-            wide_proportions: Self::collect_proportions(&self.wide_layout),
-            narrow_proportions: Self::collect_proportions(&self.narrow_layout),
-            hidden: self
-                .hidden
-                .iter()
-                .enumerate()
-                .filter(|(_, &h)| h)
-                .map(|(i, _)| i)
-                .collect(),
-        }
-    }
-
-    /// Restore state from persistence.
-    pub fn restore_state(&mut self, state: &WorkspaceState) {
-        Self::apply_proportions(&mut self.wide_layout, &state.wide_proportions);
-        Self::apply_proportions(&mut self.narrow_layout, &state.narrow_proportions);
-        for h in &mut self.hidden {
-            *h = false;
-        }
-        for &id in &state.hidden {
-            if id < self.hidden.len() {
-                self.hidden[id] = true;
-            }
-        }
-        self.recompute_layout();
-    }
-
-    fn collect_proportions(node: &SplitNode) -> Vec<f32> {
-        match node {
-            SplitNode::Leaf(_) => vec![],
-            SplitNode::Split { children, .. } => {
-                let mut out: Vec<f32> = children.iter().map(|(p, _)| *p).collect();
-                for (_, child) in children {
-                    out.extend(Self::collect_proportions(child));
-                }
-                out
-            }
-        }
-    }
-
-    fn apply_proportions(node: &mut SplitNode, props: &[f32]) {
-        let mut idx = 0;
-        Self::apply_proportions_inner(node, props, &mut idx);
-    }
-
-    fn apply_proportions_inner(node: &mut SplitNode, props: &[f32], idx: &mut usize) {
-        if let SplitNode::Split { children, .. } = node {
-            for (p, child) in children.iter_mut() {
-                if *idx < props.len() {
-                    *p = props[*idx];
-                    *idx += 1;
-                }
-                Self::apply_proportions_inner(child, props, idx);
-            }
-        }
-    }
-
-    // Field accessors are in accessors.rs
+    // move_tab_to_subpanel, save_state, restore_state are in subpanel.rs
 }
+
+mod subpanel;
 
 #[cfg(test)]
 #[path = "tests.rs"]
