@@ -153,19 +153,6 @@ impl TiledWorkspace {
                 self.with_split_panel(|sp| sp.shrink_focused());
                 true
             }
-            CM_TW_SPLIT_H => {
-                // Emit as app-level command — app handles creating the view
-                if let Some(sink) = self.group.sink() {
-                    sink.push_command(CM_TW_SPLIT_H, None);
-                }
-                false // let app handle
-            }
-            CM_TW_SPLIT_V => {
-                if let Some(sink) = self.group.sink() {
-                    sink.push_command(CM_TW_SPLIT_V, None);
-                }
-                false
-            }
             CM_TW_CLOSE_SUBPANEL => {
                 self.collapse_subpanel();
                 true
