@@ -177,9 +177,11 @@ impl SplitPanel {
         self.normalize_proportions();
         let count = self.children.len();
         let dividers = count.saturating_sub(1) as u16;
+        // Vertical splits: no gap subtracted — children overlap divider rows
+        // (tab bar row 0 sits on the horizontal separator line)
         let total_size = match self.direction {
             SplitDir::Horizontal => b.w.saturating_sub(dividers),
-            SplitDir::Vertical => b.h.saturating_sub(dividers),
+            SplitDir::Vertical => b.h,
         };
         let mut offset = 0u16;
         for (i, child) in self.children.iter_mut().enumerate() {
@@ -189,12 +191,12 @@ impl SplitPanel {
             } else {
                 (total_size as f32 * self.proportions[i]).round() as u16
             };
-            let abs_offset = offset + i as u16; // account for dividers before this child
-                                                // Non-first children overlap the divider in vertical splits
-                                                // (tab bar sits on the horizontal separator line)
             let rect = match self.direction {
-                SplitDir::Horizontal => Rect::new(b.x + abs_offset, b.y, size, b.h),
-                SplitDir::Vertical => Rect::new(b.x, b.y + abs_offset, b.w, size),
+                SplitDir::Horizontal => {
+                    let abs_offset = offset + i as u16;
+                    Rect::new(b.x + abs_offset, b.y, size, b.h)
+                }
+                SplitDir::Vertical => Rect::new(b.x, b.y + offset, b.w, size),
             };
             child.set_bounds(rect);
             offset += size;

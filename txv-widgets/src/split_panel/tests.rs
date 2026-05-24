@@ -49,11 +49,11 @@ fn vertical_split_divides_height() {
 
     let b0 = sp.child(0).unwrap().bounds();
     let b1 = sp.child(1).unwrap().bounds();
-    // 1 row reserved for divider
-    assert_eq!(b0.h + b1.h + 1, 40);
+    // Second child starts where first ends (overlaps divider row)
+    assert_eq!(b1.y, b0.y + b0.h, "second child starts at divider row");
+    assert_eq!(b0.h + b1.h, 40, "children fill full height");
     assert_eq!(b0.w, 80);
     assert_eq!(b0.y, 0);
-    assert!(b1.y > 0);
 }
 
 #[test]

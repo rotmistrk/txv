@@ -5,10 +5,12 @@ use txv_core::prelude::*;
 use super::{TabBar, TabBarMode};
 
 impl TabBar {
-    /// Open the dropdown.
+    /// Open the dropdown with cursor on the current tab.
     pub fn open_dropdown(&mut self) {
-        self.dropdown_cursor = Some(0);
         self.dropdown_filter.clear();
+        let entries = self.dropdown_entries();
+        let pos = entries.iter().position(|(idx, _, _)| *idx == self.active).unwrap_or(0);
+        self.dropdown_cursor = Some(pos);
         self.state.mark_dirty();
     }
 
