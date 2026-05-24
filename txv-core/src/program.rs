@@ -54,6 +54,7 @@ pub struct CommandContext<'a> {
 pub struct Program {
     group: GroupState,
     sink: EventSink,
+    quit_requested: bool,
 }
 
 impl Program {
@@ -75,7 +76,11 @@ impl Program {
         group.set_focused_index(1);
         group.child_mut(1).unwrap().select();
 
-        Self { group, sink }
+        Self {
+            group,
+            sink,
+            quit_requested: false,
+        }
     }
 
     /// Run the application event loop.
@@ -173,6 +178,7 @@ impl Program {
             for ev in events {
                 if let Event::Command { id, .. } = &ev {
                     if *id == CM_QUIT {
+                        self.quit_requested = true;
                         return true;
                     }
                     if *id == crate::commands::CM_REPAINT {
@@ -255,5 +261,10 @@ impl Program {
     /// Access the event sink (for external command injection).
     pub fn sink(&self) -> &EventSink {
         &self.sink
+    }
+
+    /// Returns true if CM_QUIT was received during the last run_cycles.
+    pub fn should_quit(&self) -> bool {
+        self.quit_requested
     }
 }

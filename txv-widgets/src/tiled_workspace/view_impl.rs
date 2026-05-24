@@ -157,12 +157,6 @@ impl View for TiledWorkspace {
             }
             return HandleResult::Consumed;
         }
-        if km.matches(key, &km.tab_close) {
-            if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                panel.close_active();
-            }
-            return HandleResult::Consumed;
-        }
         if km.matches(key, &km.subpanel_move_tab) {
             self.move_tab_to_subpanel();
             return HandleResult::Consumed;
