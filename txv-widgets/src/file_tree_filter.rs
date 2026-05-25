@@ -21,21 +21,33 @@ impl FileTreeData {
 
     /// Ensure all directories have their children loaded (for full-tree search).
     fn ensure_all_loaded(&mut self) {
-        loop {
-            let unloaded: Vec<(usize, std::path::PathBuf, usize)> = self
-                .nodes
-                .iter()
-                .enumerate()
-                .filter(|(id, n)| n.is_dir && !self.nodes.iter().any(|c| c.parent == Some(*id)))
-                .map(|(id, n)| (id, n.path.clone(), n.depth + 1))
-                .collect();
-            if unloaded.is_empty() {
-                break;
-            }
-            for (id, path, depth) in unloaded {
-                self.load_children(path, Some(id), depth);
+        if self.fully_loaded {
+            return;
+        }
+        use std::collections::HashSet;
+        const MAX_DEPTH: usize = 10;
+        let mut parents: HashSet<usize> = HashSet::new();
+        for n in &self.nodes {
+            if let Some(p) = n.parent {
+                parents.insert(p);
             }
         }
+        let mut i = 0;
+        while i < self.nodes.len() {
+            if self.nodes[i].is_dir && !parents.contains(&i) && self.nodes[i].depth < MAX_DEPTH {
+                let path = self.nodes[i].path.clone();
+                let depth = self.nodes[i].depth + 1;
+                let before = self.nodes.len();
+                self.load_children(path, Some(i), depth);
+                for j in before..self.nodes.len() {
+                    if let Some(p) = self.nodes[j].parent {
+                        parents.insert(p);
+                    }
+                }
+            }
+            i += 1;
+        }
+        self.fully_loaded = true;
     }
 
     /// Get match positions for a node (for highlight rendering).

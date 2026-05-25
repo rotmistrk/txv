@@ -33,6 +33,8 @@ pub struct FileTreeData {
     pub(crate) filter: String,
     /// Indices of characters that matched in each node's label (node_id → positions).
     pub(crate) match_positions: HashMap<usize, Vec<usize>>,
+    /// Whether all directories have been recursively loaded.
+    pub(crate) fully_loaded: bool,
 }
 
 impl FileTreeData {
@@ -46,6 +48,7 @@ impl FileTreeData {
             show_hidden: true,
             filter: String::new(),
             match_positions: HashMap::new(),
+            fully_loaded: false,
         };
         data.load_children(root, None, 0);
         data.rebuild_visible();
@@ -78,6 +81,7 @@ impl FileTreeData {
         let root = self.root.clone();
         self.nodes.clear();
         self.visible.clear();
+        self.fully_loaded = false;
         self.load_children(root, None, 0);
 
         // Re-expand previously expanded directories
