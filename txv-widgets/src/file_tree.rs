@@ -11,24 +11,28 @@ use txv_core::palette::palette;
 use crate::tree_view::TreeData;
 
 #[derive(Clone)]
-struct TreeNode {
-    path: PathBuf,
-    label: String,
-    depth: usize,
-    is_dir: bool,
-    expanded: bool,
-    parent: Option<usize>,
+pub(crate) struct TreeNode {
+    pub(crate) path: PathBuf,
+    pub(crate) label: String,
+    pub(crate) depth: usize,
+    pub(crate) is_dir: bool,
+    pub(crate) expanded: bool,
+    pub(crate) parent: Option<usize>,
 }
 
 /// Filesystem tree data provider.
 pub struct FileTreeData {
     root: PathBuf,
-    nodes: Vec<TreeNode>,
+    pub(crate) nodes: Vec<TreeNode>,
     visible: Vec<usize>,
     /// Per-path foreground color (relative path → color).
     colors: HashMap<String, Color>,
     /// Whether to show hidden (dot) files.
     pub show_hidden: bool,
+    /// Active filter text (empty = no filter).
+    pub(crate) filter: String,
+    /// Indices of characters that matched in each node's label (node_id → positions).
+    pub(crate) match_positions: HashMap<usize, Vec<usize>>,
 }
 
 impl FileTreeData {
@@ -40,6 +44,8 @@ impl FileTreeData {
             visible: Vec::new(),
             colors: HashMap::new(),
             show_hidden: true,
+            filter: String::new(),
+            match_positions: HashMap::new(),
         };
         data.load_children(root, None, 0);
         data.rebuild_visible();
@@ -154,7 +160,7 @@ impl FileTreeData {
         self.nodes.extend(files);
     }
 
-    fn rebuild_visible(&mut self) {
+    pub(crate) fn rebuild_visible(&mut self) {
         self.visible.clear();
         self.collect_visible(None, 0);
     }
@@ -168,8 +174,11 @@ impl FileTreeData {
             .map(|(i, _)| i)
             .collect();
         for id in ids {
+            if !self.filter.is_empty() && !self.node_matches_filter(id) {
+                continue;
+            }
             self.visible.push(id);
-            if self.nodes[id].is_dir && self.nodes[id].expanded {
+            if self.nodes[id].is_dir && (self.nodes[id].expanded || !self.filter.is_empty()) {
                 self.collect_visible(Some(id), depth + 1);
             }
         }
