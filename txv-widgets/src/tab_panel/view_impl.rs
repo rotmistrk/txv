@@ -86,6 +86,8 @@ impl View for TabPanel {
                     child.handle(event);
                 }
             }
+            // Sync active view's subtitle into tab title
+            self.sync_subtitle();
             return HandleResult::Ignored;
         }
         // Three-phase dispatch: bar (preprocess) → active tab (focused) → postprocess

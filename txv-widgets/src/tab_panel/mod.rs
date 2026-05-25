@@ -237,6 +237,38 @@ impl TabPanel {
         }
         self.relayout();
     }
+
+    /// Sync active view's subtitle into the tab title (e.g. OSC title from PTY).
+    fn sync_subtitle(&mut self) {
+        let idx = self.bar().active_index();
+        let gi = idx + 1;
+        let subtitle = match self.group.child(gi) {
+            Some(child) => {
+                let s = child.subtitle();
+                if s.is_empty() {
+                    return;
+                }
+                s.to_string()
+            }
+            None => return,
+        };
+        let current = match self.bar().titles.get(idx) {
+            Some(t) => t.clone(),
+            None => return,
+        };
+        // Format: "Prefix:subtitle" — update the part after colon
+        let new_title = if let Some(colon_pos) = current.find(':') {
+            let prefix = &current[..colon_pos];
+            let new = format!("{prefix}:{subtitle}");
+            if new == current {
+                return;
+            }
+            new
+        } else {
+            return;
+        };
+        self.bar_mut().set_title(idx, new_title);
+    }
 }
 
 #[cfg(test)]
