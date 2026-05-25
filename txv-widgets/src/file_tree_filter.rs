@@ -8,6 +8,7 @@ impl FileTreeData {
         self.filter = text.to_lowercase();
         self.match_positions.clear();
         if !self.filter.is_empty() {
+            self.ensure_all_loaded();
             self.compute_matches();
         }
         self.rebuild_visible();
@@ -16,6 +17,25 @@ impl FileTreeData {
     /// Current filter text.
     pub fn filter(&self) -> &str {
         &self.filter
+    }
+
+    /// Ensure all directories have their children loaded (for full-tree search).
+    fn ensure_all_loaded(&mut self) {
+        loop {
+            let unloaded: Vec<(usize, std::path::PathBuf, usize)> = self
+                .nodes
+                .iter()
+                .enumerate()
+                .filter(|(id, n)| n.is_dir && !self.nodes.iter().any(|c| c.parent == Some(*id)))
+                .map(|(id, n)| (id, n.path.clone(), n.depth + 1))
+                .collect();
+            if unloaded.is_empty() {
+                break;
+            }
+            for (id, path, depth) in unloaded {
+                self.load_children(path, Some(id), depth);
+            }
+        }
     }
 
     /// Get match positions for a node (for highlight rendering).
@@ -151,5 +171,33 @@ mod tests {
             }
         }
         assert!(found, "movement.rs should be visible");
+    }
+
+    #[test]
+    fn filter_searches_inside_closed_dirs() {
+        let dir = tempfile::tempdir().unwrap();
+        let sub = dir.path().join("src");
+        std::fs::create_dir(&sub).unwrap();
+        std::fs::write(sub.join("deep.rs"), "").unwrap();
+        std::fs::write(dir.path().join("top.txt"), "").unwrap();
+
+        let mut data = FileTreeData::new(dir.path());
+        // src/ is NOT expanded — children not loaded yet
+        assert!(!data.nodes.iter().any(|n| n.label == "deep.rs"));
+
+        // Filter should find deep.rs inside closed src/
+        data.set_filter("deep");
+        let visible_labels: Vec<&str> = (0..data.visible_count())
+            .map(|i| data.label(data.visible_id(i)))
+            .collect();
+        assert!(
+            visible_labels.contains(&"deep.rs"),
+            "should find file inside closed dir"
+        );
+        assert!(visible_labels.contains(&"src"), "parent dir should be visible");
+        assert!(
+            !visible_labels.contains(&"top.txt"),
+            "non-matching file should be hidden"
+        );
     }
 }

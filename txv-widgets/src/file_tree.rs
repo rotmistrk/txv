@@ -120,7 +120,7 @@ impl FileTreeData {
         self.rebuild_visible();
     }
 
-    fn load_children(&mut self, dir: PathBuf, parent: Option<usize>, depth: usize) {
+    pub(crate) fn load_children(&mut self, dir: PathBuf, parent: Option<usize>, depth: usize) {
         let walker = WalkBuilder::new(&dir)
             .max_depth(Some(1))
             .hidden(!self.show_hidden)
