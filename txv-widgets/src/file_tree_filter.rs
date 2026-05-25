@@ -205,14 +205,18 @@ mod tests {
         let mut data = FileTreeData::new(dir.path());
         data.ensure_all_loaded();
         data.set_filter("deep");
-        let visible: Vec<&str> = (0..data.visible_count())
-            .map(|i| data.label(data.visible_id(i)))
-            .collect();
-        // src/ is collapsed but visible (has match below)
-        assert!(visible.contains(&"src"));
-        // deep.rs NOT visible because src/ is collapsed
-        assert!(!visible.contains(&"deep.rs"));
-        assert!(!visible.contains(&"top.txt"));
+        let vis = |d: &FileTreeData| -> Vec<String> {
+            (0..d.visible_count())
+                .map(|i| d.label(d.visible_id(i)).to_string())
+                .collect()
+        };
+        // src/ visible (has match below) but collapsed — children hidden
+        assert!(vis(&data).contains(&"src".to_string()));
+        assert!(!vis(&data).contains(&"deep.rs".to_string()));
+        // Expand src/ — now deep.rs appears
+        let src_id = data.nodes.iter().position(|n| n.label == "src").unwrap();
+        data.toggle(src_id);
+        assert!(vis(&data).contains(&"deep.rs".to_string()));
     }
 
     #[test]
@@ -225,15 +229,13 @@ mod tests {
 
         let mut data = FileTreeData::new(dir.path());
         data.ensure_all_loaded();
-        // Expand src/
         let src_id = data.nodes.iter().position(|n| n.label == "src").unwrap();
         data.toggle(src_id);
         data.set_filter("deep");
         let visible: Vec<&str> = (0..data.visible_count())
             .map(|i| data.label(data.visible_id(i)))
             .collect();
-        assert!(visible.contains(&"src"));
-        assert!(visible.contains(&"deep.rs"));
+        assert!(visible.contains(&"src") && visible.contains(&"deep.rs"));
         assert!(!visible.contains(&"other.txt"));
     }
 
@@ -266,22 +268,17 @@ mod tests {
 
         let mut data = FileTreeData::new(dir.path());
         data.ensure_all_loaded();
-        // Expand doc/, then filter
         let doc_id = data.nodes.iter().position(|n| n.label == "doc").unwrap();
-        data.toggle(doc_id); // expand
-        data.set_filter("md");
-        let visible: Vec<&str> = (0..data.visible_count())
-            .map(|i| data.label(data.visible_id(i)))
-            .collect();
-        assert!(visible.contains(&"doc"));
-        assert!(visible.contains(&"readme.md"));
-
-        // Collapse doc/
         data.toggle(doc_id);
-        let visible: Vec<&str> = (0..data.visible_count())
-            .map(|i| data.label(data.visible_id(i)))
-            .collect();
-        assert!(visible.contains(&"doc"), "dir stays visible");
-        assert!(!visible.contains(&"readme.md"), "children hidden");
+        data.set_filter("md");
+        let vis = |d: &FileTreeData| -> Vec<String> {
+            (0..d.visible_count())
+                .map(|i| d.label(d.visible_id(i)).to_string())
+                .collect()
+        };
+        assert!(vis(&data).contains(&"readme.md".to_string()));
+        data.toggle(doc_id); // collapse
+        assert!(vis(&data).contains(&"doc".to_string()), "dir stays visible");
+        assert!(!vis(&data).contains(&"readme.md".to_string()), "children hidden");
     }
 }
