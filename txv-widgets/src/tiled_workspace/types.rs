@@ -54,11 +54,7 @@ impl PanelConfig {
 }
 
 /// Split direction.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SplitDir {
-    Horizontal,
-    Vertical,
-}
+pub use crate::split_panel::SplitDir;
 
 /// Layout mode — how the workspace decides wide vs narrow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

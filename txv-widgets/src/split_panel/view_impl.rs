@@ -2,9 +2,7 @@
 
 use txv_core::prelude::*;
 
-use crate::tiled_workspace::types::SplitDir;
-
-use super::SplitPanel;
+use super::{SplitDir, SplitPanel};
 
 impl View for SplitPanel {
     delegate_group_state!(group, override { set_bounds, draw, handle, as_any_mut });

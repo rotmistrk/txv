@@ -52,7 +52,7 @@ pub use pty_terminal::PtyTerminal;
 pub use scroll_view::ScrollView;
 pub use scrollbar::Scrollbar;
 pub use split_pane::{SplitDirection, SplitPane};
-pub use split_panel::SplitPanel;
+pub use split_panel::{SplitDir, SplitPanel};
 pub use status_bar::{StatusBar, StatusItem};
 pub use status_indicators::{BranchItem, CursorPos, ModeItem, PositionItem};
 pub use status_items::{ClockItem, KeyLabelItem, MessageItem, CM_STATUS_MESSAGE};

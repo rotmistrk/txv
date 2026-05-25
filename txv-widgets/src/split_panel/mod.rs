@@ -7,7 +7,12 @@
 
 use txv_core::prelude::*;
 
-use crate::tiled_workspace::types::SplitDir;
+/// Split direction for panel layout.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SplitDir {
+    Horizontal,
+    Vertical,
+}
 
 /// Generic split container.
 pub struct SplitPanel {
