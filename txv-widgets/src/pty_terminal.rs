@@ -1,7 +1,5 @@
 //! PtyTerminal — a View that owns a TermBuf + PtySession.
 
-use std::path::Path;
-
 use txv_core::event::Event;
 use txv_core::prelude::*;
 use txv_render::termbuf::TermBuf;
@@ -13,100 +11,30 @@ use crate::pty_session::PtySession;
 pub struct PtyTerminal {
     pub(crate) state: ViewState,
     pub(crate) termbuf: TermBuf,
-    session: Option<PtySession>,
-    base_title: String,
-    title: String,
-    osc_suffix: String,
-    prev_cols: u16,
-    prev_rows: u16,
-    exited: bool,
+    pub(crate) session: Option<PtySession>,
+    pub(crate) base_title: String,
+    pub(crate) title: String,
+    pub(crate) osc_suffix: String,
+    pub(crate) prev_cols: u16,
+    pub(crate) prev_rows: u16,
+    pub(crate) exited: bool,
     pub(crate) scroll_offset: usize,
+    /// Set when PTY produces output; cleared by `clear_output_flag()`.
+    pub(crate) had_output: bool,
 }
 
 impl PtyTerminal {
-    /// Spawn the user's default shell.
-    pub fn spawn_shell(cols: u16, rows: u16) -> std::io::Result<Self> {
-        Self::spawn_shell_with_scrollback(cols, rows, 2000)
+    /// Returns true if the terminal received output since last `clear_output_flag()`.
+    pub fn has_fresh_output(&self) -> bool {
+        self.had_output
     }
 
-    /// Spawn the user's default shell with a custom scrollback limit.
-    pub fn spawn_shell_with_scrollback(cols: u16, rows: u16, scrollback_limit: usize) -> std::io::Result<Self> {
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
-        let cwd = std::env::current_dir().unwrap_or_else(|_| "/".into());
-        let session = PtySession::spawn(&shell, &[], &cwd, cols, rows)?;
-        Ok(Self {
-            state: ViewState::default(),
-            termbuf: TermBuf::with_scrollback(cols, rows, scrollback_limit),
-            session: Some(session),
-            base_title: "Shell".into(),
-            title: "Shell".into(),
-            osc_suffix: String::new(),
-            prev_cols: cols,
-            prev_rows: rows,
-            exited: false,
-            scroll_offset: 0,
-        })
-    }
-
-    /// Spawn a specific command.
-    pub fn spawn_command(cmd: &str, args: &[&str], cwd: &Path, cols: u16, rows: u16) -> std::io::Result<Self> {
-        Self::spawn_command_with_scrollback(cmd, args, cwd, cols, rows, 2000)
-    }
-
-    /// Spawn a specific command with additional environment variables.
-    pub fn spawn_command_with_env(
-        cmd: &str,
-        args: &[&str],
-        cwd: &Path,
-        cols: u16,
-        rows: u16,
-        envs: &[(&str, &str)],
-    ) -> std::io::Result<Self> {
-        let session = PtySession::spawn_with_env(cmd, args, cwd, cols, rows, envs)?;
-        Ok(Self {
-            state: ViewState::default(),
-            termbuf: TermBuf::with_scrollback(cols, rows, 2000),
-            session: Some(session),
-            base_title: cmd.into(),
-            title: cmd.into(),
-            osc_suffix: String::new(),
-            prev_cols: cols,
-            prev_rows: rows,
-            exited: false,
-            scroll_offset: 0,
-        })
-    }
-
-    /// Spawn a specific command with a custom scrollback limit.
-    pub fn spawn_command_with_scrollback(
-        cmd: &str,
-        args: &[&str],
-        cwd: &Path,
-        cols: u16,
-        rows: u16,
-        scrollback_limit: usize,
-    ) -> std::io::Result<Self> {
-        let session = PtySession::spawn(cmd, args, cwd, cols, rows)?;
-        Ok(Self {
-            state: ViewState::default(),
-            termbuf: TermBuf::with_scrollback(cols, rows, scrollback_limit),
-            session: Some(session),
-            base_title: cmd.into(),
-            title: cmd.into(),
-            osc_suffix: String::new(),
-            prev_cols: cols,
-            prev_rows: rows,
-            exited: false,
-            scroll_offset: 0,
-        })
+    /// Clear the fresh output flag (call after reading badge state).
+    pub fn clear_output_flag(&mut self) {
+        self.had_output = false;
     }
 
     /// Write raw bytes to the PTY (for programmatic input).
-    /// Returns true if the terminal received output since last draw (state is dirty).
-    pub fn has_fresh_output(&self) -> bool {
-        self.state.is_dirty()
-    }
-
     pub fn write_input(&mut self, data: &[u8]) {
         if let Some(session) = self.session.as_mut() {
             session.write(data);
@@ -124,6 +52,7 @@ impl PtyTerminal {
             log::trace!("PTY data: {} bytes", data.len());
             self.termbuf.process(&data);
             self.scroll_offset = 0;
+            self.had_output = true;
             self.state.mark_dirty();
         } else if !session.is_alive() {
             self.exited = true;
@@ -165,7 +94,6 @@ impl View for PtyTerminal {
         let cols = r.w;
         let rows = r.h;
         if cols > 0 && rows > 0 && (cols != self.prev_cols || rows != self.prev_rows) {
-            log::debug!("PTY resize: {}x{} -> {}x{}", self.prev_cols, self.prev_rows, cols, rows);
             self.prev_cols = cols;
             self.prev_rows = rows;
             self.termbuf.resize(cols, rows);
@@ -182,7 +110,6 @@ impl View for PtyTerminal {
             return;
         }
         if self.scroll_offset == 0 {
-            // Render grid into buffer
             let rh = self.termbuf.grid_rows().min(h);
             let rw = self.prev_cols.min(w);
             for y in 0..rh {
@@ -192,7 +119,6 @@ impl View for PtyTerminal {
                     }
                 }
             }
-            // Draw cursor
             if self.termbuf.cursor_visible() {
                 let (cx, cy) = self.termbuf.cursor();
                 if cx < w && cy < h {
@@ -219,7 +145,6 @@ impl View for PtyTerminal {
                     return HandleResult::Consumed;
                 }
                 if let Some(session) = self.session.as_mut() {
-                    // Bracketed paste: app detects paste vs typed input
                     session.write(b"\x1b[200~");
                     session.write(text.as_bytes());
                     session.write(b"\x1b[201~");
@@ -228,9 +153,8 @@ impl View for PtyTerminal {
             }
             Event::Key(key) => {
                 if self.exited {
-                    return HandleResult::Consumed; // swallow keys, terminal is dead
+                    return HandleResult::Consumed;
                 }
-                // PgUp/PgDn for scrollback navigation
                 if key.code == KeyCode::PageUp {
                     let max = self.termbuf.scrollback_len();
                     let page = (self.prev_rows as usize).saturating_sub(1).max(1);
@@ -244,7 +168,6 @@ impl View for PtyTerminal {
                     self.state.mark_dirty();
                     return HandleResult::Consumed;
                 }
-                // Any other key resets scroll position
                 if self.scroll_offset > 0 {
                     self.scroll_offset = 0;
                     self.state.mark_dirty();

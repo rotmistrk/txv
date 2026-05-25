@@ -21,6 +21,7 @@ pub mod progress_bar;
 pub mod pty_session;
 pub mod pty_terminal;
 mod pty_terminal_scroll;
+mod pty_terminal_spawn;
 pub mod scroll_view;
 pub mod scrollbar;
 pub mod split_pane;
