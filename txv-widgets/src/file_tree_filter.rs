@@ -226,9 +226,11 @@ mod tests {
         let visible_labels: Vec<&str> = (0..data.visible_count())
             .map(|i| data.label(data.visible_id(i)))
             .collect();
+        assert!(visible_labels.contains(&"hooks"), "dir should be visible");
         assert!(
-            visible_labels.contains(&"hooks"),
-            "dir matching by name should be visible"
+            visible_labels.contains(&"pre-commit"),
+            "children of matched dir should be visible"
         );
+        assert!(!visible_labels.contains(&"main.rs"), "non-matching file hidden");
     }
 }

@@ -170,6 +170,8 @@ impl FileTreeData {
     }
 
     fn collect_visible(&mut self, parent: Option<usize>, depth: usize) {
+        // If parent dir itself matched the filter, show all children unfiltered
+        let parent_matched = parent.is_some_and(|p| self.match_positions.contains_key(&p));
         let ids: Vec<usize> = self
             .nodes
             .iter()
@@ -178,7 +180,7 @@ impl FileTreeData {
             .map(|(i, _)| i)
             .collect();
         for id in ids {
-            if !self.filter.is_empty() && !self.node_matches_filter(id) {
+            if !self.filter.is_empty() && !parent_matched && !self.node_matches_filter(id) {
                 continue;
             }
             self.visible.push(id);
