@@ -145,3 +145,40 @@ fn needs_redraw_propagates_from_active_child() {
     panel.active_child_mut().unwrap().set_bounds(Rect::new(0, 1, 80, 23));
     assert!(panel.needs_redraw());
 }
+
+#[test]
+fn tab_next_cycles() {
+    let mut panel = TabPanel::new(TabBarMode::Static);
+    panel.set_bounds(Rect::new(0, 0, 80, 24));
+    panel.insert_tab("A", Box::new(Dummy::new()));
+    panel.insert_tab("B", Box::new(Dummy::new()));
+    panel.insert_tab("C", Box::new(Dummy::new()));
+    panel.set_active(0);
+    assert_eq!(panel.active_title(), Some("A"));
+    panel.tab_next();
+    assert_eq!(panel.active_title(), Some("B"));
+    panel.tab_next();
+    assert_eq!(panel.active_title(), Some("C"));
+}
+
+#[test]
+fn close_tab_by_title() {
+    let mut panel = TabPanel::new(TabBarMode::Static);
+    panel.set_bounds(Rect::new(0, 0, 80, 24));
+    panel.insert_tab("X", Box::new(Dummy::new()));
+    panel.insert_tab("Y", Box::new(Dummy::new()));
+    assert!(panel.close_tab_by_title("X"));
+    assert_eq!(panel.tab_count(), 1);
+    assert_eq!(panel.active_title(), Some("Y"));
+}
+
+#[test]
+fn focus_tab_by_title() {
+    let mut panel = TabPanel::new(TabBarMode::Static);
+    panel.set_bounds(Rect::new(0, 0, 80, 24));
+    panel.insert_tab("A", Box::new(Dummy::new()));
+    panel.insert_tab("B", Box::new(Dummy::new()));
+    assert!(panel.focus_tab_by_title("A"));
+    assert_eq!(panel.active_title(), Some("A"));
+    assert!(!panel.focus_tab_by_title("Z"));
+}
