@@ -123,6 +123,20 @@ impl TabBar {
             };
             if x + text_len as u16 <= w {
                 self.state.buffer_mut().print(x, 0, text, style);
+                // Overlay badge with custom style if set
+                if let Some(Some(badge)) = self.badges.get(tab_idx) {
+                    if let Some(Some(bs)) = self.badge_styles.get(tab_idx) {
+                        let badge_len = badge.chars().count() as u16;
+                        let badge_x = x + text_len as u16 - badge_len;
+                        let badge_style = Style {
+                            fg: bs.fg,
+                            bg: ts.bg,
+                            ..Style::default()
+                        };
+                        let badge_copy = badge.clone();
+                        self.state.buffer_mut().print(badge_x, 0, &badge_copy, badge_style);
+                    }
+                }
                 x += text_len as u16;
             }
             prev_bg = cur_bg;

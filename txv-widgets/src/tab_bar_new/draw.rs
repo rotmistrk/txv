@@ -67,7 +67,7 @@ impl TabBar {
             ""
         };
 
-        let badge_text = self.badge_str(self.active);
+        let badge_text = self.badge_str(self.active).to_string();
         let label = format!(" {title}{dirty}{badge_text} ");
         let label_len = label.chars().count() as u16;
 
@@ -105,6 +105,19 @@ impl TabBar {
         let tab_end = label_len.min(w.saturating_sub(x + badge_len + tab_right_len + 2));
         if x + tab_end <= w {
             self.state.buffer_mut().print(x, 0, &label, style);
+            // Overlay badge with custom style if set
+            if !badge_text.is_empty() {
+                if let Some(Some(bs)) = self.badge_styles.get(self.active) {
+                    let bt_len = badge_text.chars().count() as u16;
+                    let badge_x = x + tab_end - bt_len - 1; // -1 for trailing space
+                    let badge_style = Style {
+                        fg: bs.fg,
+                        bg: ts.bg,
+                        ..Style::default()
+                    };
+                    self.state.buffer_mut().print(badge_x, 0, &badge_text, badge_style);
+                }
+            }
             x += tab_end;
         }
 

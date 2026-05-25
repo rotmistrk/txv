@@ -22,6 +22,8 @@ pub struct TabBar {
     /// Per-tab badge string (e.g. activity indicator from glyphs).
     /// None = no badge for that tab.
     pub(crate) badges: Vec<Option<String>>,
+    /// Per-tab badge style override. None = use tab's own style.
+    pub(crate) badge_styles: Vec<Option<Style>>,
     pub(crate) active: usize,
     pub(crate) lru_order: Vec<usize>,
     pub(crate) mode: TabBarMode,
@@ -45,6 +47,7 @@ impl TabBar {
             titles: Vec::new(),
             dirty: Vec::new(),
             badges: Vec::new(),
+            badge_styles: Vec::new(),
             active: 0,
             lru_order: Vec::new(),
             mode,
@@ -83,6 +86,7 @@ impl TabBar {
         self.titles.push(title.into());
         self.dirty.push(false);
         self.badges.push(None);
+        self.badge_styles.push(None);
         self.lru_order.push(self.titles.len() - 1);
         self.state.mark_dirty();
     }
@@ -94,6 +98,7 @@ impl TabBar {
         self.titles.remove(idx);
         self.dirty.remove(idx);
         self.badges.remove(idx);
+        self.badge_styles.remove(idx);
         self.lru_order.retain(|&i| i != idx);
         for v in &mut self.lru_order {
             if *v > idx {
@@ -144,6 +149,17 @@ impl TabBar {
             *b = badge;
             self.state.mark_dirty();
         }
+    }
+
+    /// Set badge with a custom style (color). Pass `None` to clear.
+    pub fn set_badge_styled(&mut self, idx: usize, badge: Option<String>, style: Option<Style>) {
+        if let Some(b) = self.badges.get_mut(idx) {
+            *b = badge;
+        }
+        if let Some(s) = self.badge_styles.get_mut(idx) {
+            *s = style;
+        }
+        self.state.mark_dirty();
     }
 
     /// Current dropdown filter text (for rendering search indicator).
