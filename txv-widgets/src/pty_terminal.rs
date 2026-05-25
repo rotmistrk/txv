@@ -102,6 +102,11 @@ impl PtyTerminal {
     }
 
     /// Write raw bytes to the PTY (for programmatic input).
+    /// Returns true if the terminal received output since last draw (state is dirty).
+    pub fn has_fresh_output(&self) -> bool {
+        self.state.is_dirty()
+    }
+
     pub fn write_input(&mut self, data: &[u8]) {
         if let Some(session) = self.session.as_mut() {
             session.write(data);
