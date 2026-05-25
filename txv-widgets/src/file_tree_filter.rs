@@ -1,4 +1,7 @@
-//! FileTreeData filter support — fuzzy matching and visibility computation.
+//! FileTreeData filter — pure visibility mask, no structural changes.
+//!
+//! The filter does NOT change expand/collapse state. It only controls which
+//! nodes are included in the visible list during `rebuild_visible`.
 
 use crate::file_tree::FileTreeData;
 
@@ -7,8 +10,10 @@ impl FileTreeData {
     pub fn set_filter(&mut self, text: &str) {
         self.filter = text.to_lowercase();
         self.match_positions.clear();
+        self.has_match_below.clear();
         if !self.filter.is_empty() {
             self.compute_matches();
+            self.compute_has_match_below();
         }
         self.rebuild_visible();
     }
@@ -58,8 +63,21 @@ impl FileTreeData {
         self.match_positions.get(&id).map(|v| v.as_slice())
     }
 
-    /// Compute which nodes match the filter and record char positions.
-    pub(super) fn compute_matches(&mut self) {
+    /// Does this node pass the filter? (matches directly or has matching descendants)
+    pub(super) fn node_passes_filter(&self, id: usize) -> bool {
+        if self.filter.is_empty() {
+            return true;
+        }
+        self.match_positions.contains_key(&id) || self.has_match_below.get(id).copied().unwrap_or(false)
+    }
+
+    /// Does this node match the filter directly (by its own name)?
+    pub(super) fn node_matches_directly(&self, id: usize) -> bool {
+        self.match_positions.contains_key(&id)
+    }
+
+    /// Compute which nodes match the filter by name.
+    fn compute_matches(&mut self) {
         for (id, node) in self.nodes.iter().enumerate() {
             if let Some(positions) = fuzzy_match_positions(&node.label.to_lowercase(), &self.filter) {
                 self.match_positions.insert(id, positions);
@@ -67,22 +85,22 @@ impl FileTreeData {
         }
     }
 
-    /// Check if a node (or any descendant) matches the filter.
-    pub(super) fn node_matches_filter(&self, id: usize) -> bool {
-        if self.filter.is_empty() {
-            return true;
+    /// Bottom-up pass: mark dirs that have matching descendants.
+    fn compute_has_match_below(&mut self) {
+        self.has_match_below.resize(self.nodes.len(), false);
+        // Walk nodes; for each match, mark all ancestors
+        for id in 0..self.nodes.len() {
+            if self.match_positions.contains_key(&id) {
+                let mut cur = self.nodes[id].parent;
+                while let Some(p) = cur {
+                    if self.has_match_below[p] {
+                        break; // already marked upward
+                    }
+                    self.has_match_below[p] = true;
+                    cur = self.nodes[p].parent;
+                }
+            }
         }
-        if self.match_positions.contains_key(&id) {
-            return true;
-        }
-        if self.nodes[id].is_dir {
-            return self
-                .nodes
-                .iter()
-                .enumerate()
-                .any(|(i, n)| n.parent == Some(id) && self.node_matches_filter(i));
-        }
-        false
     }
 }
 
@@ -135,16 +153,13 @@ mod tests {
         std::fs::write(dir.path().join("test.txt"), "").unwrap();
 
         let mut data = FileTreeData::new(dir.path());
-        let total = data.visible_count();
-
         data.set_filter("rs");
-        assert!(data.visible_count() < total, "filter should reduce visible count");
-        let visible_labels: Vec<&str> = (0..data.visible_count())
+        let visible: Vec<&str> = (0..data.visible_count())
             .map(|i| data.label(data.visible_id(i)))
             .collect();
-        assert!(!visible_labels.contains(&"test.txt"), "test.txt should be hidden");
-        assert!(visible_labels.contains(&"main.rs"));
-        assert!(visible_labels.contains(&"lib.rs"));
+        assert!(!visible.contains(&"test.txt"));
+        assert!(visible.contains(&"main.rs"));
+        assert!(visible.contains(&"lib.rs"));
     }
 
     #[test]
@@ -155,10 +170,8 @@ mod tests {
 
         let mut data = FileTreeData::new(dir.path());
         let total = data.visible_count();
-
         data.set_filter("rs");
         assert!(data.visible_count() < total);
-
         data.set_filter("");
         assert_eq!(data.visible_count(), total);
     }
@@ -170,23 +183,19 @@ mod tests {
 
         let mut data = FileTreeData::new(dir.path());
         data.set_filter("mvt");
-
-        // Find the node for movement.rs
-        let count = data.visible_count();
         let mut found = false;
-        for i in 0..count {
+        for i in 0..data.visible_count() {
             let id = data.visible_id(i);
             if data.label(id) == "movement.rs" {
-                let positions = data.match_positions(id);
-                assert_eq!(positions, Some([0, 2, 7].as_slice()));
+                assert_eq!(data.match_positions(id), Some([0, 2, 7].as_slice()));
                 found = true;
             }
         }
-        assert!(found, "movement.rs should be visible");
+        assert!(found);
     }
 
     #[test]
-    fn filter_searches_inside_closed_dirs() {
+    fn filter_shows_closed_dir_with_matches_inside() {
         let dir = tempfile::tempdir().unwrap();
         let sub = dir.path().join("src");
         std::fs::create_dir(&sub).unwrap();
@@ -194,43 +203,85 @@ mod tests {
         std::fs::write(dir.path().join("top.txt"), "").unwrap();
 
         let mut data = FileTreeData::new(dir.path());
-        assert!(!data.nodes.iter().any(|n| n.label == "deep.rs"));
-
         data.ensure_all_loaded();
         data.set_filter("deep");
-        let visible_labels: Vec<&str> = (0..data.visible_count())
+        let visible: Vec<&str> = (0..data.visible_count())
             .map(|i| data.label(data.visible_id(i)))
             .collect();
-        assert!(
-            visible_labels.contains(&"deep.rs"),
-            "should find file inside closed dir"
-        );
-        assert!(visible_labels.contains(&"src"), "parent dir should be visible");
-        assert!(
-            !visible_labels.contains(&"top.txt"),
-            "non-matching file should be hidden"
-        );
+        // src/ is collapsed but visible (has match below)
+        assert!(visible.contains(&"src"));
+        // deep.rs NOT visible because src/ is collapsed
+        assert!(!visible.contains(&"deep.rs"));
+        assert!(!visible.contains(&"top.txt"));
     }
 
     #[test]
-    fn filter_matches_directory_names() {
+    fn filter_shows_children_of_expanded_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let sub = dir.path().join("src");
+        std::fs::create_dir(&sub).unwrap();
+        std::fs::write(sub.join("deep.rs"), "").unwrap();
+        std::fs::write(sub.join("other.txt"), "").unwrap();
+
+        let mut data = FileTreeData::new(dir.path());
+        data.ensure_all_loaded();
+        // Expand src/
+        let src_id = data.nodes.iter().position(|n| n.label == "src").unwrap();
+        data.toggle(src_id);
+        data.set_filter("deep");
+        let visible: Vec<&str> = (0..data.visible_count())
+            .map(|i| data.label(data.visible_id(i)))
+            .collect();
+        assert!(visible.contains(&"src"));
+        assert!(visible.contains(&"deep.rs"));
+        assert!(!visible.contains(&"other.txt"));
+    }
+
+    #[test]
+    fn dir_name_match_shows_all_children() {
         let dir = tempfile::tempdir().unwrap();
         let hooks = dir.path().join("hooks");
         std::fs::create_dir(&hooks).unwrap();
         std::fs::write(hooks.join("pre-commit"), "").unwrap();
-        std::fs::write(dir.path().join("main.rs"), "").unwrap();
+        std::fs::write(hooks.join("post-merge"), "").unwrap();
 
         let mut data = FileTreeData::new(dir.path());
         data.ensure_all_loaded();
+        let hooks_id = data.nodes.iter().position(|n| n.label == "hooks").unwrap();
+        data.toggle(hooks_id);
         data.set_filter("hooks");
-        let visible_labels: Vec<&str> = (0..data.visible_count())
+        let visible: Vec<&str> = (0..data.visible_count())
             .map(|i| data.label(data.visible_id(i)))
             .collect();
-        assert!(visible_labels.contains(&"hooks"), "dir should be visible");
-        assert!(
-            visible_labels.contains(&"pre-commit"),
-            "children of matched dir should be visible"
-        );
-        assert!(!visible_labels.contains(&"main.rs"), "non-matching file hidden");
+        assert!(visible.contains(&"hooks") && visible.contains(&"pre-commit"));
+        assert!(visible.contains(&"post-merge"));
+    }
+
+    #[test]
+    fn collapse_during_filter_hides_children_keeps_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let doc = dir.path().join("doc");
+        std::fs::create_dir(&doc).unwrap();
+        std::fs::write(doc.join("readme.md"), "").unwrap();
+
+        let mut data = FileTreeData::new(dir.path());
+        data.ensure_all_loaded();
+        // Expand doc/, then filter
+        let doc_id = data.nodes.iter().position(|n| n.label == "doc").unwrap();
+        data.toggle(doc_id); // expand
+        data.set_filter("md");
+        let visible: Vec<&str> = (0..data.visible_count())
+            .map(|i| data.label(data.visible_id(i)))
+            .collect();
+        assert!(visible.contains(&"doc"));
+        assert!(visible.contains(&"readme.md"));
+
+        // Collapse doc/
+        data.toggle(doc_id);
+        let visible: Vec<&str> = (0..data.visible_count())
+            .map(|i| data.label(data.visible_id(i)))
+            .collect();
+        assert!(visible.contains(&"doc"), "dir stays visible");
+        assert!(!visible.contains(&"readme.md"), "children hidden");
     }
 }

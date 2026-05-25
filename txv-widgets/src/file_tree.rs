@@ -33,6 +33,8 @@ pub struct FileTreeData {
     pub(crate) filter: String,
     /// Indices of characters that matched in each node's label (node_id → positions).
     pub(crate) match_positions: HashMap<usize, Vec<usize>>,
+    /// Per-node flag: true if any descendant matches the filter.
+    pub(crate) has_match_below: Vec<bool>,
     /// Whether all directories have been recursively loaded.
     pub(crate) fully_loaded: bool,
 }
@@ -48,6 +50,7 @@ impl FileTreeData {
             show_hidden: true,
             filter: String::new(),
             match_positions: HashMap::new(),
+            has_match_below: Vec::new(),
             fully_loaded: false,
         };
         data.load_children(root, None, 0);
@@ -170,8 +173,11 @@ impl FileTreeData {
     }
 
     fn collect_visible(&mut self, parent: Option<usize>, depth: usize) {
-        // If parent dir itself matched the filter, show all children unfiltered
-        let parent_matched = parent.is_some_and(|p| self.match_positions.contains_key(&p));
+        self.collect_visible_inner(parent, depth, false);
+    }
+
+    /// `ancestor_matched` = an ancestor's name matched directly → show all descendants.
+    fn collect_visible_inner(&mut self, parent: Option<usize>, depth: usize, ancestor_matched: bool) {
         let ids: Vec<usize> = self
             .nodes
             .iter()
@@ -180,12 +186,13 @@ impl FileTreeData {
             .map(|(i, _)| i)
             .collect();
         for id in ids {
-            if !self.filter.is_empty() && !parent_matched && !self.node_matches_filter(id) {
+            if !self.filter.is_empty() && !ancestor_matched && !self.node_passes_filter(id) {
                 continue;
             }
             self.visible.push(id);
-            if self.nodes[id].is_dir && (self.nodes[id].expanded || !self.filter.is_empty()) {
-                self.collect_visible(Some(id), depth + 1);
+            if self.nodes[id].is_dir && self.nodes[id].expanded {
+                let propagate = ancestor_matched || self.node_matches_directly(id);
+                self.collect_visible_inner(Some(id), depth + 1, propagate);
             }
         }
     }
