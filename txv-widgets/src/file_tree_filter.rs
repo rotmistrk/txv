@@ -8,19 +8,13 @@ impl FileTreeData {
         self.filter = text.to_lowercase();
         self.match_positions.clear();
         if !self.filter.is_empty() {
-            self.ensure_all_loaded();
             self.compute_matches();
         }
         self.rebuild_visible();
     }
 
-    /// Current filter text.
-    pub fn filter(&self) -> &str {
-        &self.filter
-    }
-
-    /// Ensure all directories have their children loaded (for full-tree search).
-    fn ensure_all_loaded(&mut self) {
+    /// Pre-load all directories for filtering. Call once on filter activation.
+    pub fn ensure_all_loaded(&mut self) {
         if self.fully_loaded {
             return;
         }
@@ -34,7 +28,11 @@ impl FileTreeData {
         }
         let mut i = 0;
         while i < self.nodes.len() {
-            if self.nodes[i].is_dir && !parents.contains(&i) && self.nodes[i].depth < MAX_DEPTH {
+            let dominated = self.nodes[i].is_dir
+                && !parents.contains(&i)
+                && self.nodes[i].depth < MAX_DEPTH
+                && self.nodes[i].label != ".git";
+            if dominated {
                 let path = self.nodes[i].path.clone();
                 let depth = self.nodes[i].depth + 1;
                 let before = self.nodes.len();
@@ -50,6 +48,11 @@ impl FileTreeData {
         self.fully_loaded = true;
     }
 
+    /// Current filter text.
+    pub fn filter(&self) -> &str {
+        &self.filter
+    }
+
     /// Get match positions for a node (for highlight rendering).
     pub fn match_positions(&self, id: usize) -> Option<&[usize]> {
         self.match_positions.get(&id).map(|v| v.as_slice())
@@ -58,9 +61,6 @@ impl FileTreeData {
     /// Compute which nodes match the filter and record char positions.
     pub(super) fn compute_matches(&mut self) {
         for (id, node) in self.nodes.iter().enumerate() {
-            if node.is_dir {
-                continue;
-            }
             if let Some(positions) = fuzzy_match_positions(&node.label.to_lowercase(), &self.filter) {
                 self.match_positions.insert(id, positions);
             }
@@ -194,10 +194,9 @@ mod tests {
         std::fs::write(dir.path().join("top.txt"), "").unwrap();
 
         let mut data = FileTreeData::new(dir.path());
-        // src/ is NOT expanded — children not loaded yet
         assert!(!data.nodes.iter().any(|n| n.label == "deep.rs"));
 
-        // Filter should find deep.rs inside closed src/
+        data.ensure_all_loaded();
         data.set_filter("deep");
         let visible_labels: Vec<&str> = (0..data.visible_count())
             .map(|i| data.label(data.visible_id(i)))
@@ -210,6 +209,26 @@ mod tests {
         assert!(
             !visible_labels.contains(&"top.txt"),
             "non-matching file should be hidden"
+        );
+    }
+
+    #[test]
+    fn filter_matches_directory_names() {
+        let dir = tempfile::tempdir().unwrap();
+        let hooks = dir.path().join("hooks");
+        std::fs::create_dir(&hooks).unwrap();
+        std::fs::write(hooks.join("pre-commit"), "").unwrap();
+        std::fs::write(dir.path().join("main.rs"), "").unwrap();
+
+        let mut data = FileTreeData::new(dir.path());
+        data.ensure_all_loaded();
+        data.set_filter("hooks");
+        let visible_labels: Vec<&str> = (0..data.visible_count())
+            .map(|i| data.label(data.visible_id(i)))
+            .collect();
+        assert!(
+            visible_labels.contains(&"hooks"),
+            "dir matching by name should be visible"
         );
     }
 }
