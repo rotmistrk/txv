@@ -162,14 +162,16 @@ impl TiledWorkspace {
     }
 
     fn collect_proportions(node: &SplitNode) -> Vec<f32> {
-        match node {
-            SplitNode::Leaf(_) => vec![],
-            SplitNode::Split { children, .. } => {
-                let mut out: Vec<f32> = children.iter().map(|(p, _)| *p).collect();
-                for (_, child) in children {
-                    out.extend(Self::collect_proportions(child));
-                }
-                out
+        let mut out = Vec::new();
+        Self::collect_proportions_inner(node, &mut out);
+        out
+    }
+
+    fn collect_proportions_inner(node: &SplitNode, out: &mut Vec<f32>) {
+        if let SplitNode::Split { children, .. } = node {
+            for (p, child) in children {
+                out.push(*p);
+                Self::collect_proportions_inner(child, out);
             }
         }
     }
