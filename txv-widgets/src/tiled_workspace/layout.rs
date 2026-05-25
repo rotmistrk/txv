@@ -54,9 +54,13 @@ impl TiledWorkspace {
             self.group.set_child_bounds(id, rect);
         }
 
-        // Sync split direction for splittable panels based on layout
+        // Sync split direction for non-center splittable panels based on layout.
+        // Center panel direction is user-controlled via :split/:vsplit.
         for i in 0..self.configs.len() {
             if !self.configs[i].splittable {
+                continue;
+            }
+            if self.configs[i].position == super::types::PanelPosition::Center {
                 continue;
             }
             let dir = if self.is_wide {

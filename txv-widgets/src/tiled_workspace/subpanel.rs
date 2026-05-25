@@ -24,7 +24,7 @@ impl TiledWorkspace {
         let mut new_tp = TabPanel::new(mode);
         new_tp.insert_tab(title, view);
         sp.add_child(Box::new(new_tp), 0.5);
-        sp.set_proportion(0, 0.5);
+        sp.equalize();
         sp.set_focused(0); // keep focus on original pane
         self.recompute_layout();
         true
@@ -113,7 +113,7 @@ impl TiledWorkspace {
         if sp.child_count() == 1 {
             let mode = self.configs[idx].tab_mode;
             sp.add_child(Box::new(TabPanel::new(mode)), 0.5);
-            sp.set_proportion(0, 0.5);
+            sp.equalize();
         }
 
         // Insert into the other TabPanel
