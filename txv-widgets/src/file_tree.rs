@@ -265,4 +265,16 @@ impl TreeData for FileTreeData {
         }
         Style::default()
     }
+
+    fn highlight_positions(&self, id: usize) -> Option<&[usize]> {
+        self.match_positions.get(&id).map(|v| v.as_slice())
+    }
+
+    fn filter_status(&self) -> Option<&str> {
+        if self.filter.is_empty() {
+            None
+        } else {
+            Some(&self.filter)
+        }
+    }
 }

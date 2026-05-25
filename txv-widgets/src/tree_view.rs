@@ -21,6 +21,14 @@ pub trait TreeData: Send + 'static {
     fn style(&self, _id: usize) -> Style {
         Style::default()
     }
+    /// Character positions to highlight in the label (for filter matches).
+    fn highlight_positions(&self, _id: usize) -> Option<&[usize]> {
+        None
+    }
+    /// Optional filter status text to show at the bottom of the tree.
+    fn filter_status(&self) -> Option<&str> {
+        None
+    }
 }
 
 pub struct TreeView<D: TreeData> {
@@ -69,7 +77,15 @@ impl<D: TreeData> View for TreeView<D> {
         if w == 0 || h == 0 {
             return;
         }
-        for row in 0..h as usize {
+        // Reserve bottom row for filter status if active
+        let filter_text = self.data.filter_status().map(|s| s.to_string());
+        let tree_h = if filter_text.is_some() {
+            h.saturating_sub(1)
+        } else {
+            h
+        };
+
+        for row in 0..tree_h as usize {
             let idx = self.scroll.offset + row;
             if idx >= self.data.visible_count() {
                 break;
@@ -112,16 +128,48 @@ impl<D: TreeData> View for TreeView<D> {
             self.state.buffer_mut().hline(0, y, w, ' ', style);
             let x = indent;
             self.state.buffer_mut().print(x, y, marker, style);
-            self.state.buffer_mut().print(x + 2, y, self.data.label(id), style);
+            // Draw label with optional character highlights
+            let label = self.data.label(id);
+            let label_x = x + 2;
+            if let Some(positions) = self.data.highlight_positions(id) {
+                let hl_style = Style {
+                    fg: palette().interactive.search_match.fg.unwrap_or(style.fg),
+                    bg: palette().interactive.search_match.bg.unwrap_or(style.bg),
+                    attrs: style.attrs,
+                };
+                for (ci, ch) in label.chars().enumerate() {
+                    let cx = label_x + ci as u16;
+                    if cx >= w {
+                        break;
+                    }
+                    let s = if positions.contains(&ci) {
+                        hl_style
+                    } else {
+                        style
+                    };
+                    self.state.buffer_mut().put(cx, y, ch, s);
+                }
+            } else {
+                self.state.buffer_mut().print(label_x, y, label, style);
+            }
         }
         // Clear remaining rows below the last item
         let drawn = self
             .data
             .visible_count()
             .saturating_sub(self.scroll.offset)
-            .min(h as usize);
-        for row in drawn..h as usize {
+            .min(tree_h as usize);
+        for row in drawn..tree_h as usize {
             self.state.buffer_mut().hline(0, row as u16, w, ' ', Style::default());
+        }
+        // Draw filter status line at bottom
+        if let Some(text) = &filter_text {
+            let y = h - 1;
+            let pal = palette();
+            let status_style = pal.base.dim.to_style();
+            self.state.buffer_mut().hline(0, y, w, ' ', status_style);
+            let display = format!("/{}", text);
+            self.state.buffer_mut().print(0, y, &display, status_style);
         }
     }
 
