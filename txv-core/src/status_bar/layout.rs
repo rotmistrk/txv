@@ -19,8 +19,7 @@ impl StatusBar {
     /// Recompute child bounds based on current group bounds and hints.
     pub(super) fn recompute_layout(&mut self) {
         let bounds = self.bounds_rect();
-        let w = bounds.w;
-        if w == 0 {
+        if bounds.w == 0 {
             return;
         }
 
@@ -30,11 +29,7 @@ impl StatusBar {
         items.sort_by(|a, b| b.priority.cmp(&a.priority).then(a.idx.cmp(&b.idx)));
 
         // Drop lowest-priority items until total min fits
-        let mut total: u16 = items.iter().map(|i| i.min_w).sum();
-        while total > w && !items.is_empty() {
-            total -= items.last().map(|i| i.min_w).unwrap_or(0);
-            items.pop();
-        }
+        Self::drop_overflow(&mut items, bounds.w);
 
         // Allocate min_width
         for item in &mut items {
@@ -42,39 +37,52 @@ impl StatusBar {
         }
 
         // Distribute remaining space to stretch items
-        let used: u16 = items.iter().map(|i| i.alloc).sum();
-        let remaining = w.saturating_sub(used);
-        if remaining > 0 {
-            let total_stretch: u16 = items.iter().map(|i| i.stretch).sum();
-            if total_stretch > 0 {
-                for item in &mut items {
-                    if item.stretch > 0 {
-                        let share = (remaining as u32 * item.stretch as u32 / total_stretch as u32) as u16;
-                        let capped = if item.max_w > 0 {
-                            share.min(item.max_w.saturating_sub(item.alloc))
-                        } else {
-                            share
-                        };
-                        item.alloc += capped;
-                    }
-                }
-            }
-        }
+        Self::distribute_stretch(&mut items, bounds.w);
 
         // Restore insertion order and assign positions
         items.sort_by_key(|i| i.idx);
         self.assign_positions(&items, bounds);
     }
 
+    fn drop_overflow(items: &mut Vec<LayoutItem>, w: u16) {
+        let mut total: u16 = items.iter().map(|i| i.min_w).sum();
+        while total > w && !items.is_empty() {
+            total -= items.last().map(|i| i.min_w).unwrap_or(0);
+            items.pop();
+        }
+    }
+
+    fn distribute_stretch(items: &mut [LayoutItem], w: u16) {
+        let used: u16 = items.iter().map(|i| i.alloc).sum();
+        let remaining = w.saturating_sub(used);
+        if remaining == 0 {
+            return;
+        }
+        let total_stretch: u16 = items.iter().map(|i| i.stretch).sum();
+        if total_stretch == 0 {
+            return;
+        }
+        for item in items.iter_mut().filter(|i| i.stretch > 0) {
+            let share = (remaining as u32 * item.stretch as u32 / total_stretch as u32) as u16;
+            let capped = if item.max_w > 0 {
+                share.min(item.max_w.saturating_sub(item.alloc))
+            } else {
+                share
+            };
+            item.alloc += capped;
+        }
+    }
+
     fn collect_layout_items(&self, _bounds: Rect) -> Vec<LayoutItem> {
         self.hint_iter()
             .enumerate()
             .map(|(idx, (priority, min_width, max_width, stretch, gravity))| {
-                let buf_w = self.child_buffer_width(idx);
                 let min_w = if min_width > 0 {
                     min_width
+                } else if stretch > 0 {
+                    1
                 } else {
-                    buf_w
+                    self.child_buffer_width(idx)
                 };
                 LayoutItem {
                     idx,
@@ -99,20 +107,28 @@ impl StatusBar {
         let mut lx = bounds.x;
         let mut rx = bounds.x + bounds.w.saturating_sub(right_total);
 
-        self.zero_all_bounds();
+        let mut assigned = vec![false; self.child_count()];
 
         for item in items {
             match item.gravity {
                 Gravity::Left => {
                     if lx + item.alloc <= rx {
                         self.set_child_rect(item.idx, Rect::new(lx, bounds.y, item.alloc, bounds.h));
+                        assigned[item.idx] = true;
                         lx += item.alloc;
                     }
                 }
                 Gravity::Right => {
                     self.set_child_rect(item.idx, Rect::new(rx, bounds.y, item.alloc, bounds.h));
+                    assigned[item.idx] = true;
                     rx += item.alloc;
                 }
+            }
+        }
+
+        for (idx, is_assigned) in assigned.iter().enumerate() {
+            if !is_assigned {
+                self.set_child_rect(idx, Rect::new(0, 0, 0, bounds.h));
             }
         }
     }

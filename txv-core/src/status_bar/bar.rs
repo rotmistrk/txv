@@ -12,16 +12,8 @@ use crate::group::GroupState;
 use crate::view::{EventSink, HandleResult, View, ViewOptions};
 
 use super::gravity::Gravity;
+use super::hints::Hints;
 use super::status_slot::StatusSlot;
-
-/// Private storage for layout hints alongside each child.
-struct Hints {
-    priority: u8,
-    min_width: u16,
-    max_width: u16,
-    stretch: u16,
-    gravity: Gravity,
-}
 
 /// StatusBar group container.
 pub struct StatusBar {
@@ -80,13 +72,11 @@ impl StatusBar {
     }
 
     pub(super) fn child_buffer_width(&self, idx: usize) -> u16 {
-        self.group.child(idx).map_or(0, |c| c.buffer().width())
+        self.group.child(idx).map_or(0, |c| c.bounds().w)
     }
 
-    pub(super) fn zero_all_bounds(&mut self) {
-        for idx in 0..self.group.child_count() {
-            self.group.set_child_bounds(idx, Rect::new(0, 0, 0, 0));
-        }
+    pub(super) fn child_count(&self) -> usize {
+        self.group.child_count()
     }
 
     pub(super) fn set_child_rect(&mut self, idx: usize, rect: Rect) {

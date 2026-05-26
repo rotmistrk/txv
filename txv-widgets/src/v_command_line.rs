@@ -102,11 +102,94 @@ impl CommandLineView {
         if let Some(ref completer) = self.completer {
             let completions = completer.complete(&self.text, self.cursor);
             if completions.len() == 1 {
-                self.text = completions[0].text.clone();
+                self.text = completions[0].text().to_string();
                 self.cursor = self.text.len();
                 self.update_bounds();
                 self.state.mark_dirty();
             }
+        }
+    }
+
+    fn handle_inactive(&mut self, event: &Event) -> HandleResult {
+        if let Event::Key(k) = event {
+            if self.activation_keys.contains(k) {
+                self.activate();
+                return HandleResult::Consumed;
+            }
+        }
+        if let Event::Command { id, data } = event {
+            if Some(*id) == self.prefill_command_id {
+                if let Some(prefix) = data.as_ref().and_then(|b| b.downcast_ref::<String>()) {
+                    self.activate();
+                    self.text = prefix.clone();
+                    self.cursor = self.text.len();
+                    self.update_bounds();
+                    self.state.mark_dirty();
+                    return HandleResult::Consumed;
+                }
+            }
+        }
+        HandleResult::Ignored
+    }
+
+    fn handle_active_key(&mut self, key: &KeyEvent) -> HandleResult {
+        match &key.code {
+            KeyCode::Esc => self.deactivate(),
+            KeyCode::Enter => {
+                let cmd = self.text.clone();
+                self.deactivate();
+                if !cmd.is_empty() {
+                    self.state.put_command(self.command_id, Some(Box::new(cmd)));
+                }
+            }
+            KeyCode::Tab => self.try_complete(),
+            KeyCode::Backspace => self.handle_backspace(),
+            KeyCode::Left => self.move_cursor_left(),
+            KeyCode::Right => self.move_cursor_right(),
+            KeyCode::Char(ch) => {
+                self.text.insert(self.cursor, *ch);
+                self.cursor += ch.len_utf8();
+                self.update_bounds();
+                self.state.mark_dirty();
+            }
+            _ => {}
+        }
+        HandleResult::Consumed
+    }
+
+    fn handle_backspace(&mut self) {
+        if self.cursor > 0 {
+            let prev = self.text[..self.cursor]
+                .char_indices()
+                .next_back()
+                .map(|(i, _)| i)
+                .unwrap_or(0);
+            self.text.remove(prev);
+            self.cursor = prev;
+            self.update_bounds();
+            self.state.mark_dirty();
+        } else {
+            self.deactivate();
+        }
+    }
+
+    fn move_cursor_left(&mut self) {
+        if self.cursor > 0 {
+            self.cursor = self.text[..self.cursor]
+                .char_indices()
+                .next_back()
+                .map(|(i, _)| i)
+                .unwrap_or(0);
+        }
+    }
+
+    fn move_cursor_right(&mut self) {
+        if self.cursor < self.text.len() {
+            self.cursor = self.text[self.cursor..]
+                .char_indices()
+                .nth(1)
+                .map(|(i, _)| self.cursor + i)
+                .unwrap_or(self.text.len());
         }
     }
 }
@@ -142,82 +225,11 @@ impl View for CommandLineView {
 
     fn handle(&mut self, event: &Event) -> HandleResult {
         if !self.active {
-            if let Event::Key(k) = event {
-                if self.activation_keys.contains(k) {
-                    self.activate();
-                    return HandleResult::Consumed;
-                }
-            }
-            if let Event::Command { id, data } = event {
-                if Some(*id) == self.prefill_command_id {
-                    if let Some(boxed) = data.as_ref() {
-                        if let Some(prefix) = boxed.downcast_ref::<String>() {
-                            self.activate();
-                            self.text = prefix.clone();
-                            self.cursor = self.text.len();
-                            self.update_bounds();
-                            self.state.mark_dirty();
-                            return HandleResult::Consumed;
-                        }
-                    }
-                }
-            }
-            return HandleResult::Ignored;
+            return self.handle_inactive(event);
         }
         let Event::Key(key) = event else {
             return HandleResult::Consumed;
         };
-        match &key.code {
-            KeyCode::Esc => self.deactivate(),
-            KeyCode::Enter => {
-                let cmd = self.text.clone();
-                self.deactivate();
-                if !cmd.is_empty() {
-                    self.state.put_command(self.command_id, Some(Box::new(cmd)));
-                }
-            }
-            KeyCode::Tab => self.try_complete(),
-            KeyCode::Backspace => {
-                if self.cursor > 0 {
-                    let prev = self.text[..self.cursor]
-                        .char_indices()
-                        .next_back()
-                        .map(|(i, _)| i)
-                        .unwrap_or(0);
-                    self.text.remove(prev);
-                    self.cursor = prev;
-                    self.update_bounds();
-                    self.state.mark_dirty();
-                } else {
-                    self.deactivate();
-                }
-            }
-            KeyCode::Left => {
-                if self.cursor > 0 {
-                    self.cursor = self.text[..self.cursor]
-                        .char_indices()
-                        .next_back()
-                        .map(|(i, _)| i)
-                        .unwrap_or(0);
-                }
-            }
-            KeyCode::Right => {
-                if self.cursor < self.text.len() {
-                    self.cursor = self.text[self.cursor..]
-                        .char_indices()
-                        .nth(1)
-                        .map(|(i, _)| self.cursor + i)
-                        .unwrap_or(self.text.len());
-                }
-            }
-            KeyCode::Char(ch) => {
-                self.text.insert(self.cursor, *ch);
-                self.cursor += ch.len_utf8();
-                self.update_bounds();
-                self.state.mark_dirty();
-            }
-            _ => {}
-        }
-        HandleResult::Consumed
+        self.handle_active_key(key)
     }
 }

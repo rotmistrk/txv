@@ -2,6 +2,7 @@
 
 mod bar;
 mod gravity;
+mod hints;
 mod layout;
 mod status_slot;
 

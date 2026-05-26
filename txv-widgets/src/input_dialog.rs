@@ -34,7 +34,7 @@ impl InputDialog {
     /// Get the entered text.
     pub fn text(&mut self) -> &str {
         if let Some(il) = self.input_mut() {
-            return il.text.as_str();
+            return il.text();
         }
         ""
     }

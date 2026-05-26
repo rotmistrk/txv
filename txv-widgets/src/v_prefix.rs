@@ -4,12 +4,7 @@
 
 use txv_core::prelude::*;
 
-/// A single binding in the prefix map.
-struct PrefixBinding {
-    key: char,
-    command: CommandId,
-    label: &'static str,
-}
+use crate::prefix_binding::PrefixBinding;
 
 /// Two-key prefix View for status bar.
 pub struct PrefixView {

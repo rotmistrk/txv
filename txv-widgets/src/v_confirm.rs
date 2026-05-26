@@ -61,6 +61,24 @@ impl ConfirmView {
         self.update_bounds();
         self.state.mark_dirty();
     }
+
+    fn try_activate(&mut self, event: &Event) -> HandleResult {
+        let Event::Command { id, data } = event else {
+            return HandleResult::Ignored;
+        };
+        if *id != self.activate_command {
+            return HandleResult::Ignored;
+        }
+        let prompt = data.as_ref().and_then(|d| d.downcast_ref::<String>()).cloned();
+        let Some(text) = prompt else {
+            return HandleResult::Ignored;
+        };
+        self.prompt = text;
+        self.active = true;
+        self.update_bounds();
+        self.state.mark_dirty();
+        HandleResult::Consumed
+    }
 }
 
 impl View for ConfirmView {
@@ -96,28 +114,15 @@ impl View for ConfirmView {
 
     fn handle(&mut self, event: &Event) -> HandleResult {
         if !self.active {
-            if let Event::Command { id, data } = event {
-                if *id == self.activate_command {
-                    if let Some(boxed) = data.as_ref() {
-                        if let Some(text) = boxed.downcast_ref::<String>() {
-                            self.prompt = text.clone();
-                            self.active = true;
-                            self.update_bounds();
-                            self.state.mark_dirty();
-                            return HandleResult::Consumed;
-                        }
-                    }
-                }
-            }
-            return HandleResult::Ignored;
+            return self.try_activate(event);
         }
-        if let Event::Key(key) = event {
-            match key.code {
-                KeyCode::Char(ch) => self.respond(ch),
-                KeyCode::Esc => self.respond('c'),
-                _ => return HandleResult::Consumed,
-            }
+        let Event::Key(key) = event else {
             return HandleResult::Consumed;
+        };
+        match key.code {
+            KeyCode::Char(ch) => self.respond(ch),
+            KeyCode::Esc => self.respond('c'),
+            _ => {}
         }
         HandleResult::Consumed
     }

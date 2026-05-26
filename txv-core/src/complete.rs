@@ -2,12 +2,27 @@
 
 /// A single completion candidate.
 pub struct Completion {
-    /// Text to insert at cursor.
-    pub text: String,
-    /// Display string (may differ from text, e.g. include description).
-    pub display: String,
-    /// Kind label: "command", "file", "option", etc.
-    pub kind: &'static str,
+    text: String,
+    display: String,
+    kind: &'static str,
+}
+
+impl Completion {
+    pub fn new(text: String, display: String, kind: &'static str) -> Self {
+        Self { text, display, kind }
+    }
+
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    pub fn display(&self) -> &str {
+        &self.display
+    }
+
+    pub fn kind(&self) -> &'static str {
+        self.kind
+    }
 }
 
 /// Trait for providing completions. Implemented by application-level completers.

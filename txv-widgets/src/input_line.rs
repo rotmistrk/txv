@@ -4,11 +4,10 @@ use txv_core::prelude::*;
 
 pub struct InputLine {
     state: ViewState,
-    pub text: String,
-    pub cursor: usize,
-    pub history: Vec<String>,
+    text: String,
+    cursor: usize,
+    history: Vec<String>,
     history_pos: Option<usize>,
-    pub completions: Vec<String>,
 }
 
 impl InputLine {
@@ -19,8 +18,15 @@ impl InputLine {
             cursor: 0,
             history: Vec::new(),
             history_pos: None,
-            completions: Vec::new(),
         }
+    }
+
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    pub fn cursor_pos(&self) -> usize {
+        self.cursor
     }
 
     pub fn set_text(&mut self, text: &str) {
@@ -41,6 +47,64 @@ impl InputLine {
         }
         self.history_pos = None;
     }
+
+    fn handle_char(&mut self, ch: char) {
+        self.text.insert(self.cursor, ch);
+        self.cursor += 1;
+        self.state.mark_dirty();
+    }
+
+    fn handle_backspace(&mut self) {
+        if self.cursor > 0 {
+            self.cursor -= 1;
+            self.text.remove(self.cursor);
+            self.state.mark_dirty();
+        }
+    }
+
+    fn handle_delete(&mut self) {
+        if self.cursor < self.text.len() {
+            self.text.remove(self.cursor);
+            self.state.mark_dirty();
+        }
+    }
+
+    fn handle_history_up(&mut self) {
+        if self.history.is_empty() {
+            return;
+        }
+        let pos = match self.history_pos {
+            Some(p) => p.saturating_sub(1),
+            None => self.history.len() - 1,
+        };
+        self.history_pos = Some(pos);
+        self.text = self.history[pos].clone();
+        self.cursor = self.text.len();
+        self.state.mark_dirty();
+    }
+
+    fn handle_history_down(&mut self) {
+        let Some(pos) = self.history_pos else {
+            return;
+        };
+        if pos + 1 < self.history.len() {
+            self.history_pos = Some(pos + 1);
+            self.text = self.history[pos + 1].clone();
+        } else {
+            self.history_pos = None;
+            self.text.clear();
+        }
+        self.cursor = self.text.len();
+        self.state.mark_dirty();
+    }
+
+    fn visible_start(&self, width: usize) -> usize {
+        if self.cursor >= width {
+            self.cursor - width + 1
+        } else {
+            0
+        }
+    }
 }
 
 impl Default for InputLine {
@@ -57,14 +121,9 @@ impl View for InputLine {
             return None;
         }
         let w = self.state.bounds().w as usize;
-        let start = if self.cursor >= w {
-            self.cursor - w + 1
-        } else {
-            0
-        };
-        let cx = (self.cursor - start) as u16;
+        let start = self.visible_start(w);
         Some(txv_core::cursor::CursorRequest {
-            x: cx,
+            x: (self.cursor - start) as u16,
             y: 0,
             shape: txv_core::cursor::CursorShape::Bar,
         })
@@ -72,27 +131,20 @@ impl View for InputLine {
 
     fn draw(&mut self) {
         let w = self.state.buffer_mut().width();
-        let h = self.state.buffer_mut().height();
-        if w == 0 || h == 0 {
+        if w == 0 || self.state.buffer_mut().height() == 0 {
             return;
         }
         let style = Style::default();
         self.state.buffer_mut().hline(0, 0, w, ' ', style);
-        // Compute visible window of text
         let ww = w as usize;
-        let start = if self.cursor >= ww {
-            self.cursor - ww + 1
-        } else {
-            0
-        };
+        let start = self.visible_start(ww);
         let visible: String = self.text.chars().skip(start).take(ww).collect();
         self.state.buffer_mut().print(0, 0, &visible, style);
-        // Draw cursor
         let cx = (self.cursor - start) as u16;
         if cx < w {
             let ch = self.text.chars().nth(self.cursor).unwrap_or(' ');
-            let cursor_style = txv_core::palette::palette().interactive.input_cursor.to_style();
-            self.state.buffer_mut().put(cx, 0, ch, cursor_style);
+            let cs = txv_core::palette::palette().interactive.input_cursor.to_style();
+            self.state.buffer_mut().put(cx, 0, ch, cs);
         }
     }
 
@@ -101,90 +153,34 @@ impl View for InputLine {
             return HandleResult::Ignored;
         };
         match &key.code {
-            KeyCode::Char(ch) => {
-                self.text.insert(self.cursor, *ch);
+            KeyCode::Char(ch) => self.handle_char(*ch),
+            KeyCode::Backspace => self.handle_backspace(),
+            KeyCode::Delete => self.handle_delete(),
+            KeyCode::Left if self.cursor > 0 => {
+                self.cursor -= 1;
+                self.state.mark_dirty()
+            }
+            KeyCode::Right if self.cursor < self.text.len() => {
                 self.cursor += 1;
-                self.state.mark_dirty();
-                HandleResult::Consumed
-            }
-            KeyCode::Backspace => {
-                if self.cursor > 0 {
-                    self.cursor -= 1;
-                    self.text.remove(self.cursor);
-                    self.state.mark_dirty();
-                }
-                HandleResult::Consumed
-            }
-            KeyCode::Delete => {
-                if self.cursor < self.text.len() {
-                    self.text.remove(self.cursor);
-                    self.state.mark_dirty();
-                }
-                HandleResult::Consumed
-            }
-            KeyCode::Left => {
-                if self.cursor > 0 {
-                    self.cursor -= 1;
-                    self.state.mark_dirty();
-                }
-                HandleResult::Consumed
-            }
-            KeyCode::Right => {
-                if self.cursor < self.text.len() {
-                    self.cursor += 1;
-                    self.state.mark_dirty();
-                }
-                HandleResult::Consumed
+                self.state.mark_dirty()
             }
             KeyCode::Home => {
                 self.cursor = 0;
-                self.state.mark_dirty();
-                HandleResult::Consumed
+                self.state.mark_dirty()
             }
             KeyCode::End => {
                 self.cursor = self.text.len();
-                self.state.mark_dirty();
-                HandleResult::Consumed
+                self.state.mark_dirty()
             }
+            KeyCode::Up => self.handle_history_up(),
+            KeyCode::Down => self.handle_history_down(),
             KeyCode::Enter => {
                 self.push_history();
                 self.state.put_command(CM_OK, Some(Box::new(self.text.clone())));
-                HandleResult::Consumed
             }
-            KeyCode::Esc => {
-                self.state.put_command(CM_CANCEL, None);
-                HandleResult::Consumed
-            }
-            KeyCode::Up => {
-                // History navigation
-                if !self.history.is_empty() {
-                    let pos = match self.history_pos {
-                        Some(p) => p.saturating_sub(1),
-                        None => self.history.len() - 1,
-                    };
-                    self.history_pos = Some(pos);
-                    self.text = self.history[pos].clone();
-                    self.cursor = self.text.len();
-                    self.state.mark_dirty();
-                }
-                HandleResult::Consumed
-            }
-            KeyCode::Down => {
-                if let Some(pos) = self.history_pos {
-                    if pos + 1 < self.history.len() {
-                        let next = pos + 1;
-                        self.history_pos = Some(next);
-                        self.text = self.history[next].clone();
-                    } else {
-                        self.history_pos = None;
-                        self.text.clear();
-                    }
-                    self.cursor = self.text.len();
-                    self.state.mark_dirty();
-                }
-                HandleResult::Consumed
-            }
-            _ => HandleResult::Ignored,
+            KeyCode::Esc => self.state.put_command(CM_CANCEL, None),
+            _ => return HandleResult::Ignored,
         }
+        HandleResult::Consumed
     }
 }

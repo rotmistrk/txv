@@ -10,8 +10,22 @@ use txv_core::status::{ActiveItem, Gravity, VisibleItem};
 /// Cursor position data emitted with CM_CURSOR_MOVED.
 #[derive(Debug, Clone, Copy)]
 pub struct CursorPos {
-    pub line: u32,
-    pub col: u32,
+    line: u32,
+    col: u32,
+}
+
+impl CursorPos {
+    pub fn new(line: u32, col: u32) -> Self {
+        Self { line, col }
+    }
+
+    pub fn line(&self) -> u32 {
+        self.line
+    }
+
+    pub fn col(&self) -> u32 {
+        self.col
+    }
 }
 
 // --- ModeItem ---
@@ -79,7 +93,7 @@ impl ActiveItem for PositionItem {
             if *id == self.command_id {
                 if let Some(boxed) = data.as_ref() {
                     if let Some(pos) = boxed.downcast_ref::<CursorPos>() {
-                        self.label_text = format!("Ln {}, Col {}", pos.line, pos.col);
+                        self.label_text = format!("Ln {}, Col {}", pos.line(), pos.col());
                         return HandleResult::Consumed;
                     }
                 }

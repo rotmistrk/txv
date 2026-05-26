@@ -47,6 +47,44 @@ impl MessageView {
             });
         }
     }
+
+    fn apply_message(&mut self, msg: &Message) {
+        if msg.level == MsgLevel::Debug {
+            return;
+        }
+        self.display = if msg.count > 1 {
+            format!("[{}] {} (×{})", msg.origin, msg.text, msg.count)
+        } else {
+            format!("[{}] {}", msg.origin, msg.text)
+        };
+        let pal = txv_core::palette::palette();
+        self.display_style = {
+            let mut s = match msg.level {
+                MsgLevel::Error => pal.state.error.to_style(),
+                MsgLevel::Warn => pal.state.warning.to_style(),
+                _ => pal.state.info.to_style(),
+            };
+            s.attrs.reverse = true;
+            s
+        };
+        self.last_set = Some(Instant::now());
+        self.update_bounds();
+        self.state.mark_dirty();
+    }
+
+    fn check_timeout(&mut self) {
+        if self.timeout_secs == 0 {
+            return;
+        }
+        if let Some(set_at) = self.last_set {
+            if set_at.elapsed().as_secs() >= u64::from(self.timeout_secs) {
+                self.display.clear();
+                self.last_set = None;
+                self.update_bounds();
+                self.state.mark_dirty();
+            }
+        }
+    }
 }
 
 impl View for MessageView {
@@ -66,40 +104,13 @@ impl View for MessageView {
     fn handle(&mut self, event: &Event) -> HandleResult {
         match event {
             Event::Command { id, data } if *id == CM_STATUS_MESSAGE => {
-                if let Some(boxed) = data.as_ref() {
-                    if let Some(msg) = boxed.downcast_ref::<Message>() {
-                        if msg.level != MsgLevel::Debug {
-                            self.display = if msg.count > 1 {
-                                format!("[{}] {} (×{})", msg.origin, msg.text, msg.count)
-                            } else {
-                                format!("[{}] {}", msg.origin, msg.text)
-                            };
-                            let pal = txv_core::palette::palette();
-                            self.display_style = match msg.level {
-                                MsgLevel::Error => pal.state.error.to_style(),
-                                MsgLevel::Warn => pal.state.warning.to_style(),
-                                _ => pal.state.info.to_style(),
-                            };
-                            self.last_set = Some(Instant::now());
-                            self.update_bounds();
-                            self.state.mark_dirty();
-                        }
-                    }
+                if let Some(msg) = data.as_ref().and_then(|b| b.downcast_ref::<Message>()) {
+                    self.apply_message(msg);
                 }
-                // Don't consume — let other handlers see the message too
                 HandleResult::Ignored
             }
             Event::Tick => {
-                if self.timeout_secs > 0 {
-                    if let Some(set_at) = self.last_set {
-                        if set_at.elapsed().as_secs() >= u64::from(self.timeout_secs) {
-                            self.display.clear();
-                            self.last_set = None;
-                            self.update_bounds();
-                            self.state.mark_dirty();
-                        }
-                    }
-                }
+                self.check_timeout();
                 HandleResult::Ignored
             }
             _ => HandleResult::Ignored,

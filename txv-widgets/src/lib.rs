@@ -45,6 +45,8 @@ pub mod v_key_label;
 pub mod v_message;
 pub mod v_prefix;
 
+pub(crate) mod prefix_binding;
+
 pub use command_item::CommandItem;
 pub use dialog::Dialog;
 pub use file_list::FileListData;
