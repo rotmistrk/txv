@@ -232,6 +232,11 @@ impl GroupState {
         self.view.sink()
     }
 
+    /// Set the sink on this group only, without propagating to children.
+    pub fn set_own_sink(&mut self, sink: crate::view::EventSink) {
+        self.view.set_sink(sink);
+    }
+
     pub fn title(&self) -> &str {
         self.view.title()
     }

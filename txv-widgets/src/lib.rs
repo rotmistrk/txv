@@ -16,6 +16,7 @@ pub mod input_line;
 pub mod key_encode;
 pub mod list_view;
 pub mod menu;
+pub mod modal_key;
 pub mod overlay;
 pub mod prefix_item;
 pub mod progress_bar;
@@ -58,6 +59,7 @@ pub use input_dialog::InputDialog;
 pub use input_line::InputLine;
 pub use list_view::{ListData, ListView};
 pub use menu::{Menu, MenuItem};
+pub use modal_key::ModalKey;
 pub use overlay::Overlay;
 pub use progress_bar::{ProgressBar, ProgressMode};
 pub use pty_terminal::PtyTerminal;
@@ -92,3 +94,7 @@ mod glyphs_integration_tests;
 #[cfg(test)]
 #[path = "cursor_integration_tests.rs"]
 mod cursor_integration_tests;
+
+#[cfg(test)]
+#[path = "modal_key_tests.rs"]
+mod modal_key_tests;
