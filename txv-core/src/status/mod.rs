@@ -28,6 +28,27 @@ pub trait ActiveItem: Send {
 pub trait VisibleItem: Send {
     fn label(&self) -> &str;
     fn gravity(&self) -> Gravity;
+    /// Priority for layout (higher = shown first when space is tight). Default: 5.
+    fn priority(&self) -> u8 {
+        5
+    }
+    /// Minimum width in characters. Default: label length + 2 (padding).
+    fn min_width(&self) -> u16 {
+        let l = self.label().len() as u16;
+        if l == 0 {
+            0
+        } else {
+            l + 2
+        }
+    }
+    /// Maximum width (0 = unbounded). Default: same as min_width (fixed).
+    fn max_width(&self) -> u16 {
+        self.min_width()
+    }
+    /// Stretch weight for distributing extra space (0 = fixed). Default: 0.
+    fn stretch(&self) -> u16 {
+        0
+    }
     /// Style for rendering the label. Default is plain.
     fn style(&self) -> crate::cell::Style {
         crate::cell::Style::default()
@@ -138,6 +159,55 @@ impl StatusBar {
             ItemSlot::Full(item) => item.is_exclusive(),
             ItemSlot::ActiveOnly(item) => item.is_exclusive(),
             ItemSlot::VisibleOnly(_) => false,
+        }
+    }
+
+    fn item_priority(&self, idx: usize) -> u8 {
+        match &self.items[idx] {
+            ItemSlot::Full(item) => item.priority(),
+            ItemSlot::VisibleOnly(item) => item.priority(),
+            ItemSlot::ActiveOnly(_) => 0,
+        }
+    }
+
+    fn item_gravity(&self, idx: usize) -> Gravity {
+        match &self.items[idx] {
+            ItemSlot::Full(item) => item.gravity(),
+            ItemSlot::VisibleOnly(item) => item.gravity(),
+            ItemSlot::ActiveOnly(_) => Gravity::Left,
+        }
+    }
+
+    #[allow(dead_code)]
+    fn item_min_width(&self, idx: usize) -> u16 {
+        match &self.items[idx] {
+            ItemSlot::Full(item) => item.min_width(),
+            ItemSlot::VisibleOnly(item) => item.min_width(),
+            ItemSlot::ActiveOnly(_) => 0,
+        }
+    }
+
+    fn item_max_width(&self, idx: usize) -> u16 {
+        match &self.items[idx] {
+            ItemSlot::Full(item) => item.max_width(),
+            ItemSlot::VisibleOnly(item) => item.max_width(),
+            ItemSlot::ActiveOnly(_) => 0,
+        }
+    }
+
+    fn item_stretch(&self, idx: usize) -> u16 {
+        match &self.items[idx] {
+            ItemSlot::Full(item) => item.stretch(),
+            ItemSlot::VisibleOnly(item) => item.stretch(),
+            ItemSlot::ActiveOnly(_) => 0,
+        }
+    }
+
+    fn item_style(&self, idx: usize) -> crate::cell::Style {
+        match &self.items[idx] {
+            ItemSlot::Full(item) => item.style(),
+            ItemSlot::VisibleOnly(item) => item.style(),
+            ItemSlot::ActiveOnly(_) => crate::cell::Style::default(),
         }
     }
 }
