@@ -37,6 +37,10 @@ pub mod table;
 pub mod text_area;
 pub mod tiled_workspace;
 pub mod tree_view;
+pub mod v_clock;
+pub mod v_key_label;
+pub mod v_message;
+pub mod v_prefix;
 
 pub use command_item::CommandItem;
 pub use dialog::Dialog;
@@ -64,6 +68,10 @@ pub use tab_panel::TabPanel;
 pub use table::{Column, Table};
 pub use text_area::TextArea;
 pub use tree_view::{TreeData, TreeView};
+pub use v_clock::ClockView;
+pub use v_key_label::KeyLabelView;
+pub use v_message::MessageView;
+pub use v_prefix::PrefixView;
 
 #[cfg(test)]
 #[path = "palette_integration_tests.rs"]

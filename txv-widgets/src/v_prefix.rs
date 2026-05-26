@@ -1,0 +1,154 @@
+//! PrefixView — two-key sequence handler as a View.
+//!
+//! Idle: shows compact label. Active: goes modal, shows bindings, dispatches second key.
+
+use txv_core::prelude::*;
+
+/// A single binding in the prefix map.
+struct PrefixBinding {
+    key: char,
+    command: CommandId,
+    label: &'static str,
+}
+
+/// Two-key prefix View for status bar.
+pub struct PrefixView {
+    state: ViewState,
+    prefix_key: KeyEvent,
+    bindings: Vec<PrefixBinding>,
+    active: bool,
+    idle_label: String,
+    active_label: String,
+}
+
+impl PrefixView {
+    pub fn new(prefix_key: KeyEvent, idle_label: impl Into<String>) -> Self {
+        let idle_label = idle_label.into();
+        let w = idle_label.len() as u16 + 2;
+        let mut state = ViewState::new(ViewOptions {
+            preprocess: true,
+            focusable: false,
+            ..ViewOptions::default()
+        });
+        state.set_bounds(Rect { x: 0, y: 0, w, h: 1 });
+        Self {
+            state,
+            prefix_key,
+            bindings: Vec::new(),
+            active: false,
+            idle_label,
+            active_label: String::new(),
+        }
+    }
+
+    pub fn bind(mut self, key: char, command: CommandId, label: &'static str) -> Self {
+        self.bindings.push(PrefixBinding { key, command, label });
+        self.rebuild_active_label();
+        self
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.active
+    }
+
+    fn rebuild_active_label(&mut self) {
+        let parts: Vec<String> = self.bindings.iter().map(|b| format!("{}:{}", b.key, b.label)).collect();
+        self.active_label = format!("{}: {}", self.idle_label, parts.join(" "));
+        // Resize buffer to fit active label when active
+    }
+
+    fn dispatch_key(&self, ch: char) -> bool {
+        for b in &self.bindings {
+            if b.key == ch {
+                self.state.put_command(b.command, None);
+                return true;
+            }
+        }
+        false
+    }
+
+    fn resize_for_state(&mut self) {
+        let label = if self.active {
+            &self.active_label
+        } else {
+            &self.idle_label
+        };
+        let w = label.len() as u16 + 2;
+        let bounds = self.state.bounds();
+        if bounds.w != w {
+            self.state.set_bounds(Rect {
+                x: bounds.x,
+                y: bounds.y,
+                w,
+                h: 1,
+            });
+        }
+    }
+}
+
+impl View for PrefixView {
+    delegate_view_state!(state, override { options });
+
+    fn options(&self) -> ViewOptions {
+        ViewOptions {
+            preprocess: true,
+            focusable: false,
+            modal: self.active,
+            ..ViewOptions::default()
+        }
+    }
+
+    fn draw(&mut self) {
+        let label = if self.active {
+            &self.active_label
+        } else {
+            &self.idle_label
+        };
+        let style = Style {
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
+            ..Style::default()
+        };
+        let buf = self.state.buffer_mut();
+        buf.fill(' ', style);
+        if !label.is_empty() {
+            buf.print(1, 0, label, style);
+        }
+        self.state.mark_redrawn();
+    }
+
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        let Event::Key(key) = event else {
+            return HandleResult::Ignored;
+        };
+
+        if !self.active {
+            if *key == self.prefix_key {
+                self.active = true;
+                self.resize_for_state();
+                self.state.mark_dirty();
+                return HandleResult::Consumed;
+            }
+            return HandleResult::Ignored;
+        }
+
+        // Active — waiting for second key
+        match key.code {
+            KeyCode::Esc => {
+                self.active = false;
+            }
+            KeyCode::Char(ch) if !key.modifiers.alt => {
+                self.dispatch_key(ch);
+                self.active = false;
+            }
+            _ => {
+                self.active = false;
+            }
+        }
+        self.resize_for_state();
+        self.state.mark_dirty();
+        HandleResult::Consumed
+    }
+}
