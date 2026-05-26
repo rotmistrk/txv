@@ -67,6 +67,7 @@ pub mod palette;
 pub mod program;
 pub mod run;
 pub mod status;
+pub mod status_bar;
 pub mod surface;
 pub mod text;
 pub mod view;

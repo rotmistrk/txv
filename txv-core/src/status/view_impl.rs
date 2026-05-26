@@ -69,36 +69,30 @@ impl View for StatusBar {
                 continue;
             }
             let text = format!(" {} ", label);
-            let text_w = text.len() as u16;
             entries.push(LayoutEntry {
                 idx,
+                text_w: text.len() as u16,
                 text,
                 gravity: self.item_gravity(idx),
                 priority: self.item_priority(idx),
                 stretch: self.item_stretch(idx),
                 max_w: self.item_max_width(idx),
-                alloc: text_w,
+                alloc: 0,
             });
         }
 
-        // Drop lowest-priority items if total exceeds width
-        let total: u16 = entries.iter().map(|e| e.alloc).sum();
-        if total > w {
-            entries.sort_by(|a, b| b.priority.cmp(&a.priority).then(a.idx.cmp(&b.idx)));
-            let mut sum = 0u16;
-            let mut keep = entries.len();
-            for (i, e) in entries.iter().enumerate() {
-                if sum + e.alloc > w {
-                    keep = i;
-                    break;
-                }
-                sum += e.alloc;
-            }
-            entries.truncate(keep);
-            entries.sort_by_key(|e| e.idx);
+        // Phase 1: drop lowest-priority items until total min fits
+        entries.sort_by(|a, b| b.priority.cmp(&a.priority).then(a.idx.cmp(&b.idx)));
+        let mut total: u16 = entries.iter().map(|e| e.text_w).sum();
+        while total > w && !entries.is_empty() {
+            total -= entries.last().map(|e| e.text_w).unwrap_or(0);
+            entries.pop();
         }
 
-        // Distribute remaining space to stretch items
+        // Phase 2: allocate min-sz, distribute remaining to stretch items
+        for e in &mut entries {
+            e.alloc = e.text_w;
+        }
         let used: u16 = entries.iter().map(|e| e.alloc).sum();
         let remaining = w.saturating_sub(used);
         if remaining > 0 {
@@ -118,28 +112,32 @@ impl View for StatusBar {
             }
         }
 
-        // Render right-gravity items first (they have priority over left)
-        let mut rx = w;
-        for e in entries.iter().rev() {
-            if e.gravity == Gravity::Right && rx >= e.alloc {
-                rx -= e.alloc;
-                let style = self.render_style(e.idx, bar_style);
-                self.state.buffer_mut().print_line(rx, 0, &e.text, e.alloc, style);
-            }
-        }
+        // Phase 3: restore insertion order and render
+        entries.sort_by_key(|e| e.idx);
 
-        // Render left-gravity items (stop before right items)
         let mut lx: u16 = 0;
+        // Compute right-side total to know where right items start
+        let right_total: u16 = entries
+            .iter()
+            .filter(|e| e.gravity == Gravity::Right)
+            .map(|e| e.alloc)
+            .sum();
+        let mut rx = w.saturating_sub(right_total);
+
         for e in &entries {
-            if e.gravity == Gravity::Left {
-                let avail = rx.saturating_sub(lx);
-                if avail == 0 {
-                    break;
+            match e.gravity {
+                Gravity::Left => {
+                    if lx + e.alloc <= rx {
+                        let style = self.render_style(e.idx, bar_style);
+                        self.state.buffer_mut().print_line(lx, 0, &e.text, e.alloc, style);
+                        lx += e.alloc;
+                    }
                 }
-                let use_w = e.alloc.min(avail);
-                let style = self.render_style(e.idx, bar_style);
-                self.state.buffer_mut().print_line(lx, 0, &e.text, use_w, style);
-                lx += use_w;
+                Gravity::Right => {
+                    let style = self.render_style(e.idx, bar_style);
+                    self.state.buffer_mut().print_line(rx, 0, &e.text, e.alloc, style);
+                    rx += e.alloc;
+                }
             }
         }
     }
@@ -200,6 +198,7 @@ impl StatusBar {
 struct LayoutEntry {
     idx: usize,
     text: String,
+    text_w: u16,
     gravity: Gravity,
     priority: u8,
     stretch: u16,

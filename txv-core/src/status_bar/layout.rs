@@ -1,0 +1,118 @@
+//! Priority-pack layout computation for StatusBar.
+
+use crate::geometry::Rect;
+
+use super::bar::StatusBar;
+use super::gravity::Gravity;
+
+struct LayoutItem {
+    idx: usize,
+    min_w: u16,
+    max_w: u16,
+    stretch: u16,
+    gravity: Gravity,
+    priority: u8,
+    alloc: u16,
+}
+
+impl StatusBar {
+    /// Recompute child bounds based on current group bounds and hints.
+    pub(super) fn recompute_layout(&mut self) {
+        let bounds = self.bounds_rect();
+        let w = bounds.w;
+        if w == 0 {
+            return;
+        }
+
+        let mut items: Vec<LayoutItem> = self.collect_layout_items(bounds);
+
+        // Sort by priority descending, stable by insertion order
+        items.sort_by(|a, b| b.priority.cmp(&a.priority).then(a.idx.cmp(&b.idx)));
+
+        // Drop lowest-priority items until total min fits
+        let mut total: u16 = items.iter().map(|i| i.min_w).sum();
+        while total > w && !items.is_empty() {
+            total -= items.last().map(|i| i.min_w).unwrap_or(0);
+            items.pop();
+        }
+
+        // Allocate min_width
+        for item in &mut items {
+            item.alloc = item.min_w;
+        }
+
+        // Distribute remaining space to stretch items
+        let used: u16 = items.iter().map(|i| i.alloc).sum();
+        let remaining = w.saturating_sub(used);
+        if remaining > 0 {
+            let total_stretch: u16 = items.iter().map(|i| i.stretch).sum();
+            if total_stretch > 0 {
+                for item in &mut items {
+                    if item.stretch > 0 {
+                        let share = (remaining as u32 * item.stretch as u32 / total_stretch as u32) as u16;
+                        let capped = if item.max_w > 0 {
+                            share.min(item.max_w.saturating_sub(item.alloc))
+                        } else {
+                            share
+                        };
+                        item.alloc += capped;
+                    }
+                }
+            }
+        }
+
+        // Restore insertion order and assign positions
+        items.sort_by_key(|i| i.idx);
+        self.assign_positions(&items, bounds);
+    }
+
+    fn collect_layout_items(&self, _bounds: Rect) -> Vec<LayoutItem> {
+        self.hint_iter()
+            .enumerate()
+            .map(|(idx, (priority, min_width, max_width, stretch, gravity))| {
+                let min_w = if min_width > 0 {
+                    min_width
+                } else {
+                    self.child_buffer_width(idx).max(1)
+                };
+                LayoutItem {
+                    idx,
+                    min_w,
+                    max_w: max_width,
+                    stretch,
+                    gravity,
+                    priority,
+                    alloc: 0,
+                }
+            })
+            .filter(|item| item.min_w > 0)
+            .collect()
+    }
+
+    fn assign_positions(&mut self, items: &[LayoutItem], bounds: Rect) {
+        let right_total: u16 = items
+            .iter()
+            .filter(|i| i.gravity == Gravity::Right)
+            .map(|i| i.alloc)
+            .sum();
+        let mut lx = bounds.x;
+        let mut rx = bounds.x + bounds.w.saturating_sub(right_total);
+
+        self.zero_all_bounds();
+
+        for item in items {
+            match item.gravity {
+                Gravity::Left => {
+                    if lx + item.alloc <= rx {
+                        self.set_child_rect(item.idx, Rect::new(lx, bounds.y, item.alloc, bounds.h));
+                        lx += item.alloc;
+                    }
+                }
+                Gravity::Right => {
+                    self.set_child_rect(item.idx, Rect::new(rx, bounds.y, item.alloc, bounds.h));
+                    rx += item.alloc;
+                }
+            }
+        }
+    }
+}
