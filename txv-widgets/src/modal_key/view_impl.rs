@@ -1,0 +1,165 @@
+//! ModalKey — View implementation and event handling.
+
+use txv_core::prelude::*;
+
+use super::ModalKey;
+
+impl View for ModalKey {
+    delegate_group_state!(group, override { options, draw, handle, set_sink });
+
+    fn set_sink(&mut self, sink: EventSink) {
+        self.group.set_own_sink(sink);
+    }
+
+    fn options(&self) -> ViewOptions {
+        ViewOptions {
+            preprocess: true,
+            focusable: false,
+            modal: self.active,
+            ..ViewOptions::default()
+        }
+    }
+
+    fn draw(&mut self) {
+        if self.active {
+            self.update_bounds();
+        }
+        let bounds = self.group.bounds();
+        if bounds.w == 0 || bounds.h == 0 {
+            self.group.mark_redrawn();
+            return;
+        }
+        let style = Style {
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
+            ..Style::default()
+        };
+        self.group.buffer_mut().fill(' ', style);
+
+        if self.active {
+            self.layout_children();
+            self.group.buffer_mut().print(0, 0, &self.prompt, style);
+            self.draw_children(bounds);
+        } else if !self.idle_label.is_empty() {
+            self.group.buffer_mut().print(1, 0, &self.idle_label, style);
+        }
+        self.group.mark_redrawn();
+    }
+
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        if let Event::Tick = event {
+            if self.active {
+                self.check_timeout();
+            }
+            return HandleResult::Ignored;
+        }
+        if !self.active {
+            return self.handle_dormant(event);
+        }
+        self.handle_active(event)
+    }
+}
+
+impl ModalKey {
+    fn check_timeout(&mut self) {
+        let Some(secs) = self.timeout_secs else {
+            return;
+        };
+        let Some(at) = self.activated_at else {
+            return;
+        };
+        if at.elapsed().as_secs() >= u64::from(secs) {
+            self.deactivate();
+        }
+    }
+
+    fn drain_child_commands(&mut self) -> bool {
+        let events = self.child_sink.drain();
+        let mut had_command = false;
+        for ev in events {
+            if matches!(&ev, Event::Command { .. }) {
+                had_command = true;
+            }
+            self.group.put_event(ev);
+        }
+        had_command
+    }
+
+    fn layout_children(&mut self) {
+        let prompt_w = self.prompt.len() as u16;
+        let y = self.group.bounds().y;
+        let base_x = self.group.bounds().x + prompt_w;
+        let mut x = base_x;
+        for i in 0..self.group.child_count() {
+            let cw = self.group.child(i).map_or(0, |c| c.bounds().w);
+            self.group.set_child_bounds(i, Rect::new(x, y, cw, 1));
+            x += cw;
+        }
+    }
+
+    fn draw_children(&mut self, bounds: Rect) {
+        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
+        for i in 0..self.group.child_count() {
+            if let Some(child) = self.group.child_mut(i) {
+                if child.bounds().w > 0 {
+                    child.draw();
+                }
+            }
+            if let Some(child) = self.group.child(i) {
+                let cb = child.bounds();
+                if cb.w > 0 {
+                    let dx = cb.x.saturating_sub(bounds.x);
+                    let dy = cb.y.saturating_sub(bounds.y);
+                    unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
+                }
+            }
+        }
+    }
+
+    fn handle_dormant(&mut self, event: &Event) -> HandleResult {
+        if let Event::Key(key) = event {
+            if self.trigger_keys.contains(key) {
+                self.activate();
+                return HandleResult::Consumed;
+            }
+        }
+        if let Event::Command { id, data } = event {
+            if Some(*id) == self.trigger_command {
+                if let Some(text) = data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
+                    self.prompt = text.clone();
+                }
+                self.activate();
+                return HandleResult::Consumed;
+            }
+            if Some(*id) == self.prefill_command {
+                self.activate();
+                self.group.dispatch(event);
+                self.child_sink.drain();
+                return HandleResult::Consumed;
+            }
+        }
+        HandleResult::Ignored
+    }
+
+    fn handle_active(&mut self, event: &Event) -> HandleResult {
+        let result = self.group.dispatch(event);
+
+        if self.drain_child_commands() {
+            self.deactivate();
+            return HandleResult::Consumed;
+        }
+
+        // Update bounds after children may have resized
+        self.update_bounds();
+
+        if self.cancel_on_miss && result == HandleResult::Ignored {
+            if let Event::Key(_) = event {
+                self.deactivate();
+            }
+        }
+
+        HandleResult::Consumed
+    }
+}

@@ -8,6 +8,8 @@ pub struct InputLine {
     cursor: usize,
     history: Vec<String>,
     history_pos: Option<usize>,
+    completer: Option<Box<dyn Completer>>,
+    submit_command: CommandId,
 }
 
 impl InputLine {
@@ -18,7 +20,23 @@ impl InputLine {
             cursor: 0,
             history: Vec::new(),
             history_pos: None,
+            completer: None,
+            submit_command: CM_OK,
         }
+    }
+
+    pub fn with_command(mut self, id: CommandId) -> Self {
+        self.submit_command = id;
+        self
+    }
+
+    pub fn with_completer(mut self, c: Box<dyn Completer>) -> Self {
+        self.completer = Some(c);
+        self
+    }
+
+    pub fn set_completer(&mut self, c: Box<dyn Completer>) {
+        self.completer = Some(c);
     }
 
     pub fn text(&self) -> &str {
@@ -32,12 +50,21 @@ impl InputLine {
     pub fn set_text(&mut self, text: &str) {
         self.text = text.to_string();
         self.cursor = self.text.len();
-        self.state.mark_dirty();
+        self.update_width();
     }
 
     pub fn clear(&mut self) {
         self.text.clear();
         self.cursor = 0;
+        self.update_width();
+    }
+
+    fn update_width(&mut self) {
+        let w = (self.text.len() as u16).saturating_add(2).max(10);
+        let b = self.state.bounds();
+        if b.w != w {
+            self.state.set_bounds(Rect::new(b.x, b.y, w, 1));
+        }
         self.state.mark_dirty();
     }
 
@@ -51,21 +78,21 @@ impl InputLine {
     fn handle_char(&mut self, ch: char) {
         self.text.insert(self.cursor, ch);
         self.cursor += 1;
-        self.state.mark_dirty();
+        self.update_width();
     }
 
     fn handle_backspace(&mut self) {
         if self.cursor > 0 {
             self.cursor -= 1;
             self.text.remove(self.cursor);
-            self.state.mark_dirty();
+            self.update_width();
         }
     }
 
     fn handle_delete(&mut self) {
         if self.cursor < self.text.len() {
             self.text.remove(self.cursor);
-            self.state.mark_dirty();
+            self.update_width();
         }
     }
 
@@ -80,7 +107,7 @@ impl InputLine {
         self.history_pos = Some(pos);
         self.text = self.history[pos].clone();
         self.cursor = self.text.len();
-        self.state.mark_dirty();
+        self.update_width();
     }
 
     fn handle_history_down(&mut self) {
@@ -95,7 +122,27 @@ impl InputLine {
             self.text.clear();
         }
         self.cursor = self.text.len();
-        self.state.mark_dirty();
+        self.update_width();
+    }
+
+    fn handle_command(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+        if let Some(text) = data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
+            self.set_text(text);
+            return HandleResult::Consumed;
+        }
+        HandleResult::Ignored
+    }
+
+    fn try_complete(&mut self) {
+        let Some(ref completer) = self.completer else {
+            return;
+        };
+        let completions = completer.complete(&self.text, self.cursor);
+        if completions.len() == 1 {
+            self.text = completions[0].text().to_string();
+            self.cursor = self.text.len();
+            self.update_width();
+        }
     }
 
     fn visible_start(&self, width: usize) -> usize {
@@ -149,6 +196,9 @@ impl View for InputLine {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
+        if let Event::Command { data, .. } = event {
+            return self.handle_command(data);
+        }
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
@@ -174,9 +224,11 @@ impl View for InputLine {
             }
             KeyCode::Up => self.handle_history_up(),
             KeyCode::Down => self.handle_history_down(),
+            KeyCode::Tab => self.try_complete(),
             KeyCode::Enter => {
                 self.push_history();
-                self.state.put_command(CM_OK, Some(Box::new(self.text.clone())));
+                self.state
+                    .put_command(self.submit_command, Some(Box::new(self.text.clone())));
             }
             KeyCode::Esc => self.state.put_command(CM_CANCEL, None),
             _ => return HandleResult::Ignored,

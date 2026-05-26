@@ -78,3 +78,42 @@ fn cancel_on_miss_deactivates() {
     // Should deactivate
     assert_eq!(mk.bounds().w, 5);
 }
+
+#[test]
+fn input_line_tab_completes() {
+    use crate::InputLine;
+
+    struct TestCompleter;
+    impl Completer for TestCompleter {
+        fn complete(&self, input: &str, _cursor: usize) -> Vec<Completion> {
+            if input == "he" {
+                vec![Completion::new("help".into(), "help".into(), "cmd")]
+            } else {
+                vec![]
+            }
+        }
+    }
+
+    let input = InputLine::new()
+        .with_command(100)
+        .with_completer(Box::new(TestCompleter));
+    let mut mk = ModalKey::new("M-x", ":")
+        .trigger_key(key(KeyCode::Char('x')))
+        .add_child(Box::new(input));
+    mk.set_sink(EventSink::new());
+
+    // Activate
+    mk.handle(&Event::Key(key(KeyCode::Char('x'))));
+    // Type "he"
+    mk.handle(&Event::Key(key(KeyCode::Char('h'))));
+    mk.handle(&Event::Key(key(KeyCode::Char('e'))));
+    // Tab
+    mk.handle(&Event::Key(key(KeyCode::Tab)));
+
+    // Verify completion expanded the width (prompt ":" + "help" + padding)
+    assert!(
+        mk.bounds().w > 5,
+        "expected expanded width after completion, got: {}",
+        mk.bounds().w
+    );
+}
