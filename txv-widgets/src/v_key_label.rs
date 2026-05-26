@@ -14,7 +14,11 @@ pub struct KeyLabelView {
 impl KeyLabelView {
     pub fn new(key: KeyEvent, command: CommandId, label: impl Into<String>) -> Self {
         let label_text = label.into();
-        let w = label_text.len() as u16 + 2;
+        let w = if label_text.is_empty() {
+            0
+        } else {
+            label_text.len() as u16 + 2
+        };
         let mut state = ViewState::new(ViewOptions {
             preprocess: true,
             focusable: false,

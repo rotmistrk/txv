@@ -70,10 +70,11 @@ impl StatusBar {
         self.hint_iter()
             .enumerate()
             .map(|(idx, (priority, min_width, max_width, stretch, gravity))| {
+                let buf_w = self.child_buffer_width(idx);
                 let min_w = if min_width > 0 {
                     min_width
                 } else {
-                    self.child_buffer_width(idx).max(1)
+                    buf_w
                 };
                 LayoutItem {
                     idx,
