@@ -97,7 +97,7 @@ pub fn set_palette(p: Arc<dyn Palette>) {
 }
 
 /// Theme mode: dark, light, or auto-detect.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ThemeMode {
     Dark,
     Light,
