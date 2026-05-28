@@ -99,6 +99,11 @@ impl ModalKey {
         self.active = true;
         self.activated_at = Some(Instant::now());
         self.propagate_modal_palette();
+        for i in 0..self.group.child_count() {
+            if let Some(child) = self.group.child_mut(i) {
+                child.select();
+            }
+        }
         self.update_bounds();
     }
 

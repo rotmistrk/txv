@@ -36,6 +36,7 @@ impl StatusBar {
     /// Add a child view with layout hints from the slot builder.
     pub fn add(&mut self, slot: StatusSlot) {
         let (view, priority, min_width, max_width, stretch, gravity) = slot.take_view();
+        let initial_w = view.bounds().w;
         self.group.insert(view);
         self.hints.push(Hints {
             priority,
@@ -43,6 +44,7 @@ impl StatusBar {
             max_width,
             stretch,
             gravity,
+            natural_width: initial_w,
         });
     }
 
@@ -65,10 +67,17 @@ impl StatusBar {
         self.group.bounds()
     }
 
-    pub(super) fn hint_iter(&self) -> impl Iterator<Item = (u8, u16, u16, u16, Gravity)> + '_ {
-        self.hints
-            .iter()
-            .map(|h| (h.priority, h.min_width, h.max_width, h.stretch, h.gravity))
+    pub(super) fn hint_iter(&self) -> impl Iterator<Item = (u8, u16, u16, u16, Gravity, u16)> + '_ {
+        self.hints.iter().map(|h| {
+            (
+                h.priority,
+                h.min_width,
+                h.max_width,
+                h.stretch,
+                h.gravity,
+                h.natural_width,
+            )
+        })
     }
 
     pub(super) fn child_buffer_width(&self, idx: usize) -> u16 {

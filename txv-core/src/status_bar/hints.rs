@@ -9,4 +9,6 @@ pub(super) struct Hints {
     pub(super) max_width: u16,
     pub(super) stretch: u16,
     pub(super) gravity: Gravity,
+    /// Width captured at insertion time — used as fallback min when min_width is 0.
+    pub(super) natural_width: u16,
 }

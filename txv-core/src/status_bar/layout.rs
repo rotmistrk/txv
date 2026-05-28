@@ -76,24 +76,34 @@ impl StatusBar {
     fn collect_layout_items(&self, _bounds: Rect) -> Vec<LayoutItem> {
         self.hint_iter()
             .enumerate()
-            .map(|(idx, (priority, min_width, max_width, stretch, gravity))| {
-                let min_w = if min_width > 0 {
-                    min_width
-                } else if stretch > 0 {
-                    1
-                } else {
-                    self.child_buffer_width(idx)
-                };
-                LayoutItem {
-                    idx,
-                    min_w,
-                    max_w: max_width,
-                    stretch,
-                    gravity,
-                    priority,
-                    alloc: 0,
-                }
-            })
+            .map(
+                |(idx, (priority, min_width, max_width, stretch, gravity, natural_width))| {
+                    let min_w = if min_width > 0 {
+                        min_width
+                    } else if stretch > 0 {
+                        1
+                    } else {
+                        // Use current child width if non-zero, otherwise fall back to
+                        // the width captured at insertion time. This prevents items from
+                        // being permanently dropped after layout sets their bounds to 0.
+                        let current = self.child_buffer_width(idx);
+                        if current > 0 {
+                            current
+                        } else {
+                            natural_width
+                        }
+                    };
+                    LayoutItem {
+                        idx,
+                        min_w,
+                        max_w: max_width,
+                        stretch,
+                        gravity,
+                        priority,
+                        alloc: 0,
+                    }
+                },
+            )
             .filter(|item| item.min_w > 0)
             .collect()
     }
