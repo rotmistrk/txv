@@ -153,13 +153,22 @@ impl TabBar {
 
     /// Set badge with a custom style (color). Pass `None` to clear.
     pub fn set_badge_styled(&mut self, idx: usize, badge: Option<String>, style: Option<Style>) {
+        let mut changed = false;
         if let Some(b) = self.badges.get_mut(idx) {
-            *b = badge;
+            if *b != badge {
+                *b = badge;
+                changed = true;
+            }
         }
         if let Some(s) = self.badge_styles.get_mut(idx) {
-            *s = style;
+            if *s != style {
+                *s = style;
+                changed = true;
+            }
         }
-        self.state.mark_dirty();
+        if changed {
+            self.state.mark_dirty();
+        }
     }
 
     /// Current dropdown filter text (for rendering search indicator).

@@ -74,7 +74,7 @@ impl PtyTerminal {
 }
 
 impl View for PtyTerminal {
-    delegate_view_state!(state, override { title, subtitle, set_bounds, needs_redraw, draw });
+    delegate_view_state!(state, override { title, subtitle, set_bounds, needs_redraw, draw, cursor });
 
     fn title(&self) -> &str {
         &self.title
@@ -82,6 +82,26 @@ impl View for PtyTerminal {
 
     fn subtitle(&self) -> &str {
         &self.osc_suffix
+    }
+
+    fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
+        if !self.state.is_focused() || self.exited || self.scroll_offset > 0 {
+            return None;
+        }
+        if !self.termbuf.cursor_visible() {
+            return None;
+        }
+        let (cx, cy) = self.termbuf.cursor();
+        let w = self.state.bounds().w;
+        let h = self.state.bounds().h;
+        if cx >= w || cy >= h {
+            return None;
+        }
+        Some(txv_core::cursor::CursorRequest {
+            x: cx,
+            y: cy,
+            shape: txv_core::cursor::CursorShape::Block,
+        })
     }
 
     fn needs_redraw(&self) -> bool {

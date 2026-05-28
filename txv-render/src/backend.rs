@@ -172,6 +172,7 @@ impl Backend for CrosstermBackend {
                         });
                         if prev_had_content {
                             queue!(out, cursor::MoveTo(x, y)).ok();
+                            queue!(out, SetAttribute(Attribute::Reset)).ok();
                             queue!(out, Clear(ClearType::UntilNewLine)).ok();
                             last_style = None;
                         }
