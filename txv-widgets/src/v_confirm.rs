@@ -105,15 +105,13 @@ impl View for ConfirmView {
     }
 
     fn draw(&mut self) {
-        let label = self.display_text();
-        if label.is_empty() {
-            self.state.mark_redrawn();
-            return;
-        }
         let style = self.resolve_style(StyleId::StatusBar);
+        let label = self.display_text();
         let buf = self.state.buffer_mut();
         buf.fill(' ', style);
-        buf.print(1, 0, &label, style);
+        if !label.is_empty() {
+            buf.print(1, 0, &label, style);
+        }
         self.state.mark_redrawn();
     }
 

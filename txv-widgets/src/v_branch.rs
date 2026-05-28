@@ -82,14 +82,12 @@ impl View for BranchView {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        if self.label_text.is_empty() {
-            self.state.mark_redrawn();
-            return;
-        }
         let style = self.resolve_style(StyleId::StatusBar);
         let buf = self.state.buffer_mut();
         buf.fill(' ', style);
-        buf.print(1, 0, &self.label_text, style);
+        if !self.label_text.is_empty() {
+            buf.print(1, 0, &self.label_text, style);
+        }
         self.state.mark_redrawn();
     }
 

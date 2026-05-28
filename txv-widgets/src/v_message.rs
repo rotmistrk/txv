@@ -93,11 +93,13 @@ impl View for MessageView {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
+        let buf = self.state.buffer_mut();
         if self.display.is_empty() {
+            let style = txv_core::palette::palette().style(StyleId::StatusBar);
+            buf.fill(' ', style);
             self.state.mark_redrawn();
             return;
         }
-        let buf = self.state.buffer_mut();
         buf.fill(' ', self.display_style);
         buf.print(1, 0, &self.display, self.display_style);
         self.state.mark_redrawn();
