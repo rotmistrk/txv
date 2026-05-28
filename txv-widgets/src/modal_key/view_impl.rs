@@ -1,5 +1,6 @@
 //! ModalKey — View implementation and event handling.
 
+use txv_core::cell::Attrs;
 use txv_core::prelude::*;
 
 use super::ModalKey;
@@ -30,14 +31,43 @@ impl View for ModalKey {
             return;
         }
         let style = txv_core::palette::palette().chrome().status_bar();
-        self.group.buffer_mut().fill(' ', style);
 
         if self.active {
-            self.layout_children();
-            self.group.buffer_mut().print(0, 0, &self.prompt, style);
+            // Active modal: use popup background for visual distinction
+            let modal_style = txv_core::palette::palette().popup().background();
+            self.group.buffer_mut().fill(' ', modal_style);
+            // Left power cap: modal bg fg on status_bar bg
+            let modal_bg = modal_style.bg;
+            let cap_style = Style {
+                fg: modal_bg,
+                bg: style.bg,
+                attrs: Attrs::default(),
+            };
+            self.group.buffer_mut().print(0, 0, "\u{e0b6}", cap_style);
+            // Prompt in bold
+            let prompt_style = Style {
+                attrs: Attrs {
+                    bold: true,
+                    ..modal_style.attrs
+                },
+                ..modal_style
+            };
+            self.group.buffer_mut().print(1, 0, &self.prompt, prompt_style);
+            self.layout_children_modal();
             self.draw_children(bounds);
-        } else if !self.idle_label.is_empty() {
-            self.group.buffer_mut().print(1, 0, &self.idle_label, style);
+            // Right power cap: modal bg fg on status_bar bg
+            let rw = bounds.w.saturating_sub(1);
+            let rcap_style = Style {
+                fg: modal_bg,
+                bg: style.bg,
+                attrs: Attrs::default(),
+            };
+            self.group.buffer_mut().print(rw, 0, "\u{e0b4}", rcap_style);
+        } else {
+            self.group.buffer_mut().fill(' ', style);
+            if !self.idle_label.is_empty() {
+                self.group.buffer_mut().print(1, 0, &self.idle_label, style);
+            }
         }
         self.group.mark_redrawn();
     }
@@ -81,10 +111,11 @@ impl ModalKey {
         had_command
     }
 
-    fn layout_children(&mut self) {
+    fn layout_children_modal(&mut self) {
         let prompt_w = self.prompt.len() as u16;
         let y = self.group.bounds().y;
-        let base_x = self.group.bounds().x + prompt_w;
+        // +1 for left power cap
+        let base_x = self.group.bounds().x + prompt_w + 1;
         let mut x = base_x;
         for i in 0..self.group.child_count() {
             let cw = self.group.child(i).map_or(0, |c| c.bounds().w);

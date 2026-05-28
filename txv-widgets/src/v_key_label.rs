@@ -14,10 +14,18 @@ pub struct KeyLabelView {
 impl KeyLabelView {
     pub fn new(key: KeyEvent, command: CommandId, label: impl Into<String>) -> Self {
         let label_text = label.into();
-        let w = if label_text.is_empty() {
+        let display_len = if label_text.is_empty() {
             0
         } else {
-            label_text.len() as u16 + 2
+            match key.code {
+                txv_core::event::KeyCode::Char(_) => label_text.len() + 2, // "k:label"
+                _ => label_text.len(),
+            }
+        };
+        let w = if display_len == 0 {
+            0
+        } else {
+            display_len as u16 + 2
         };
         let mut state = ViewState::new(ViewOptions {
             preprocess: true,
@@ -42,17 +50,42 @@ impl KeyLabelView {
     pub fn label(&self) -> &str {
         &self.label_text
     }
+
+    /// Format string for display: "k:label" where k is the key character.
+    fn display_text(&self) -> String {
+        if self.label_text.is_empty() {
+            return String::new();
+        }
+        match self.key.code {
+            txv_core::event::KeyCode::Char(c) => format!("{c}:{}", self.label_text),
+            _ => self.label_text.clone(),
+        }
+    }
 }
 
 impl View for KeyLabelView {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let buf = self.state.buffer_mut();
         let style = txv_core::palette::palette().chrome().status_bar();
+        let text = self.display_text();
+        let has_key_prefix = matches!(self.key.code, txv_core::event::KeyCode::Char(_));
+        let buf = self.state.buffer_mut();
         buf.fill(' ', style);
-        if !self.label_text.is_empty() {
-            buf.print(1, 0, &self.label_text, style);
+        if !text.is_empty() {
+            let key_style = Style {
+                attrs: txv_core::cell::Attrs {
+                    bold: true,
+                    ..style.attrs
+                },
+                ..style
+            };
+            if has_key_prefix {
+                buf.print(1, 0, &text[..2], key_style);
+                buf.print(3, 0, &text[2..], style);
+            } else {
+                buf.print(1, 0, &text, style);
+            }
         }
         self.state.mark_redrawn();
     }

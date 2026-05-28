@@ -133,6 +133,7 @@ impl ModalKey {
         let children_w: u16 = (0..self.group.child_count())
             .map(|i| self.group.child(i).map_or(0, |c| c.bounds().w))
             .sum();
-        prompt_w + children_w + 2
+        // +2 for power caps (left + right)
+        prompt_w + children_w + 3
     }
 }
