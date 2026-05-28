@@ -1,5 +1,7 @@
 //! InputLine — single-line text input with history and completion.
 
+use std::sync::Arc;
+
 use txv_core::prelude::*;
 
 pub struct InputLine {
@@ -10,6 +12,7 @@ pub struct InputLine {
     history_pos: Option<usize>,
     completer: Option<Box<dyn Completer>>,
     submit_command: CommandId,
+    palette: Option<Arc<dyn StylePalette>>,
 }
 
 impl InputLine {
@@ -22,6 +25,7 @@ impl InputLine {
             history_pos: None,
             completer: None,
             submit_command: CM_OK,
+            palette: None,
         }
     }
 
@@ -155,6 +159,16 @@ impl InputLine {
         }
     }
 
+    fn resolve_style(&self, id: StyleId) -> Style {
+        match &self.palette {
+            Some(p) => p.style(id),
+            None => match id {
+                StyleId::InputCursor => txv_core::palette::palette().interactive().input_cursor(),
+                _ => txv_core::palette::palette().chrome().status_bar(),
+            },
+        }
+    }
+
     fn visible_start(&self, width: usize) -> usize {
         if self.cursor >= width {
             self.cursor - width + 1
@@ -191,7 +205,7 @@ impl View for InputLine {
         if w == 0 || self.state.buffer_mut().height() == 0 {
             return;
         }
-        let style = Style::default();
+        let style = self.resolve_style(StyleId::StatusBar);
         self.state.buffer_mut().hline(0, 0, w, ' ', style);
         let ww = w as usize;
         let start = self.visible_start(ww);
@@ -200,9 +214,13 @@ impl View for InputLine {
         let cx = (self.cursor - start) as u16;
         if cx < w {
             let ch = self.text.chars().nth(self.cursor).unwrap_or(' ');
-            let cs = txv_core::palette::palette().interactive().input_cursor();
+            let cs = self.resolve_style(StyleId::InputCursor);
             self.state.buffer_mut().put(cx, 0, ch, cs);
         }
+    }
+
+    fn set_palette(&mut self, palette: Arc<dyn StylePalette>) {
+        self.palette = Some(palette);
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

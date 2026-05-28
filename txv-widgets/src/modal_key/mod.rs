@@ -98,13 +98,39 @@ impl ModalKey {
     pub(crate) fn activate(&mut self) {
         self.active = true;
         self.activated_at = Some(Instant::now());
+        self.propagate_modal_palette();
         self.update_bounds();
     }
 
     pub(crate) fn deactivate(&mut self) {
         self.active = false;
         self.activated_at = None;
+        self.propagate_default_palette();
         self.update_bounds();
+    }
+
+    pub(crate) fn propagate_modal_palette(&mut self) {
+        use std::sync::Arc;
+        use txv_core::palette::{dark::DarkPalette, DerivedPalette, StyleId};
+        let base = Arc::new(DarkPalette) as Arc<dyn txv_core::palette::StylePalette>;
+        let modal_style = txv_core::palette::palette().chrome().status_bar_modal();
+        let derived: Arc<dyn txv_core::palette::StylePalette> =
+            Arc::new(DerivedPalette::new(base).with_override(StyleId::StatusBar, modal_style));
+        for i in 0..self.group.child_count() {
+            if let Some(child) = self.group.child_mut(i) {
+                child.set_palette(derived.clone());
+            }
+        }
+    }
+
+    pub(crate) fn propagate_default_palette(&mut self) {
+        use std::sync::Arc;
+        let pal: Arc<dyn txv_core::palette::StylePalette> = Arc::new(txv_core::palette::dark::DarkPalette);
+        for i in 0..self.group.child_count() {
+            if let Some(child) = self.group.child_mut(i) {
+                child.set_palette(pal.clone());
+            }
+        }
     }
 
     pub(crate) fn update_bounds(&mut self) {

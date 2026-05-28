@@ -5,6 +5,8 @@
 
 pub mod dark;
 pub mod light;
+pub mod style_id;
+pub mod style_palette;
 mod traits;
 
 #[cfg(test)]
@@ -14,6 +16,8 @@ use std::sync::{Arc, OnceLock, RwLock};
 
 use crate::cell::Style;
 
+pub use style_id::StyleId;
+pub use style_palette::{DerivedPalette, StylePalette};
 pub use traits::{Base, Chrome, Interactive, Palette, Popup, State};
 
 static PALETTE: OnceLock<RwLock<Arc<dyn Palette>>> = OnceLock::new();

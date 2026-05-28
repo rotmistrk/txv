@@ -1,11 +1,14 @@
 //! ClockView — shows current time, updates on tick.
 
+use std::sync::Arc;
 use std::time::Instant;
+
 use txv_core::prelude::*;
 
 /// A View-based status bar item that displays the current time.
 pub struct ClockView {
     state: ViewState,
+    palette: Option<Arc<dyn StylePalette>>,
     interval_secs: u16,
     last_update: Instant,
     label_text: String,
@@ -19,6 +22,7 @@ impl ClockView {
                 focusable: false,
                 ..ViewOptions::default()
             }),
+            palette: None,
             interval_secs,
             last_update: Instant::now(),
             label_text: String::new(),
@@ -27,6 +31,13 @@ impl ClockView {
         let w = view.label_text.len() as u16 + 2;
         view.state.set_bounds(Rect { x: 0, y: 0, w, h: 1 });
         view
+    }
+
+    fn resolve_style(&self, id: StyleId) -> Style {
+        match &self.palette {
+            Some(p) => p.style(id),
+            None => txv_core::palette::palette().chrome().status_bar(),
+        }
     }
 
     fn refresh_time(&mut self) {
@@ -41,11 +52,15 @@ impl View for ClockView {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let style = txv_core::palette::palette().chrome().status_bar();
+        let style = self.resolve_style(StyleId::StatusBar);
         let buf = self.state.buffer_mut();
         buf.fill(' ', style);
         buf.print(1, 0, &self.label_text, style);
         self.state.mark_redrawn();
+    }
+
+    fn set_palette(&mut self, palette: Arc<dyn StylePalette>) {
+        self.palette = Some(palette);
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

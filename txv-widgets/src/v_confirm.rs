@@ -1,10 +1,13 @@
 //! ConfirmView — Yes/No confirmation prompt as a proper View.
 
+use std::sync::Arc;
+
 use txv_core::prelude::*;
 
 /// A View-based confirmation prompt for the status bar.
 pub struct ConfirmView {
     state: ViewState,
+    palette: Option<Arc<dyn StylePalette>>,
     activate_command: CommandId,
     response_command: CommandId,
     active: bool,
@@ -21,10 +24,18 @@ impl ConfirmView {
         state.set_bounds(Rect { x: 0, y: 0, w: 0, h: 1 });
         Self {
             state,
+            palette: None,
             activate_command,
             response_command,
             active: false,
             prompt: String::new(),
+        }
+    }
+
+    fn resolve_style(&self, id: StyleId) -> Style {
+        match &self.palette {
+            Some(p) => p.style(id),
+            None => txv_core::palette::palette().chrome().status_bar(),
         }
     }
 
@@ -99,11 +110,15 @@ impl View for ConfirmView {
             self.state.mark_redrawn();
             return;
         }
-        let style = txv_core::palette::palette().chrome().status_bar();
+        let style = self.resolve_style(StyleId::StatusBar);
         let buf = self.state.buffer_mut();
         buf.fill(' ', style);
         buf.print(1, 0, &label, style);
         self.state.mark_redrawn();
+    }
+
+    fn set_palette(&mut self, palette: Arc<dyn StylePalette>) {
+        self.palette = Some(palette);
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

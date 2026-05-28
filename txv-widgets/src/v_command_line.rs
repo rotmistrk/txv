@@ -1,10 +1,13 @@
 //! CommandLineView — input line with completion, as a proper View.
 
+use std::sync::Arc;
+
 use txv_core::prelude::*;
 
 /// A View-based command input line for the status bar.
 pub struct CommandLineView {
     state: ViewState,
+    palette: Option<Arc<dyn StylePalette>>,
     activation_keys: Vec<KeyEvent>,
     command_id: CommandId,
     prefill_command_id: Option<CommandId>,
@@ -25,6 +28,7 @@ impl CommandLineView {
         state.set_bounds(Rect { x: 0, y: 0, w: 0, h: 1 });
         Self {
             state,
+            palette: None,
             activation_keys: keys.to_vec(),
             command_id,
             prefill_command_id: None,
@@ -33,6 +37,13 @@ impl CommandLineView {
             cursor: 0,
             completer: None,
             dormant_label: String::new(),
+        }
+    }
+
+    fn resolve_style(&self, id: StyleId) -> Style {
+        match &self.palette {
+            Some(p) => p.style(id),
+            None => txv_core::palette::palette().chrome().status_bar(),
         }
     }
 
@@ -218,13 +229,17 @@ impl View for CommandLineView {
 
     fn draw(&mut self) {
         let label = self.display_text();
-        let style = txv_core::palette::palette().chrome().status_bar();
+        let style = self.resolve_style(StyleId::StatusBar);
         let buf = self.state.buffer_mut();
         buf.fill(' ', style);
         if !label.is_empty() {
             buf.print(1, 0, &label, style);
         }
         self.state.mark_redrawn();
+    }
+
+    fn set_palette(&mut self, palette: Arc<dyn StylePalette>) {
+        self.palette = Some(palette);
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

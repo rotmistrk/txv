@@ -1,5 +1,7 @@
 //! ProgressBar — determinate or indeterminate progress indicator.
 
+use std::sync::Arc;
+
 use txv_core::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -10,6 +12,7 @@ pub enum ProgressMode {
 
 pub struct ProgressBar {
     state: ViewState,
+    palette: Option<Arc<dyn StylePalette>>,
     pub mode: ProgressMode,
     pub progress: f32, // 0.0..=1.0
     pub tick: u16,     // for indeterminate animation
@@ -22,9 +25,17 @@ impl ProgressBar {
                 focusable: false,
                 ..ViewOptions::default()
             }),
+            palette: None,
             mode: ProgressMode::Determinate,
             progress: 0.0,
             tick: 0,
+        }
+    }
+
+    fn resolve_style(&self, id: StyleId) -> Style {
+        match &self.palette {
+            Some(p) => p.style(id),
+            None => txv_core::palette::palette().chrome().status_bar(),
         }
     }
 
@@ -54,7 +65,7 @@ impl View for ProgressBar {
         if w == 0 || h == 0 {
             return;
         }
-        let filled_style = txv_core::palette::palette().chrome().status_bar();
+        let filled_style = self.resolve_style(StyleId::StatusBar);
         let empty_style = Style::default();
         let pg = txv_core::glyphs::glyphs().progress;
 
@@ -94,5 +105,9 @@ impl View for ProgressBar {
             }
         }
         HandleResult::Ignored
+    }
+
+    fn set_palette(&mut self, palette: Arc<dyn StylePalette>) {
+        self.palette = Some(palette);
     }
 }

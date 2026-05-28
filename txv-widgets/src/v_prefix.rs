@@ -2,6 +2,8 @@
 //!
 //! Idle: shows compact label. Active: goes modal, shows bindings, dispatches second key.
 
+use std::sync::Arc;
+
 use txv_core::prelude::*;
 
 use crate::prefix_binding::PrefixBinding;
@@ -9,6 +11,7 @@ use crate::prefix_binding::PrefixBinding;
 /// Two-key prefix View for status bar.
 pub struct PrefixView {
     state: ViewState,
+    palette: Option<Arc<dyn StylePalette>>,
     prefix_key: KeyEvent,
     bindings: Vec<PrefixBinding>,
     active: bool,
@@ -28,11 +31,19 @@ impl PrefixView {
         state.set_bounds(Rect { x: 0, y: 0, w, h: 1 });
         Self {
             state,
+            palette: None,
             prefix_key,
             bindings: Vec::new(),
             active: false,
             idle_label,
             active_label: String::new(),
+        }
+    }
+
+    fn resolve_style(&self, id: StyleId) -> Style {
+        match &self.palette {
+            Some(p) => p.style(id),
+            None => txv_core::palette::palette().chrome().status_bar(),
         }
     }
 
@@ -99,13 +110,17 @@ impl View for PrefixView {
         } else {
             &self.idle_label
         };
-        let style = txv_core::palette::palette().chrome().status_bar();
+        let style = self.resolve_style(StyleId::StatusBar);
         let buf = self.state.buffer_mut();
         buf.fill(' ', style);
         if !label.is_empty() {
             buf.print(1, 0, label, style);
         }
         self.state.mark_redrawn();
+    }
+
+    fn set_palette(&mut self, palette: Arc<dyn StylePalette>) {
+        self.palette = Some(palette);
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

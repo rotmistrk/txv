@@ -1,6 +1,7 @@
 //! BranchView — git branch indicator as a proper View.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Instant;
 
 use txv_core::prelude::*;
@@ -8,6 +9,7 @@ use txv_core::prelude::*;
 /// A View-based status bar item that displays the current git branch.
 pub struct BranchView {
     state: ViewState,
+    palette: Option<Arc<dyn StylePalette>>,
     root_dir: PathBuf,
     label_text: String,
     last_check: Instant,
@@ -22,6 +24,7 @@ impl BranchView {
                 focusable: false,
                 ..ViewOptions::default()
             }),
+            palette: None,
             root_dir,
             label_text: String::new(),
             last_check: Instant::now(),
@@ -55,6 +58,13 @@ impl BranchView {
         }
     }
 
+    fn resolve_style(&self, id: StyleId) -> Style {
+        match &self.palette {
+            Some(p) => p.style(id),
+            None => txv_core::palette::palette().chrome().status_bar(),
+        }
+    }
+
     fn read_branch(root: &Path) -> Option<String> {
         let head = std::fs::read_to_string(root.join(".git/HEAD")).ok()?;
         let head = head.trim();
@@ -76,11 +86,15 @@ impl View for BranchView {
             self.state.mark_redrawn();
             return;
         }
-        let style = txv_core::palette::palette().chrome().status_bar();
+        let style = self.resolve_style(StyleId::StatusBar);
         let buf = self.state.buffer_mut();
         buf.fill(' ', style);
         buf.print(1, 0, &self.label_text, style);
         self.state.mark_redrawn();
+    }
+
+    fn set_palette(&mut self, palette: Arc<dyn StylePalette>) {
+        self.palette = Some(palette);
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

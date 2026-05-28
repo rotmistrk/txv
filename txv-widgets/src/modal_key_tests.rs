@@ -133,3 +133,87 @@ fn input_line_tab_completes() {
         mk.bounds().w
     );
 }
+
+#[test]
+fn active_children_use_modal_background() {
+    let mut mk = setup_prefix();
+    mk.set_sink(EventSink::new());
+    mk.set_bounds(Rect::new(0, 0, 80, 1));
+
+    // Activate
+    mk.handle(&Event::Key(ctrl_w()));
+    mk.draw();
+
+    let modal_bg = txv_core::palette::palette().chrome().status_bar_modal().bg;
+    let buf = mk.buffer();
+
+    // Check cells inside the modal (after left cap, before right cap)
+    // Prompt "C-w: " starts at x=1, children follow
+    // Cell at x=2 should have modal bg (part of prompt)
+    assert_eq!(
+        buf.cell(2, 0).style.bg,
+        modal_bg,
+        "prompt area must have modal background"
+    );
+
+    // Children area (after prompt) should also have modal bg
+    let prompt_end = 1 + "C-w: ".len() as u16;
+    assert_eq!(
+        buf.cell(prompt_end + 1, 0).style.bg,
+        modal_bg,
+        "child area must have modal background"
+    );
+}
+
+#[test]
+fn active_input_line_uses_modal_background() {
+    let input = InputLine::new().with_command(100);
+    let mut mk = ModalKey::new("M-x", ":")
+        .trigger_key(key(KeyCode::Char('x')))
+        .add_child(Box::new(input));
+    mk.set_sink(EventSink::new());
+    mk.set_bounds(Rect::new(0, 0, 80, 1));
+
+    // Activate
+    mk.handle(&Event::Key(key(KeyCode::Char('x'))));
+    // Type something so input has content beyond cursor
+    mk.handle(&Event::Key(key(KeyCode::Char('h'))));
+    mk.handle(&Event::Key(key(KeyCode::Char('i'))));
+    mk.draw();
+
+    let modal_bg = txv_core::palette::palette().chrome().status_bar_modal().bg;
+    let buf = mk.buffer();
+
+    // Check the first typed char (not cursor position)
+    // Layout: [cap][:][ input content... ][cap]
+    // cap=1, prompt ":"=1, then input starts
+    // Input "hi" with cursor at pos 2 — check pos 0 of input ("h")
+    let input_x = 2; // after cap + prompt
+    assert_eq!(
+        buf.cell(input_x, 0).style.bg,
+        modal_bg,
+        "input line text must have modal background"
+    );
+}
+
+#[test]
+fn dormant_children_use_status_bar_background() {
+    let mut mk = setup_prefix();
+    mk.set_sink(EventSink::new());
+    mk.set_bounds(Rect::new(0, 0, 80, 1));
+
+    // Activate then deactivate
+    mk.handle(&Event::Key(ctrl_w()));
+    mk.handle(&Event::Key(key(KeyCode::Char('z')))); // cancel_on_miss
+    mk.draw();
+
+    let bar_bg = txv_core::palette::palette().chrome().status_bar().bg;
+    let buf = mk.buffer();
+
+    // Dormant: shows "C-w" with status bar bg
+    assert_eq!(
+        buf.cell(1, 0).style.bg,
+        bar_bg,
+        "dormant label must have status bar background"
+    );
+}
