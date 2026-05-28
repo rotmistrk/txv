@@ -110,6 +110,9 @@ impl Chrome for DarkChrome {
     fn status_bar(&self) -> Style {
         PaletteStyle::colors(ansi(7), Color::Palette(236)).to_style()
     }
+    fn status_bar_modal(&self) -> Style {
+        PaletteStyle::colors(ansi(15), Color::Palette(18)).to_style()
+    }
     fn scrollbar_track(&self) -> Style {
         PaletteStyle::fg(ansi(8)).to_style()
     }

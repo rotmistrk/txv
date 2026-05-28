@@ -44,6 +44,9 @@ pub trait Chrome {
     fn tab_active_badge(&self) -> Style;
     fn tab_inactive(&self, distance: usize) -> Style;
     fn status_bar(&self) -> Style;
+    fn status_bar_modal(&self) -> Style {
+        self.status_bar()
+    }
     fn scrollbar_track(&self) -> Style;
     fn scrollbar_thumb(&self) -> Style;
 }

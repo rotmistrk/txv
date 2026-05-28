@@ -33,8 +33,8 @@ impl View for ModalKey {
         let style = txv_core::palette::palette().chrome().status_bar();
 
         if self.active {
-            // Active modal: use popup background for visual distinction
-            let modal_style = txv_core::palette::palette().popup().background();
+            // Active modal: distinct background from status bar
+            let modal_style = txv_core::palette::palette().chrome().status_bar_modal();
             self.group.buffer_mut().fill(' ', modal_style);
             // Left power cap: modal bg fg on status_bar bg
             let modal_bg = modal_style.bg;
