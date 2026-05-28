@@ -76,13 +76,7 @@ impl View for BranchView {
             self.state.mark_redrawn();
             return;
         }
-        let style = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let style = txv_core::palette::palette().chrome().status_bar();
         let buf = self.state.buffer_mut();
         buf.fill(' ', style);
         buf.print(1, 0, &self.label_text, style);

@@ -15,6 +15,7 @@ pub(super) struct Performer<'a> {
     pub cursor_y: &'a mut u16,
     pub cursor_visible: &'a mut bool,
     pub style: &'a mut Style,
+    pub reversed: &'a mut bool,
     pub saved_cursor: &'a mut (u16, u16),
     pub scroll_top: &'a mut u16,
     pub scroll_bottom: &'a mut u16,
@@ -134,19 +135,32 @@ impl Performer<'_> {
         let mut i = 0;
         while i < params.len() {
             match params[i] {
-                0 => *self.style = Style::default(),
+                0 => {
+                    *self.style = Style::default();
+                    *self.reversed = false;
+                }
                 1 => self.style.attrs.bold = true,
                 2 => self.style.attrs.dim = true,
                 3 => self.style.attrs.italic = true,
                 4 => self.style.attrs.underline = true,
-                7 => self.style.attrs.reverse = true,
+                7 => {
+                    if !*self.reversed {
+                        std::mem::swap(&mut self.style.fg, &mut self.style.bg);
+                        *self.reversed = true;
+                    }
+                }
                 22 => {
                     self.style.attrs.bold = false;
                     self.style.attrs.dim = false;
                 }
                 23 => self.style.attrs.italic = false,
                 24 => self.style.attrs.underline = false,
-                27 => self.style.attrs.reverse = false,
+                27 => {
+                    if *self.reversed {
+                        std::mem::swap(&mut self.style.fg, &mut self.style.bg);
+                        *self.reversed = false;
+                    }
+                }
                 30..=37 => self.style.fg = Color::Ansi((params[i] - 30) as u8),
                 38 => {
                     i += 1;

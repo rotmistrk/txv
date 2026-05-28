@@ -45,9 +45,9 @@ impl View for Dialog {
         }
         let pal = txv_core::palette::palette();
         let normal = Style::default();
-        let border_style = pal.base.border.to_style();
+        let border_style = pal.base().border();
         let btn_normal = Style::default();
-        let btn_focused = pal.interactive.input_cursor.to_style();
+        let btn_focused = pal.interactive().input_cursor();
 
         // Fill background
         for row in 0..h {

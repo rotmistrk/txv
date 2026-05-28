@@ -49,13 +49,7 @@ impl View for KeyLabelView {
 
     fn draw(&mut self) {
         let buf = self.state.buffer_mut();
-        let style = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let style = txv_core::palette::palette().chrome().status_bar();
         buf.fill(' ', style);
         if !self.label_text.is_empty() {
             buf.print(1, 0, &self.label_text, style);

@@ -78,7 +78,7 @@ pub mod prelude {
     pub use crate::buffer::Buffer;
     pub use crate::cell::{Attrs, Cell, Color, Style};
     pub use crate::commands::*;
-    pub use crate::complete::{Completer, Completion};
+    pub use crate::complete::{Completer, Completion, CompletionVisitor};
     pub use crate::cursor::{CursorRequest, CursorShape};
     pub use crate::dialog::DialogState;
     pub use crate::event::{CommandId, Event, KeyCode, KeyEvent, KeyMod, MouseAction, MouseButton, MouseEvent};
@@ -87,7 +87,7 @@ pub mod prelude {
     pub use crate::group::GroupState;
     pub use crate::message::{Message, MsgLevel};
     pub use crate::palette::{palette, set_palette, PaletteStyle, ThemeMode};
-    pub use crate::palette::{BasePalette, ChromePalette, InteractivePalette, Palette, PopupPalette, StatePalette};
+    pub use crate::palette::{Base, Chrome, Interactive, Palette, Popup, State};
     pub use crate::run::{exec_view, run, run_cycles, Backend, MockBackend};
     pub use crate::status::{ActiveItem, Gravity, StatusBarItem, VisibleItem};
     pub use crate::surface::{SubSurface, Surface};

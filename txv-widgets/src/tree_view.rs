@@ -1,5 +1,8 @@
 //! TreeView — generic tree widget parameterized by TreeData.
 
+#[path = "tree_view_draw.rs"]
+mod draw;
+
 use txv_core::prelude::*;
 
 use crate::scroll_view::ScrollView;
@@ -72,105 +75,7 @@ impl<D: TreeData> View for TreeView<D> {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
-        let w = self.state.buffer_mut().width();
-        let h = self.state.buffer_mut().height();
-        if w == 0 || h == 0 {
-            return;
-        }
-        // Reserve bottom row for filter status if active
-        let filter_text = self.data.filter_status().map(|s| s.to_string());
-        let tree_h = if filter_text.is_some() {
-            h.saturating_sub(1)
-        } else {
-            h
-        };
-
-        for row in 0..tree_h as usize {
-            let idx = self.scroll.offset + row;
-            if idx >= self.data.visible_count() {
-                break;
-            }
-            let id = self.data.visible_id(idx);
-            let depth = self.data.depth(id);
-            let indent = (depth * 2) as u16;
-            let marker = if self.data.is_expandable(id) {
-                let g = glyphs();
-                if self.data.is_expanded(id) {
-                    g.tree.expanded
-                } else {
-                    g.tree.collapsed
-                }
-            } else {
-                "  "
-            };
-            let node_style = self.data.style(id);
-            let style = if idx == self.cursor {
-                let pal = palette();
-                if self.state.is_focused() {
-                    let ps = pal.interactive.cursor_focused;
-                    Style {
-                        fg: node_style.fg,
-                        bg: ps.bg.unwrap_or(node_style.bg),
-                        attrs: ps.attrs.unwrap_or(node_style.attrs),
-                    }
-                } else {
-                    let ps = pal.interactive.cursor_unfocused;
-                    Style {
-                        fg: node_style.fg,
-                        bg: ps.bg.unwrap_or(node_style.bg),
-                        attrs: node_style.attrs,
-                    }
-                }
-            } else {
-                node_style
-            };
-            let y = row as u16;
-            self.state.buffer_mut().hline(0, y, w, ' ', style);
-            let x = indent;
-            self.state.buffer_mut().print(x, y, marker, style);
-            // Draw label with optional character highlights
-            let label = self.data.label(id);
-            let label_x = x + 2;
-            if let Some(positions) = self.data.highlight_positions(id) {
-                let hl_style = Style {
-                    fg: palette().interactive.search_match.fg.unwrap_or(style.fg),
-                    bg: palette().interactive.search_match.bg.unwrap_or(style.bg),
-                    attrs: style.attrs,
-                };
-                for (ci, ch) in label.chars().enumerate() {
-                    let cx = label_x + ci as u16;
-                    if cx >= w {
-                        break;
-                    }
-                    let s = if positions.contains(&ci) {
-                        hl_style
-                    } else {
-                        style
-                    };
-                    self.state.buffer_mut().put(cx, y, ch, s);
-                }
-            } else {
-                self.state.buffer_mut().print(label_x, y, label, style);
-            }
-        }
-        // Clear remaining rows below the last item
-        let drawn = self
-            .data
-            .visible_count()
-            .saturating_sub(self.scroll.offset)
-            .min(tree_h as usize);
-        for row in drawn..tree_h as usize {
-            self.state.buffer_mut().hline(0, row as u16, w, ' ', Style::default());
-        }
-        // Draw filter status line at bottom
-        if let Some(text) = &filter_text {
-            let y = h - 1;
-            let pal = palette();
-            let status_style = pal.base.dim.to_style();
-            self.state.buffer_mut().hline(0, y, w, ' ', status_style);
-            let display = format!("/{}", text);
-            self.state.buffer_mut().print(0, y, &display, status_style);
-        }
+        self.draw_tree();
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

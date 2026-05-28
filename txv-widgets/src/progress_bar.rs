@@ -54,7 +54,7 @@ impl View for ProgressBar {
         if w == 0 || h == 0 {
             return;
         }
-        let filled_style = txv_core::palette::palette().chrome.status_bar.to_style();
+        let filled_style = txv_core::palette::palette().chrome().status_bar();
         let empty_style = Style::default();
         let pg = txv_core::glyphs::glyphs().progress;
 

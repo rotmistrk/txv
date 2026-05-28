@@ -28,16 +28,8 @@ impl TabPanel {
             ..Style::default()
         };
         let pal = palette();
-        let normal = Style {
-            fg: pal.base.text.fg.unwrap_or(Color::Reset),
-            bg: pal.base.text.bg.unwrap_or(Color::Reset),
-            ..Style::default()
-        };
-        let selected = Style {
-            fg: pal.interactive.cursor_focused.fg.unwrap_or(Color::Reset),
-            bg: pal.interactive.cursor_focused.bg.unwrap_or(Color::Reset),
-            ..Style::default()
-        };
+        let normal = pal.base().text();
+        let selected = pal.interactive().cursor_focused();
 
         let buf = self.group.buffer_mut();
         let buf_w = buf.width();
@@ -71,8 +63,8 @@ impl TabPanel {
             let y = 1u16;
             if y < buf_h {
                 let filter_style = Style {
-                    fg: pal.interactive.cursor_focused.fg.unwrap_or(Color::Reset),
-                    bg: pal.base.text.bg.unwrap_or(Color::Reset),
+                    fg: pal.interactive().cursor_focused().fg,
+                    bg: pal.base().text().bg,
                     ..Style::default()
                 };
                 if x_off < buf_w {

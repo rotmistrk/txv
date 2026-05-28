@@ -16,7 +16,6 @@ pub struct Attrs {
     pub bold: bool,
     pub italic: bool,
     pub underline: bool,
-    pub reverse: bool,
     pub dim: bool,
 }
 

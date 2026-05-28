@@ -265,7 +265,7 @@ impl TreeData for FileTreeData {
     fn style(&self, id: usize) -> Style {
         let node = &self.nodes[id];
         if node.is_dir {
-            return palette().base.tree_dir.to_style();
+            return palette().base().tree_dir();
         }
         let rel = node.path.strip_prefix(&self.root).ok().and_then(|p| p.to_str());
         if let Some(rel_path) = rel {

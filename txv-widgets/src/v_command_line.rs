@@ -100,12 +100,22 @@ impl CommandLineView {
 
     fn try_complete(&mut self) {
         if let Some(ref completer) = self.completer {
-            let completions = completer.complete(&self.text, self.cursor);
-            if completions.len() == 1 {
-                self.text = completions[0].text().to_string();
-                self.cursor = self.text.len();
-                self.update_bounds();
-                self.state.mark_dirty();
+            let mut first: Option<String> = None;
+            let mut count = 0u32;
+            let _ = completer.complete(&self.text, self.cursor, &mut |c| {
+                count += 1;
+                if count == 1 {
+                    first = Some(c.text().to_string());
+                }
+                Ok(count < 2)
+            });
+            if count == 1 {
+                if let Some(text) = first {
+                    self.text = text;
+                    self.cursor = self.text.len();
+                    self.update_bounds();
+                    self.state.mark_dirty();
+                }
             }
         }
     }
@@ -208,13 +218,7 @@ impl View for CommandLineView {
 
     fn draw(&mut self) {
         let label = self.display_text();
-        let style = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let style = txv_core::palette::palette().chrome().status_bar();
         let buf = self.state.buffer_mut();
         buf.fill(' ', style);
         if !label.is_empty() {

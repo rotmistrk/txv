@@ -1,32 +1,36 @@
-//! Color palette system — semantic style roles with dark/light mode support.
+//! Palette trait system — semantic style roles resolved via trait methods.
 //!
-//! Views call `palette()` to get the active palette. Set once at startup,
-//! swappable at runtime via `set_palette()` for dark/light toggle.
+//! Views call `palette().state().error()` to get a Style.
+//! Implementations (dark/light) are swappable at runtime.
 
-mod defaults;
-mod defs;
+pub mod dark;
+pub mod light;
+mod traits;
 
 #[cfg(test)]
 mod tests;
 
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock, RwLock};
 
-use crate::cell::{Attrs, Color, Style};
+use crate::cell::Style;
 
-pub use defs::{BasePalette, ChromePalette, InteractivePalette, Palette, PopupPalette, StatePalette};
+pub use traits::{Base, Chrome, Interactive, Palette, Popup, State};
 
-static PALETTE: OnceLock<std::sync::RwLock<Palette>> = OnceLock::new();
+static PALETTE: OnceLock<RwLock<Arc<dyn Palette>>> = OnceLock::new();
 
 /// Get the active palette.
-pub fn palette() -> Palette {
+pub fn palette() -> Arc<dyn Palette> {
     match PALETTE.get() {
-        Some(lock) => lock.read().map(|p| p.clone()).unwrap_or_default(),
-        None => Palette::default(),
+        Some(lock) => lock
+            .read()
+            .map(|p| Arc::clone(&p))
+            .unwrap_or_else(|_| Arc::new(dark::DarkPalette)),
+        None => Arc::new(dark::DarkPalette),
     }
 }
 
 /// Set the active palette (call on startup and on theme toggle).
-pub fn set_palette(p: Palette) {
+pub fn set_palette(p: Arc<dyn Palette>) {
     match PALETTE.get() {
         Some(lock) => {
             if let Ok(mut w) = lock.write() {
@@ -34,7 +38,7 @@ pub fn set_palette(p: Palette) {
             }
         }
         None => {
-            let _ = PALETTE.set(std::sync::RwLock::new(p));
+            let _ = PALETTE.set(RwLock::new(p));
         }
     }
 }
@@ -48,7 +52,6 @@ pub enum ThemeMode {
 }
 
 /// Detect system theme preference.
-/// Falls back to Dark if detection fails.
 pub fn detect_system_theme() -> ThemeMode {
     #[cfg(target_os = "macos")]
     {
@@ -77,57 +80,85 @@ pub fn detect_system_theme() -> ThemeMode {
     ThemeMode::Dark
 }
 
-/// A single palette entry. Option fields support partial override.
+/// A single palette entry for building implementations. Not part of public API.
 #[derive(Clone, Debug, Default)]
 pub struct PaletteStyle {
-    pub fg: Option<Color>,
-    pub bg: Option<Color>,
-    pub attrs: Option<Attrs>,
+    fg: Option<crate::cell::Color>,
+    bg: Option<crate::cell::Color>,
+    bold: bool,
+    italic: bool,
+    underline: bool,
+    dim: bool,
 }
 
 impl PaletteStyle {
-    pub const fn fg(color: Color) -> Self {
+    pub const fn new() -> Self {
+        Self {
+            fg: None,
+            bg: None,
+            bold: false,
+            italic: false,
+            underline: false,
+            dim: false,
+        }
+    }
+    pub const fn fg(color: crate::cell::Color) -> Self {
         Self {
             fg: Some(color),
             bg: None,
-            attrs: None,
+            bold: false,
+            italic: false,
+            underline: false,
+            dim: false,
         }
     }
-    pub const fn bg(color: Color) -> Self {
+    pub const fn bg(color: crate::cell::Color) -> Self {
         Self {
             fg: None,
             bg: Some(color),
-            attrs: None,
+            bold: false,
+            italic: false,
+            underline: false,
+            dim: false,
         }
     }
-    pub const fn colors(fg: Color, bg: Color) -> Self {
+    pub const fn colors(fg: crate::cell::Color, bg: crate::cell::Color) -> Self {
         Self {
             fg: Some(fg),
             bg: Some(bg),
-            attrs: None,
+            bold: false,
+            italic: false,
+            underline: false,
+            dim: false,
         }
     }
-
-    /// Resolve to concrete Style, filling unset fields from `base`.
-    pub fn resolve(&self, base: &Style) -> Style {
-        Style {
-            fg: self.fg.unwrap_or(base.fg),
-            bg: self.bg.unwrap_or(base.bg),
-            attrs: self.attrs.unwrap_or(base.attrs),
-        }
+    pub fn bold(mut self) -> Self {
+        self.bold = true;
+        self
+    }
+    pub fn underline(mut self) -> Self {
+        self.underline = true;
+        self
+    }
+    pub fn italic(mut self) -> Self {
+        self.italic = true;
+        self
+    }
+    pub fn dim(mut self) -> Self {
+        self.dim = true;
+        self
     }
 
-    /// Resolve using default Style (Reset/Reset/no attrs).
     pub fn to_style(&self) -> Style {
-        self.resolve(&Style::default())
-    }
-
-    /// Merge overlay on top of self (overlay wins where set).
-    pub fn merge(&self, overlay: &PaletteStyle) -> PaletteStyle {
-        PaletteStyle {
-            fg: overlay.fg.or(self.fg),
-            bg: overlay.bg.or(self.bg),
-            attrs: overlay.attrs.or(self.attrs),
+        Style {
+            fg: self.fg.unwrap_or(crate::cell::Color::Reset),
+            bg: self.bg.unwrap_or(crate::cell::Color::Reset),
+            attrs: crate::cell::Attrs {
+                bold: self.bold,
+                italic: self.italic,
+                underline: self.underline,
+                dim: self.dim,
+            },
         }
     }
 }

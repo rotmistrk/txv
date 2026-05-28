@@ -139,7 +139,9 @@ impl Backend for CrosstermBackend {
         let mut last_style: Option<Style> = None;
 
         if self.force_full {
+            queue!(out, SetAttribute(Attribute::Reset)).ok();
             queue!(out, Clear(ClearType::All)).ok();
+            last_style = None;
         }
 
         for y in 0..h {

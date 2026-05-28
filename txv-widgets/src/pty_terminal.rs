@@ -124,7 +124,7 @@ impl View for PtyTerminal {
                 if cx < w && cy < h {
                     let cell = self.state.buffer_mut().cell(cx, cy);
                     let mut style = cell.style;
-                    style.attrs.reverse = !style.attrs.reverse;
+                    std::mem::swap(&mut style.fg, &mut style.bg);
                     let ch = cell.ch;
                     self.state.buffer_mut().put(cx, cy, ch, style);
                 }

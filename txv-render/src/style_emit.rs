@@ -23,9 +23,6 @@ pub(crate) fn emit_attrs(out: &mut impl Write, attrs: Attrs) {
     if attrs.underline {
         queue!(out, SetAttribute(Attribute::Underlined)).ok();
     }
-    if attrs.reverse {
-        queue!(out, SetAttribute(Attribute::Reverse)).ok();
-    }
 }
 
 pub(crate) fn apply_color_mode(s: Style, mode: ColorMode) -> Style {

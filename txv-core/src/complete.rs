@@ -1,32 +1,30 @@
 //! Completion infrastructure — trait for providing completions to input widgets.
 
-/// A single completion candidate.
-pub struct Completion {
-    text: String,
-    display: String,
-    kind: &'static str,
+/// A completion candidate. Implementors provide text, display label, and kind.
+pub trait Completion {
+    /// The text to insert when this completion is accepted.
+    fn text(&self) -> &str;
+
+    /// The display label shown in the popup.
+    fn display(&self) -> &str;
+
+    /// A category tag (e.g. "command", "file", "dir").
+    fn kind(&self) -> &str;
 }
 
-impl Completion {
-    pub fn new(text: String, display: String, kind: &'static str) -> Self {
-        Self { text, display, kind }
-    }
+/// Visitor callback type for completion results.
+pub type CompletionVisitor<'a> = dyn FnMut(&dyn Completion) -> Result<bool, Box<dyn std::error::Error>> + 'a;
 
-    pub fn text(&self) -> &str {
-        &self.text
-    }
-
-    pub fn display(&self) -> &str {
-        &self.display
-    }
-
-    pub fn kind(&self) -> &'static str {
-        self.kind
-    }
-}
-
-/// Trait for providing completions. Implemented by application-level completers.
+/// Trait for providing completions via visitor pattern.
+/// Implementors call the visitor for each matching candidate.
 pub trait Completer: Send {
-    /// Return completions for the given input at the given cursor position.
-    fn complete(&self, input: &str, cursor: usize) -> Vec<Completion>;
+    /// Provide completions for the given input at the given cursor position.
+    /// Calls `visitor` for each candidate. Visitor returns `Ok(true)` to continue,
+    /// `Ok(false)` to stop early, `Err` to abort.
+    fn complete(
+        &self,
+        input: &str,
+        cursor: usize,
+        visitor: &mut CompletionVisitor<'_>,
+    ) -> Result<(), Box<dyn std::error::Error>>;
 }

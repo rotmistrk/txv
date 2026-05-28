@@ -53,35 +53,32 @@ impl TabBarPalette {
     pub fn from_global_palette() -> Self {
         use txv_core::palette::palette;
         let pal = palette();
-        let focused_fg = pal.chrome.tab_focused.fg.unwrap_or(Color::Reset);
-        let focused_bg = pal.chrome.tab_focused.bg.unwrap_or(Color::Reset);
-        let unfocused_fg = pal.chrome.tab_active.fg.unwrap_or(Color::Reset);
-        let unfocused_bg = pal.chrome.tab_active.bg.unwrap_or(Color::Reset);
-        let dim_fg = pal.base.dim.fg.unwrap_or(Color::Reset);
-        let badge_focused_bg = pal.chrome.tab_focused_badge.bg.unwrap_or(Color::Reset);
-        let badge_fg = pal.chrome.tab_focused_badge.fg.unwrap_or(Color::Reset);
-        let separator_fg = pal.base.text.bg.unwrap_or(Color::Reset);
+        let focused = pal.chrome().tab_focused();
+        let active = pal.chrome().tab_active();
+        let dim_fg = pal.base().dim().fg;
+        let badge = pal.chrome().tab_focused_badge();
+        let separator_fg = pal.base().text().bg;
 
         // Read gradient from palette
         let mut inactive = [TabStyle::default(); 10];
         for (i, s) in inactive.iter_mut().enumerate() {
-            let (fg, bg) = pal.chrome.tab_inactive_gradient[i];
-            s.fg = fg;
-            s.bg = bg;
+            let style = pal.chrome().tab_inactive(i);
+            s.fg = style.fg;
+            s.bg = style.bg;
         }
         Self {
             active_focused: TabStyle {
-                fg: focused_fg,
-                bg: focused_bg,
+                fg: focused.fg,
+                bg: focused.bg,
             },
             active_unfocused: TabStyle {
-                fg: unfocused_fg,
-                bg: unfocused_bg,
+                fg: active.fg,
+                bg: active.bg,
             },
             inactive,
             dim_fg,
-            badge_focused_bg,
-            badge_fg,
+            badge_focused_bg: badge.bg,
+            badge_fg: badge.fg,
             separator_fg,
         }
     }

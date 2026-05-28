@@ -1,7 +1,7 @@
 //! View trait implementation for StatusBar.
 
 use crate::buffer::Buffer;
-use crate::cell::{Attrs, Style};
+use crate::cell::Style;
 use crate::event::Event;
 use crate::geometry::Rect;
 use crate::view::{EventSink, HandleResult, View, ViewOptions};
@@ -40,13 +40,7 @@ impl View for StatusBar {
         if w == 0 || h == 0 {
             return;
         }
-        let bar_style = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let bar_style = crate::palette::palette().chrome().status_bar();
         self.state.buffer_mut().hline(0, 0, w, ' ', bar_style);
 
         if let Some(idx) = self.exclusive {

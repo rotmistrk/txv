@@ -85,12 +85,28 @@ fn input_line_tab_completes() {
 
     struct TestCompleter;
     impl Completer for TestCompleter {
-        fn complete(&self, input: &str, _cursor: usize) -> Vec<Completion> {
+        fn complete(
+            &self,
+            input: &str,
+            _cursor: usize,
+            visitor: &mut CompletionVisitor<'_>,
+        ) -> Result<(), Box<dyn std::error::Error>> {
             if input == "he" {
-                vec![Completion::new("help".into(), "help".into(), "cmd")]
-            } else {
-                vec![]
+                struct C;
+                impl Completion for C {
+                    fn text(&self) -> &str {
+                        "help"
+                    }
+                    fn display(&self) -> &str {
+                        "help"
+                    }
+                    fn kind(&self) -> &str {
+                        "cmd"
+                    }
+                }
+                visitor(&C)?;
             }
+            Ok(())
         }
     }
 

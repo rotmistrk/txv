@@ -49,9 +49,9 @@ impl<D: ListData> View for ListView<D> {
             return;
         }
         let selected = if self.state.is_focused() {
-            txv_core::palette::palette().interactive.cursor_focused.to_style()
+            txv_core::palette::palette().interactive().cursor_focused()
         } else {
-            txv_core::palette::palette().interactive.cursor_unfocused.to_style()
+            txv_core::palette::palette().interactive().cursor_unfocused()
         };
         for row in 0..h as usize {
             let idx = self.scroll.offset + row;

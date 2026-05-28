@@ -58,14 +58,16 @@ impl MessageView {
             format!("[{}] {}", msg.origin, msg.text)
         };
         let pal = txv_core::palette::palette();
-        self.display_style = {
-            let mut s = match msg.level {
-                MsgLevel::Error => pal.state.error.to_style(),
-                MsgLevel::Warn => pal.state.warning.to_style(),
-                _ => pal.state.info.to_style(),
-            };
-            s.attrs.reverse = true;
-            s
+        let bar_bg = pal.chrome().status_bar().bg;
+        let fg_style = match msg.level {
+            MsgLevel::Error => pal.state().error(),
+            MsgLevel::Warn => pal.state().warning(),
+            _ => pal.state().info(),
+        };
+        self.display_style = Style {
+            fg: fg_style.fg,
+            bg: bar_bg,
+            attrs: Attrs::default(),
         };
         self.last_set = Some(Instant::now());
         self.update_bounds();

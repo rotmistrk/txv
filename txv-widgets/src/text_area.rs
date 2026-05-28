@@ -111,9 +111,9 @@ impl View for TextArea {
         }
         let gutter_w = self.gutter_width();
         let pal = txv_core::palette::palette();
-        let gutter_style = pal.base.dim.to_style();
+        let gutter_style = pal.base().dim();
         let normal = Style::default();
-        let highlight = pal.interactive.search_match.to_style();
+        let highlight = pal.interactive().search_match();
 
         let content_h = if self.searching {
             h.saturating_sub(1) as usize
@@ -158,7 +158,7 @@ impl View for TextArea {
         // Search prompt at bottom
         if self.searching {
             let y = h.saturating_sub(1);
-            let prompt_style = txv_core::palette::palette().chrome.status_bar.to_style();
+            let prompt_style = txv_core::palette::palette().chrome().status_bar();
             self.state.buffer_mut().hline(0, y, w, ' ', prompt_style);
             let prompt = format!("/{}", self.search_input);
             self.state.buffer_mut().print(0, y, &prompt, prompt_style);

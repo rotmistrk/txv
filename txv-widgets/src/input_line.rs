@@ -137,11 +137,21 @@ impl InputLine {
         let Some(ref completer) = self.completer else {
             return;
         };
-        let completions = completer.complete(&self.text, self.cursor);
-        if completions.len() == 1 {
-            self.text = completions[0].text().to_string();
-            self.cursor = self.text.len();
-            self.update_width();
+        let mut first: Option<String> = None;
+        let mut count = 0u32;
+        let _ = completer.complete(&self.text, self.cursor, &mut |c| {
+            count += 1;
+            if count == 1 {
+                first = Some(c.text().to_string());
+            }
+            Ok(count < 2)
+        });
+        if count == 1 {
+            if let Some(text) = first {
+                self.text = text;
+                self.cursor = self.text.len();
+                self.update_width();
+            }
         }
     }
 
@@ -190,7 +200,7 @@ impl View for InputLine {
         let cx = (self.cursor - start) as u16;
         if cx < w {
             let ch = self.text.chars().nth(self.cursor).unwrap_or(' ');
-            let cs = txv_core::palette::palette().interactive.input_cursor.to_style();
+            let cs = txv_core::palette::palette().interactive().input_cursor();
             self.state.buffer_mut().put(cx, 0, ch, cs);
         }
     }

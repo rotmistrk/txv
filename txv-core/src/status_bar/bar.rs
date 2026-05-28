@@ -5,7 +5,7 @@
 //! Items that don't fit (lowest priority) get zero-width bounds (hidden).
 
 use crate::buffer::Buffer;
-use crate::cell::{Attrs, Style};
+
 use crate::event::Event;
 use crate::geometry::Rect;
 use crate::group::GroupState;
@@ -136,13 +136,7 @@ impl View for StatusBar {
         }
         self.recompute_layout();
 
-        let bar_style = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let bar_style = crate::palette::palette().chrome().status_bar();
         self.group.buffer_mut().fill(' ', bar_style);
 
         // Draw children into their buffers

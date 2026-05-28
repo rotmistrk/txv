@@ -141,7 +141,7 @@ impl View for SplitPane {
         }
 
         // Draw divider
-        let dim = palette().base.dim.to_style();
+        let dim = palette().base().dim();
         let g = glyphs();
         match self.direction {
             SplitDirection::Horizontal => {

@@ -87,7 +87,7 @@ impl View for FuzzySelect {
         }
         let pal = txv_core::palette::palette();
         let normal = Style::default();
-        let selected_style = pal.interactive.cursor_focused.to_style();
+        let selected_style = pal.interactive().cursor_focused();
         let input_style = Style {
             attrs: Attrs {
                 underline: true,

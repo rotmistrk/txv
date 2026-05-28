@@ -49,8 +49,8 @@ impl View for Menu {
         }
         let pal = txv_core::palette::palette();
         let normal = Style::default();
-        let selected = pal.interactive.cursor_focused.to_style();
-        let disabled = pal.interactive.disabled.to_style();
+        let selected = pal.interactive().cursor_focused();
+        let disabled = pal.interactive().disabled();
 
         // Draw border
         let g = glyphs();

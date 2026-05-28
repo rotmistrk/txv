@@ -29,13 +29,7 @@ impl View for ModalKey {
             self.group.mark_redrawn();
             return;
         }
-        let style = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let style = txv_core::palette::palette().chrome().status_bar();
         self.group.buffer_mut().fill(' ', style);
 
         if self.active {
