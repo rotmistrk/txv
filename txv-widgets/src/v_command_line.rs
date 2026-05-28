@@ -7,7 +7,7 @@ use txv_core::prelude::*;
 /// A View-based command input line for the status bar.
 pub struct CommandLineView {
     state: ViewState,
-    palette: Option<Arc<dyn StylePalette>>,
+    palette: Option<Arc<dyn Palette>>,
     activation_keys: Vec<KeyEvent>,
     command_id: CommandId,
     prefill_command_id: Option<CommandId>,
@@ -43,7 +43,7 @@ impl CommandLineView {
     fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
-            None => txv_core::palette::palette().chrome().status_bar(),
+            None => txv_core::palette::palette().style(id),
         }
     }
 
@@ -238,7 +238,7 @@ impl View for CommandLineView {
         self.state.mark_redrawn();
     }
 
-    fn set_palette(&mut self, palette: Arc<dyn StylePalette>) {
+    fn set_palette(&mut self, palette: Arc<dyn Palette>) {
         self.palette = Some(palette);
     }
 

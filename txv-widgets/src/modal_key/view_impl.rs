@@ -30,11 +30,11 @@ impl View for ModalKey {
             self.group.mark_redrawn();
             return;
         }
-        let style = txv_core::palette::palette().chrome().status_bar();
+        let style = txv_core::palette::palette().style(StyleId::StatusBar);
 
         if self.active {
             // Active modal: distinct background from status bar
-            let modal_style = txv_core::palette::palette().chrome().status_bar_modal();
+            let modal_style = txv_core::palette::palette().style(StyleId::StatusBarModal);
             self.group.buffer_mut().fill(' ', modal_style);
             // Left power cap: modal bg fg on status_bar bg
             let modal_bg = modal_style.bg;

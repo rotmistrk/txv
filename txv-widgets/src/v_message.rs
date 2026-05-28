@@ -58,11 +58,11 @@ impl MessageView {
             format!("[{}] {}", msg.origin, msg.text)
         };
         let pal = txv_core::palette::palette();
-        let bar_bg = pal.chrome().status_bar().bg;
+        let bar_bg = pal.style(StyleId::StatusBar).bg;
         let fg_style = match msg.level {
-            MsgLevel::Error => pal.state().error(),
-            MsgLevel::Warn => pal.state().warning(),
-            _ => pal.state().info(),
+            MsgLevel::Error => pal.style(StyleId::StateError),
+            MsgLevel::Warn => pal.style(StyleId::StateWarning),
+            _ => pal.style(StyleId::StateInfo),
         };
         self.display_style = Style {
             fg: fg_style.fg,

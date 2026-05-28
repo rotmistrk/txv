@@ -1,13 +1,11 @@
-//! Palette trait system — semantic style roles resolved via trait methods.
+//! Palette — semantic style lookup by StyleId.
 //!
-//! Views call `palette().state().error()` to get a Style.
+//! Views call `palette().style(StyleId::StatusBar)` to get a Style.
 //! Implementations (dark/light) are swappable at runtime.
 
 pub mod dark;
 pub mod light;
 pub mod style_id;
-pub mod style_palette;
-mod traits;
 
 #[cfg(test)]
 mod tests;
@@ -17,8 +15,59 @@ use std::sync::{Arc, OnceLock, RwLock};
 use crate::cell::Style;
 
 pub use style_id::StyleId;
-pub use style_palette::{DerivedPalette, StylePalette};
-pub use traits::{Base, Chrome, Interactive, Palette, Popup, State};
+
+/// A palette maps StyleId → Style. Views receive a palette from their parent
+/// or use the global palette.
+pub trait Palette: Send + Sync {
+    fn style(&self, id: StyleId) -> Style;
+
+    /// Tab inactive style with distance-based gradient. Default darkens bg by distance.
+    fn tab_inactive(&self, distance: usize) -> Style {
+        let base = self.style(StyleId::TabInactive);
+        let darken = |c: crate::cell::Color| match c {
+            crate::cell::Color::Rgb(r, g, b) => {
+                let d = (distance as u8).saturating_mul(8);
+                crate::cell::Color::Rgb(r.saturating_sub(d), g.saturating_sub(d), b.saturating_sub(d))
+            }
+            _ => c,
+        };
+        Style {
+            bg: darken(base.bg),
+            ..base
+        }
+    }
+}
+
+/// A palette that wraps another and overrides specific style IDs.
+pub struct DerivedPalette {
+    base: Arc<dyn Palette>,
+    overrides: Vec<(StyleId, Style)>,
+}
+
+impl DerivedPalette {
+    pub fn new(base: Arc<dyn Palette>) -> Self {
+        Self {
+            base,
+            overrides: Vec::new(),
+        }
+    }
+
+    pub fn with_override(mut self, id: StyleId, style: Style) -> Self {
+        self.overrides.push((id, style));
+        self
+    }
+}
+
+impl Palette for DerivedPalette {
+    fn style(&self, id: StyleId) -> Style {
+        for &(oid, ref s) in &self.overrides {
+            if oid == id {
+                return *s;
+            }
+        }
+        self.base.style(id)
+    }
+}
 
 static PALETTE: OnceLock<RwLock<Arc<dyn Palette>>> = OnceLock::new();
 
@@ -84,7 +133,7 @@ pub fn detect_system_theme() -> ThemeMode {
     ThemeMode::Dark
 }
 
-/// A single palette entry for building implementations. Not part of public API.
+/// A single palette entry for building implementations.
 #[derive(Clone, Debug, Default)]
 pub struct PaletteStyle {
     fg: Option<crate::cell::Color>,
@@ -152,7 +201,6 @@ impl PaletteStyle {
         self.dim = true;
         self
     }
-
     pub fn to_style(&self) -> Style {
         Style {
             fg: self.fg.unwrap_or(crate::cell::Color::Reset),

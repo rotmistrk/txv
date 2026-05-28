@@ -40,7 +40,7 @@ impl View for StatusBar {
         if w == 0 || h == 0 {
             return;
         }
-        let bar_style = crate::palette::palette().chrome().status_bar();
+        let bar_style = crate::palette::palette().style(crate::palette::StyleId::StatusBar);
         self.state.buffer_mut().hline(0, 0, w, ' ', bar_style);
 
         if let Some(idx) = self.exclusive {

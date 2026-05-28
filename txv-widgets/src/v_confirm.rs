@@ -7,7 +7,7 @@ use txv_core::prelude::*;
 /// A View-based confirmation prompt for the status bar.
 pub struct ConfirmView {
     state: ViewState,
-    palette: Option<Arc<dyn StylePalette>>,
+    palette: Option<Arc<dyn Palette>>,
     activate_command: CommandId,
     response_command: CommandId,
     active: bool,
@@ -35,7 +35,7 @@ impl ConfirmView {
     fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
-            None => txv_core::palette::palette().chrome().status_bar(),
+            None => txv_core::palette::palette().style(id),
         }
     }
 
@@ -117,7 +117,7 @@ impl View for ConfirmView {
         self.state.mark_redrawn();
     }
 
-    fn set_palette(&mut self, palette: Arc<dyn StylePalette>) {
+    fn set_palette(&mut self, palette: Arc<dyn Palette>) {
         self.palette = Some(palette);
     }
 

@@ -8,7 +8,7 @@ use txv_core::prelude::*;
 /// A View-based status bar item that displays the current time.
 pub struct ClockView {
     state: ViewState,
-    palette: Option<Arc<dyn StylePalette>>,
+    palette: Option<Arc<dyn Palette>>,
     interval_secs: u16,
     last_update: Instant,
     label_text: String,
@@ -36,7 +36,7 @@ impl ClockView {
     fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
-            None => txv_core::palette::palette().chrome().status_bar(),
+            None => txv_core::palette::palette().style(id),
         }
     }
 
@@ -59,7 +59,7 @@ impl View for ClockView {
         self.state.mark_redrawn();
     }
 
-    fn set_palette(&mut self, palette: Arc<dyn StylePalette>) {
+    fn set_palette(&mut self, palette: Arc<dyn Palette>) {
         self.palette = Some(palette);
     }
 

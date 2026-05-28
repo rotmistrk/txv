@@ -37,8 +37,8 @@ impl View for Scrollbar {
             return;
         }
         let pal = txv_core::palette::palette();
-        let track_style = pal.chrome().scrollbar_track();
-        let thumb_style = pal.chrome().scrollbar_thumb();
+        let track_style = pal.style(StyleId::ScrollbarTrack);
+        let thumb_style = pal.style(StyleId::ScrollbarThumb);
         let (thumb_pos, thumb_size) = self.scroll.thumb(h);
         for row in 0..h {
             let style = if row >= thumb_pos && row < thumb_pos + thumb_size {

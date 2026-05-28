@@ -4,26 +4,27 @@ use std::sync::Arc;
 
 use crate::cell::Color;
 use crate::palette::dark::DarkPalette;
-use crate::palette::{palette, set_palette, PaletteStyle};
+use crate::palette::style_id::StyleId;
+use crate::palette::{palette, set_palette, Palette, PaletteStyle};
 
 #[test]
 fn dark_palette_has_expected_roles() {
     let p = palette();
-    assert_eq!(p.base().dim().fg, Color::Ansi(8));
-    assert_eq!(p.base().tree_dir().fg, Color::Ansi(14));
-    assert_eq!(p.interactive().cursor_focused().bg, Color::Ansi(4));
-    assert_eq!(p.interactive().cursor_unfocused().bg, Color::Ansi(8));
-    assert_eq!(p.interactive().edit_selection().bg, Color::Ansi(2));
-    assert_eq!(p.popup().border().fg, Color::Ansi(6));
-    assert_eq!(p.popup().background().fg, Color::Ansi(15));
-    assert_eq!(p.popup().selected().bg, Color::Ansi(4));
+    assert_eq!(p.style(StyleId::Dim).fg, Color::Ansi(8));
+    assert_eq!(p.style(StyleId::TreeDir).fg, Color::Ansi(14));
+    assert_eq!(p.style(StyleId::CursorFocused).bg, Color::Ansi(4));
+    assert_eq!(p.style(StyleId::CursorUnfocused).bg, Color::Ansi(8));
+    assert_eq!(p.style(StyleId::EditSelection).bg, Color::Ansi(2));
+    assert_eq!(p.style(StyleId::PopupBorder).fg, Color::Ansi(6));
+    assert_eq!(p.style(StyleId::PopupBackground).fg, Color::Ansi(15));
+    assert_eq!(p.style(StyleId::PopupSelected).bg, Color::Ansi(4));
 }
 
 #[test]
 fn set_palette_round_trip() {
     set_palette(Arc::new(DarkPalette));
     let got = palette();
-    assert_eq!(got.state().error().fg, Color::Ansi(9));
+    assert_eq!(got.style(StyleId::StateError).fg, Color::Ansi(9));
 }
 
 #[test]

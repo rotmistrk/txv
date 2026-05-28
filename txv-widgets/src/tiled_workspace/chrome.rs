@@ -18,7 +18,7 @@ struct VGap {
 impl TiledWorkspace {
     /// Draw chrome dividers between panels. O(n) in panel count.
     pub(super) fn draw_chrome(&mut self) {
-        let style = txv_core::palette::palette().chrome().bar();
+        let style = txv_core::palette::palette().style(StyleId::ChromeBar);
         let origin = self.group.bounds();
         let w = self.group.buffer_mut().width();
         let h = self.group.buffer_mut().height();

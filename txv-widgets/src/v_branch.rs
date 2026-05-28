@@ -9,7 +9,7 @@ use txv_core::prelude::*;
 /// A View-based status bar item that displays the current git branch.
 pub struct BranchView {
     state: ViewState,
-    palette: Option<Arc<dyn StylePalette>>,
+    palette: Option<Arc<dyn Palette>>,
     root_dir: PathBuf,
     label_text: String,
     last_check: Instant,
@@ -61,7 +61,7 @@ impl BranchView {
     fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
-            None => txv_core::palette::palette().chrome().status_bar(),
+            None => txv_core::palette::palette().style(id),
         }
     }
 
@@ -93,7 +93,7 @@ impl View for BranchView {
         self.state.mark_redrawn();
     }
 
-    fn set_palette(&mut self, palette: Arc<dyn StylePalette>) {
+    fn set_palette(&mut self, palette: Arc<dyn Palette>) {
         self.palette = Some(palette);
     }
 

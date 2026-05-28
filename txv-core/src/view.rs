@@ -122,7 +122,7 @@ pub trait View: Send {
         None
     }
     /// Set the palette for this view. Called by parent to propagate style context.
-    fn set_palette(&mut self, _palette: std::sync::Arc<dyn crate::palette::StylePalette>) {}
+    fn set_palette(&mut self, _palette: std::sync::Arc<dyn crate::palette::Palette>) {}
     /// Access the view's buffer after draw().
     fn buffer(&self) -> &Buffer;
 }

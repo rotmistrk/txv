@@ -144,7 +144,7 @@ fn active_children_use_modal_background() {
     mk.handle(&Event::Key(ctrl_w()));
     mk.draw();
 
-    let modal_bg = txv_core::palette::palette().chrome().status_bar_modal().bg;
+    let modal_bg = txv_core::palette::palette().style(StyleId::StatusBarModal).bg;
     let buf = mk.buffer();
 
     // Check cells inside the modal (after left cap, before right cap)
@@ -181,7 +181,7 @@ fn active_input_line_uses_modal_background() {
     mk.handle(&Event::Key(key(KeyCode::Char('i'))));
     mk.draw();
 
-    let modal_bg = txv_core::palette::palette().chrome().status_bar_modal().bg;
+    let modal_bg = txv_core::palette::palette().style(StyleId::StatusBarModal).bg;
     let buf = mk.buffer();
 
     // Check the first typed char (not cursor position)
@@ -207,7 +207,7 @@ fn dormant_children_use_status_bar_background() {
     mk.handle(&Event::Key(key(KeyCode::Char('z')))); // cancel_on_miss
     mk.draw();
 
-    let bar_bg = txv_core::palette::palette().chrome().status_bar().bg;
+    let bar_bg = txv_core::palette::palette().style(StyleId::StatusBar).bg;
     let buf = mk.buffer();
 
     // Dormant: shows "C-w" with status bar bg

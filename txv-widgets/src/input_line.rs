@@ -12,7 +12,7 @@ pub struct InputLine {
     history_pos: Option<usize>,
     completer: Option<Box<dyn Completer>>,
     submit_command: CommandId,
-    palette: Option<Arc<dyn StylePalette>>,
+    palette: Option<Arc<dyn Palette>>,
 }
 
 impl InputLine {
@@ -162,10 +162,7 @@ impl InputLine {
     fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
-            None => match id {
-                StyleId::InputCursor => txv_core::palette::palette().interactive().input_cursor(),
-                _ => txv_core::palette::palette().chrome().status_bar(),
-            },
+            None => txv_core::palette::palette().style(id),
         }
     }
 
@@ -219,7 +216,7 @@ impl View for InputLine {
         }
     }
 
-    fn set_palette(&mut self, palette: Arc<dyn StylePalette>) {
+    fn set_palette(&mut self, palette: Arc<dyn Palette>) {
         self.palette = Some(palette);
     }
 

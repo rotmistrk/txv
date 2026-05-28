@@ -53,12 +53,12 @@ impl View for Table {
             return;
         }
         let pal = txv_core::palette::palette();
-        let header_style = pal.popup().table_header();
+        let header_style = pal.style(StyleId::PopupTableHeader);
         let normal = Style::default();
         let selected = if self.state.is_focused() {
-            pal.interactive().cursor_focused()
+            pal.style(StyleId::CursorFocused)
         } else {
-            pal.interactive().cursor_unfocused()
+            pal.style(StyleId::CursorUnfocused)
         };
 
         // Header row

@@ -86,8 +86,7 @@ pub mod prelude {
     pub use crate::glyphs::{glyphs, set_glyphs, GlyphSet, GlyphTier};
     pub use crate::group::GroupState;
     pub use crate::message::{Message, MsgLevel};
-    pub use crate::palette::{palette, set_palette, PaletteStyle, ThemeMode};
-    pub use crate::palette::{Base, Chrome, DerivedPalette, Interactive, Palette, Popup, State, StyleId, StylePalette};
+    pub use crate::palette::{palette, set_palette, DerivedPalette, Palette, PaletteStyle, StyleId, ThemeMode};
     pub use crate::run::{exec_view, run, run_cycles, Backend, MockBackend};
     pub use crate::status::{ActiveItem, Gravity, StatusBarItem, VisibleItem};
     pub use crate::surface::{SubSurface, Surface};

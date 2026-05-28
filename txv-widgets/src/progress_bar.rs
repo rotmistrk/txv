@@ -12,7 +12,7 @@ pub enum ProgressMode {
 
 pub struct ProgressBar {
     state: ViewState,
-    palette: Option<Arc<dyn StylePalette>>,
+    palette: Option<Arc<dyn Palette>>,
     pub mode: ProgressMode,
     pub progress: f32, // 0.0..=1.0
     pub tick: u16,     // for indeterminate animation
@@ -35,7 +35,7 @@ impl ProgressBar {
     fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
-            None => txv_core::palette::palette().chrome().status_bar(),
+            None => txv_core::palette::palette().style(id),
         }
     }
 
@@ -107,7 +107,7 @@ impl View for ProgressBar {
         HandleResult::Ignored
     }
 
-    fn set_palette(&mut self, palette: Arc<dyn StylePalette>) {
+    fn set_palette(&mut self, palette: Arc<dyn Palette>) {
         self.palette = Some(palette);
     }
 }

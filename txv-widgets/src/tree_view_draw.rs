@@ -40,14 +40,14 @@ impl<D: TreeData> TreeView<D> {
             let style = if idx == self.cursor {
                 let pal = palette();
                 if self.state.is_focused() {
-                    let cs = pal.interactive().cursor_focused();
+                    let cs = pal.style(StyleId::CursorFocused);
                     Style {
                         fg: node_style.fg,
                         bg: cs.bg,
                         attrs: cs.attrs,
                     }
                 } else {
-                    let cs = pal.interactive().cursor_unfocused();
+                    let cs = pal.style(StyleId::CursorUnfocused);
                     Style {
                         fg: node_style.fg,
                         bg: cs.bg,
@@ -64,7 +64,7 @@ impl<D: TreeData> TreeView<D> {
             let label = self.data.label(id);
             let label_x = x + 2;
             if let Some(positions) = self.data.highlight_positions(id) {
-                let sm = palette().interactive().search_match();
+                let sm = palette().style(StyleId::SearchMatch);
                 let hl_style = Style {
                     fg: if sm.fg != Color::Reset {
                         sm.fg
@@ -105,7 +105,7 @@ impl<D: TreeData> TreeView<D> {
         if let Some(text) = &filter_text {
             let y = h - 1;
             let pal = palette();
-            let status_style = pal.base().dim();
+            let status_style = pal.style(StyleId::Dim);
             self.state.buffer_mut().hline(0, y, w, ' ', status_style);
             let display = format!("/{}", text);
             self.state.buffer_mut().print(0, y, &display, status_style);

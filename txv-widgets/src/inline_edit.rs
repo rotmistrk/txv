@@ -160,7 +160,7 @@ impl InlineEditor {
     /// Draw the editor at the given position on the surface.
     pub fn draw(&self, surface: &mut Surface, x: u16, y: u16, width: u16, style: Style) {
         let pal = palette();
-        let sel_bg = pal.interactive().edit_selection().bg;
+        let sel_bg = pal.style(StyleId::EditSelection).bg;
         let sel_style = Style {
             bg: if sel_bg != Color::Reset {
                 sel_bg

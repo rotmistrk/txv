@@ -136,7 +136,7 @@ impl View for StatusBar {
         }
         self.recompute_layout();
 
-        let bar_style = crate::palette::palette().chrome().status_bar();
+        let bar_style = crate::palette::palette().style(crate::palette::StyleId::StatusBar);
         self.group.buffer_mut().fill(' ', bar_style);
 
         // Draw children into their buffers

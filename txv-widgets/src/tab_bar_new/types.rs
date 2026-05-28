@@ -53,16 +53,16 @@ impl TabBarPalette {
     pub fn from_global_palette() -> Self {
         use txv_core::palette::palette;
         let pal = palette();
-        let focused = pal.chrome().tab_focused();
-        let active = pal.chrome().tab_active();
-        let dim_fg = pal.base().dim().fg;
-        let badge = pal.chrome().tab_focused_badge();
-        let separator_fg = pal.base().text().bg;
+        let focused = pal.style(StyleId::TabFocused);
+        let active = pal.style(StyleId::TabActive);
+        let dim_fg = pal.style(StyleId::Dim).fg;
+        let badge = pal.style(StyleId::TabFocusedBadge);
+        let separator_fg = pal.style(StyleId::Text).bg;
 
         // Read gradient from palette
         let mut inactive = [TabStyle::default(); 10];
         for (i, s) in inactive.iter_mut().enumerate() {
-            let style = pal.chrome().tab_inactive(i);
+            let style = pal.tab_inactive(i);
             s.fg = style.fg;
             s.bg = style.bg;
         }

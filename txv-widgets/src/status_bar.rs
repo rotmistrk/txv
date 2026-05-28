@@ -58,7 +58,7 @@ impl View for StatusBar {
         if w == 0 || h == 0 {
             return;
         }
-        let style = txv_core::palette::palette().chrome().status_bar();
+        let style = txv_core::palette::palette().style(StyleId::StatusBar);
         self.state.buffer_mut().hline(0, 0, w, ' ', style);
         // Labels left-aligned
         let mut x = 0u16;

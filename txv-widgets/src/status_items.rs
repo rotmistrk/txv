@@ -170,9 +170,9 @@ impl ActiveItem for MessageItem {
                             };
                             let pal = txv_core::palette::palette();
                             self.style = match msg.level {
-                                MsgLevel::Error => pal.state().error(),
-                                MsgLevel::Warn => pal.state().warning(),
-                                _ => pal.state().info(),
+                                MsgLevel::Error => pal.style(StyleId::StateError),
+                                MsgLevel::Warn => pal.style(StyleId::StateWarning),
+                                _ => pal.style(StyleId::StateInfo),
                             };
                             self.last_set = Some(Instant::now());
                         }

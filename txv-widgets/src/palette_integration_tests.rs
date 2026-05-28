@@ -32,7 +32,7 @@ fn palette_integration() {
     // --- inline_edit_selection_uses_palette ---
     set_palette(Arc::new(DarkPalette));
     let pal = palette();
-    let expected_bg = pal.interactive().edit_selection().bg;
+    let expected_bg = pal.style(StyleId::EditSelection).bg;
 
     let ed = InlineEditor::new_selected(0, "hello");
     let mut surface = Surface::new(20, 1);
@@ -44,7 +44,7 @@ fn palette_integration() {
 
     // --- split_pane_separator_uses_palette_dim ---
     let pal = palette();
-    let expected_fg = pal.base().dim().fg;
+    let expected_fg = pal.style(StyleId::Dim).fg;
 
     let mut sp = SplitPane::new(
         SplitDirection::Horizontal,

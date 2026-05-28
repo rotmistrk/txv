@@ -111,10 +111,10 @@ impl ModalKey {
 
     pub(crate) fn propagate_modal_palette(&mut self) {
         use std::sync::Arc;
-        use txv_core::palette::{dark::DarkPalette, DerivedPalette, StyleId};
-        let base = Arc::new(DarkPalette) as Arc<dyn txv_core::palette::StylePalette>;
-        let modal_style = txv_core::palette::palette().chrome().status_bar_modal();
-        let derived: Arc<dyn txv_core::palette::StylePalette> =
+        use txv_core::palette::{DerivedPalette, Palette, StyleId};
+        let base = txv_core::palette::palette();
+        let modal_style = base.style(StyleId::StatusBarModal);
+        let derived: Arc<dyn Palette> =
             Arc::new(DerivedPalette::new(base).with_override(StyleId::StatusBar, modal_style));
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
@@ -124,8 +124,7 @@ impl ModalKey {
     }
 
     pub(crate) fn propagate_default_palette(&mut self) {
-        use std::sync::Arc;
-        let pal: Arc<dyn txv_core::palette::StylePalette> = Arc::new(txv_core::palette::dark::DarkPalette);
+        let pal = txv_core::palette::palette();
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
                 child.set_palette(pal.clone());

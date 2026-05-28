@@ -68,7 +68,7 @@ impl View for InputDialog {
             return;
         }
         let normal = Style::default();
-        let border = txv_core::palette::palette().base().border();
+        let border = txv_core::palette::palette().style(StyleId::Border);
         let g = glyphs();
         let bx = &g.box_drawing;
 
