@@ -180,8 +180,8 @@ impl StatusBar {
         if s.fg != crate::cell::Color::default() {
             Style {
                 fg: s.fg,
-                attrs: bar_style.attrs,
-                ..Style::default()
+                bg: bar_style.bg,
+                attrs: s.attrs,
             }
         } else {
             bar_style
