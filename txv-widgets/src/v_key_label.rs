@@ -14,13 +14,14 @@ pub struct KeyLabelView {
 impl KeyLabelView {
     pub fn new(key: KeyEvent, command: CommandId, label: impl Into<String>) -> Self {
         let label_text = label.into();
+        let mods = key.modifiers;
+        let plain_char = !mods.ctrl && !mods.alt && !mods.shift;
         let display_len = if label_text.is_empty() {
             0
+        } else if matches!(key.code, txv_core::event::KeyCode::Char(_)) && plain_char {
+            label_text.len() + 2 // "k:label"
         } else {
-            match key.code {
-                txv_core::event::KeyCode::Char(_) => label_text.len() + 2, // "k:label"
-                _ => label_text.len(),
-            }
+            label_text.len()
         };
         let w = if display_len == 0 {
             0
@@ -51,13 +52,15 @@ impl KeyLabelView {
         &self.label_text
     }
 
-    /// Format string for display: "k:label" where k is the key character.
+    /// Format string for display: "k:label" where k is the key character (plain keys only).
     fn display_text(&self) -> String {
         if self.label_text.is_empty() {
             return String::new();
         }
+        let mods = self.key.modifiers;
+        let plain = !mods.ctrl && !mods.alt && !mods.shift;
         match self.key.code {
-            txv_core::event::KeyCode::Char(c) => format!("{c}:{}", self.label_text),
+            txv_core::event::KeyCode::Char(c) if plain => format!("{c}:{}", self.label_text),
             _ => self.label_text.clone(),
         }
     }
@@ -69,7 +72,9 @@ impl View for KeyLabelView {
     fn draw(&mut self) {
         let style = txv_core::palette::palette().chrome().status_bar();
         let text = self.display_text();
-        let has_key_prefix = matches!(self.key.code, txv_core::event::KeyCode::Char(_));
+        let mods = self.key.modifiers;
+        let plain = !mods.ctrl && !mods.alt && !mods.shift;
+        let has_key_prefix = matches!(self.key.code, txv_core::event::KeyCode::Char(_)) && plain;
         let buf = self.state.buffer_mut();
         buf.fill(' ', style);
         if !text.is_empty() {
