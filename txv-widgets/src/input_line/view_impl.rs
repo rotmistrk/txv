@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use txv_core::prelude::*;
 
-use super::InputLine;
+use super::{InputLine, CM_CLIPBOARD_PASTE, CM_COPY_TO_CLIPBOARD, CM_PASTE_REQUEST};
 
 impl View for InputLine {
     delegate_view_state!(state, override { cursor, select, as_any_mut });
@@ -72,7 +72,13 @@ impl View for InputLine {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        if let Event::Command { data, .. } = event {
+        if let Event::Command { id, data, .. } = event {
+            if *id == CM_CLIPBOARD_PASTE {
+                if let Some(text) = data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
+                    self.insert_text(text);
+                    return HandleResult::Consumed;
+                }
+            }
             return self.handle_command(data);
         }
         let Event::Key(key) = event else {
@@ -81,8 +87,23 @@ impl View for InputLine {
         let shift = key.modifiers.shift;
         match &key.code {
             KeyCode::Char(ch) => {
-                if key.modifiers.alt || key.modifiers.ctrl {
+                if key.modifiers.alt {
                     return HandleResult::Ignored;
+                }
+                if key.modifiers.ctrl {
+                    match ch {
+                        'c' => {
+                            if let Some(text) = self.selected_text() {
+                                self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(text)));
+                            }
+                            return HandleResult::Consumed;
+                        }
+                        'v' => {
+                            self.state.put_command(CM_PASTE_REQUEST, None);
+                            return HandleResult::Consumed;
+                        }
+                        _ => return HandleResult::Ignored,
+                    }
                 }
                 self.handle_char(*ch);
                 self.update_completions();

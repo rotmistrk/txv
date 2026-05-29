@@ -9,6 +9,13 @@ use txv_core::prelude::*;
 
 use crate::sidekick::SidekickView;
 
+/// Emitted by InputLine on Ctrl-C when selection exists. Data: `Box<String>`.
+pub const CM_COPY_TO_CLIPBOARD: CommandId = 150;
+/// Emitted by InputLine on Ctrl-V. App should respond with CM_CLIPBOARD_PASTE.
+pub const CM_PASTE_REQUEST: CommandId = 151;
+/// Sent to InputLine with text to insert. Data: `Box<String>`.
+pub const CM_CLIPBOARD_PASTE: CommandId = 152;
+
 pub struct InputLine {
     pub(crate) state: ViewState,
     pub(crate) text: String,
@@ -98,6 +105,26 @@ impl InputLine {
             let hi = anchor.max(self.cursor);
             (lo, hi)
         })
+    }
+
+    /// Get the currently selected text, if any.
+    pub fn selected_text(&self) -> Option<String> {
+        let (lo, hi) = self.selection_range()?;
+        let byte_lo = self.char_to_byte(lo);
+        let byte_hi = self.char_to_byte(hi);
+        Some(self.text[byte_lo..byte_hi].to_string())
+    }
+
+    /// Insert text at cursor, replacing selection if active.
+    pub fn insert_text(&mut self, text: &str) {
+        if self.selection.is_some() {
+            self.delete_selection();
+        }
+        let byte_pos = self.char_to_byte(self.cursor);
+        self.text.insert_str(byte_pos, text);
+        self.cursor += text.chars().count();
+        self.update_width();
+        self.state.mark_dirty();
     }
 
     pub(crate) fn delete_selection(&mut self) {
