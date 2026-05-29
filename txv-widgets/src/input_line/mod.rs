@@ -230,11 +230,19 @@ impl InputLine {
         if width == 0 {
             return 0;
         }
-        if self.cursor >= width {
+        let total = self.char_count();
+        let mut start = if self.cursor >= width {
             self.cursor - width + 1
         } else {
             0
+        };
+        // If cursor lands on the last cell and there's text to the right,
+        // scroll one more so the cursor isn't on the right-overflow '…' position.
+        let cursor_pos = self.cursor - start;
+        if cursor_pos == width - 1 && start + width < total {
+            start += 1;
         }
+        start
     }
 }
 

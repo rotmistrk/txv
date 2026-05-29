@@ -49,14 +49,6 @@ impl View for InputLine {
             };
             self.state.buffer_mut().put(x, 0, ch, s);
         }
-        if self.selection.is_none() {
-            let cx = (self.cursor - start) as u16;
-            if cx < w {
-                let ch = self.text.chars().nth(self.cursor).unwrap_or(' ');
-                let cs = self.resolve_style(StyleId::InputCursor);
-                self.state.buffer_mut().put(cx, 0, ch, cs);
-            }
-        }
         // Overflow indicators
         let total_chars = self.char_count();
         if ww > 0 && total_chars > ww {
