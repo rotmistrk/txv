@@ -16,7 +16,7 @@ pub const CM_MENU: CommandId = 6;
 pub const CM_OK: CommandId = 7;
 pub const CM_CANCEL: CommandId = 8;
 pub const CM_TICK: CommandId = 9;
-/// Force full screen repaint (invalidate backend + new surface).
+/// Force full screen repaint (invalidate backend + new buffer).
 pub const CM_REPAINT: CommandId = 10;
 
 /// End of txv-core command range. Widgets use IDs above this.

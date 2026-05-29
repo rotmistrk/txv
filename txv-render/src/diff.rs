@@ -2,7 +2,7 @@
 
 use txv_core::buffer::Buffer;
 
-/// Compute which cells changed between current surface and previous buffer.
+/// Compute which cells changed between current buffer and previous buffer.
 /// Returns list of (x, y) positions that differ.
 pub fn diff_cells(current: &Buffer, previous: &Buffer) -> Vec<(u16, u16)> {
     let mut changed = Vec::new();

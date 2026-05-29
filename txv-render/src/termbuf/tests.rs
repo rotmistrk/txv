@@ -53,7 +53,7 @@ fn scroll_on_overflow() {
 }
 
 #[test]
-fn render_to_surface() {
+fn render_to_buffer() {
     let mut tb = TermBuf::new(10, 5);
     tb.process(b"Hi");
     let mut buf = Buffer::new(10, 5);
