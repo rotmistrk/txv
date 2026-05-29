@@ -48,6 +48,8 @@ pub struct CommandContext<'a> {
     pub sink: &'a EventSink,
     /// Access to the desktop (child 1 of the group).
     pub desktop: &'a mut dyn View,
+    /// Overlay setter — call to show/hide overlay popup.
+    pub overlay: &'a mut Option<Box<dyn View>>,
 }
 
 /// The TXV application runner. Handles event loop, dispatch, draw.
@@ -55,6 +57,8 @@ pub struct Program {
     group: GroupState,
     sink: EventSink,
     quit_requested: bool,
+    /// Optional overlay drawn on top of everything.
+    overlay: Option<Box<dyn View>>,
 }
 
 impl Program {
@@ -80,6 +84,7 @@ impl Program {
             group,
             sink,
             quit_requested: false,
+            overlay: None,
         }
     }
 
@@ -96,7 +101,8 @@ impl Program {
 
         loop {
             // Draw (only if dirty)
-            if self.group.any_dirty() {
+            let overlay_dirty = self.overlay.as_ref().is_some_and(|o| o.needs_redraw());
+            if self.group.any_dirty() || overlay_dirty {
                 self.draw_and_flush(backend);
             }
 
@@ -198,6 +204,7 @@ impl Program {
                         data,
                         sink: &self.sink,
                         desktop,
+                        overlay: &mut self.overlay,
                     };
                     handler(&mut ctx);
                 }
@@ -217,6 +224,14 @@ impl Program {
             let cb = child.bounds();
             unsafe {
                 (*buf_ptr).blit(child.buffer(), cb.x.saturating_sub(pb.x), cb.y.saturating_sub(pb.y));
+            }
+        }
+        // Draw overlay on top if present.
+        if let Some(overlay) = &mut self.overlay {
+            overlay.draw();
+            let ob = overlay.bounds();
+            unsafe {
+                (*buf_ptr).blit(overlay.buffer(), ob.x.saturating_sub(pb.x), ob.y.saturating_sub(pb.y));
             }
         }
         self.group.mark_redrawn();
@@ -261,6 +276,25 @@ impl Program {
     /// Access the event sink (for external command injection).
     pub fn sink(&self) -> &EventSink {
         &self.sink
+    }
+
+    /// Set an overlay view (drawn on top of everything).
+    pub fn set_overlay(&mut self, view: Box<dyn View>) {
+        self.overlay = Some(view);
+        self.group.mark_dirty();
+    }
+
+    /// Remove the overlay.
+    pub fn clear_overlay(&mut self) {
+        if self.overlay.is_some() {
+            self.overlay = None;
+            self.group.mark_dirty();
+        }
+    }
+
+    /// Access the overlay (if any).
+    pub fn overlay_mut(&mut self) -> Option<&mut (dyn View + 'static)> {
+        self.overlay.as_mut().map(|v| v.as_mut())
     }
 
     /// Returns true if CM_QUIT was received during the last run_cycles.

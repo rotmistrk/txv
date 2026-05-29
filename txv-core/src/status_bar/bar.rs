@@ -176,6 +176,10 @@ impl View for StatusBar {
         self.group.dispatch(event)
     }
 
+    fn cursor(&self) -> Option<crate::cursor::CursorRequest> {
+        self.group.cursor()
+    }
+
     fn buffer(&self) -> &Buffer {
         self.group.buffer()
     }
