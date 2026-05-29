@@ -166,8 +166,11 @@ impl InlineEditor {
         let w = width as usize;
         // Convert byte cursor to char index for scroll math
         let char_cursor = self.buffer[..self.cursor].chars().count();
+        let total_chars = self.buffer.chars().count();
         // Adjust scroll
-        if char_cursor < self.scroll_offset {
+        if total_chars <= w {
+            self.scroll_offset = 0;
+        } else if char_cursor < self.scroll_offset {
             self.scroll_offset = char_cursor;
         } else if w > 0 && char_cursor >= self.scroll_offset + w {
             self.scroll_offset = char_cursor - w + 1;

@@ -68,7 +68,10 @@ fn palette_change_affects_widget_rendering() {
     impl txv_core::palette::Palette for CustomPalette {
         fn style(&self, id: StyleId) -> Style {
             if id == StyleId::EditSelection {
-                Style { bg: Color::Ansi(5), ..Style::default() }
+                Style {
+                    bg: Color::Ansi(5),
+                    ..Style::default()
+                }
             } else {
                 DarkPalette.style(id)
             }
