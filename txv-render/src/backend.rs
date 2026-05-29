@@ -97,32 +97,27 @@ impl Backend for CrosstermBackend {
             },
         ];
         let ready = unsafe { libc::poll(fds.as_mut_ptr(), 2, timeout_ms) };
-        if ready <= 0 {
-            return None;
-        }
         // Drain wake pipe if signaled
-        if fds[1].revents & libc::POLLIN != 0 {
+        if ready > 0 && fds[1].revents & libc::POLLIN != 0 {
             let mut buf = [0u8; 64];
             unsafe {
                 libc::read(self.wake_read, buf.as_mut_ptr() as *mut libc::c_void, 64);
             }
         }
-        // Check stdin for crossterm events
-        if fds[0].revents & libc::POLLIN != 0 {
-            if !ct_event::poll(Duration::ZERO).unwrap_or(false) {
-                return None;
-            }
+        // Always check crossterm — SIGWINCH queues Resize without stdin data
+        if ct_event::poll(Duration::ZERO).unwrap_or(false) {
             match ct_event::read() {
-                Ok(ct_event::Event::Key(k)) => translate_key(k),
-                Ok(ct_event::Event::Resize(w, h)) => Some(Event::Resize(w, h)),
-                Ok(ct_event::Event::Mouse(m)) => translate_mouse(m),
-                Ok(ct_event::Event::Paste(s)) => Some(Event::Paste(s)),
-                _ => None,
+                Ok(ct_event::Event::Key(k)) => return translate_key(k),
+                Ok(ct_event::Event::Resize(w, h)) => return Some(Event::Resize(w, h)),
+                Ok(ct_event::Event::Mouse(m)) => return translate_mouse(m),
+                Ok(ct_event::Event::Paste(s)) => return Some(Event::Paste(s)),
+                _ => {}
             }
-        } else {
-            // Woken by pipe — return None to trigger Tick
-            None
         }
+        if ready <= 0 {
+            return None;
+        }
+        None
     }
 
     fn flush(&mut self, surface: &Buffer) {

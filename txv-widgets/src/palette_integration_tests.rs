@@ -34,7 +34,7 @@ fn palette_integration() {
     let pal = palette();
     let expected_bg = pal.style(StyleId::EditSelection).bg;
 
-    let ed = InlineEditor::new_selected(0, "hello");
+    let mut ed = InlineEditor::new_selected(0, "hello");
     let mut surface = Surface::new(20, 1);
     let style = Style::default();
     ed.draw(&mut surface, 0, 0, 20, style);
@@ -56,4 +56,33 @@ fn palette_integration() {
 
     let cell = sp.buffer().cell(10, 0);
     assert_eq!(cell.style.fg, expected_fg, "separator should use palette dim color");
+}
+
+#[test]
+fn palette_change_affects_widget_rendering() {
+    use txv_core::palette::dark::DarkPalette;
+    use txv_core::palette::style_id::StyleId;
+
+    // Set a custom palette with different selection color
+    struct CustomPalette;
+    impl txv_core::palette::Palette for CustomPalette {
+        fn style(&self, id: StyleId) -> Style {
+            if id == StyleId::EditSelection {
+                Style { bg: Color::Ansi(5), ..Style::default() }
+            } else {
+                DarkPalette.style(id)
+            }
+        }
+    }
+    set_palette(Arc::new(CustomPalette));
+
+    let mut ed = InlineEditor::new_selected(0, "test");
+    let mut surface = Surface::new(20, 1);
+    ed.draw(&mut surface, 0, 0, 20, Style::default());
+
+    let cell = surface.cell(1, 0);
+    assert_eq!(cell.style.bg, Color::Ansi(5), "widget should reflect updated palette");
+
+    // Restore
+    set_palette(Arc::new(DarkPalette));
 }

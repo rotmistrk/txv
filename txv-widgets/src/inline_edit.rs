@@ -34,6 +34,8 @@ pub struct InlineEditor {
     pub cursor: usize,
     /// Selection anchor (byte offset). When Some, selection is anchor..cursor or cursor..anchor.
     pub anchor: Option<usize>,
+    /// Horizontal scroll offset (char index) for long text.
+    scroll_offset: usize,
 }
 
 impl InlineEditor {
@@ -44,6 +46,7 @@ impl InlineEditor {
             buffer: initial_text.to_owned(),
             cursor,
             anchor: None,
+            scroll_offset: 0,
         }
     }
 
@@ -54,6 +57,7 @@ impl InlineEditor {
             buffer: initial_text.to_owned(),
             cursor: initial_text.len(),
             anchor: Some(0),
+            scroll_offset: 0,
         }
     }
 
@@ -158,7 +162,16 @@ impl InlineEditor {
     }
 
     /// Draw the editor at the given position on the surface.
-    pub fn draw(&self, surface: &mut Surface, x: u16, y: u16, width: u16, style: Style) {
+    pub fn draw(&mut self, surface: &mut Surface, x: u16, y: u16, width: u16, style: Style) {
+        let w = width as usize;
+        // Convert byte cursor to char index for scroll math
+        let char_cursor = self.buffer[..self.cursor].chars().count();
+        // Adjust scroll
+        if char_cursor < self.scroll_offset {
+            self.scroll_offset = char_cursor;
+        } else if w > 0 && char_cursor >= self.scroll_offset + w {
+            self.scroll_offset = char_cursor - w + 1;
+        }
         let pal = palette();
         let sel_bg = pal.style(StyleId::EditSelection).bg;
         let sel_style = Style {
@@ -176,23 +189,29 @@ impl InlineEditor {
         };
         let sel = self.selection_range();
         surface.hline(x, y, width, ' ', style);
-        let w = width as usize;
-        for (i, ch) in self.buffer.chars().enumerate() {
-            if i >= w {
+        // Render chars starting from scroll_offset
+        let mut byte_pos = 0;
+        for (ci, ch) in self.buffer.chars().enumerate() {
+            if ci >= self.scroll_offset + w {
                 break;
             }
-            let st = if i == self.cursor {
-                cursor_style
-            } else if sel.is_some_and(|(s, e)| i >= s && i < e) {
-                sel_style
-            } else {
-                style
-            };
-            surface.put(x + i as u16, y, ch, st);
+            if ci >= self.scroll_offset {
+                let vi = ci - self.scroll_offset;
+                let st = if byte_pos == self.cursor {
+                    cursor_style
+                } else if sel.is_some_and(|(s, e)| byte_pos >= s && byte_pos < e) {
+                    sel_style
+                } else {
+                    style
+                };
+                surface.put(x + vi as u16, y, ch, st);
+            }
+            byte_pos += ch.len_utf8();
         }
-        // Draw cursor at end if past last char
-        if self.cursor >= self.buffer.len() && (self.cursor as u16) < width {
-            surface.put(x + self.cursor as u16, y, ' ', cursor_style);
+        // Cursor at end of text
+        let visible_cursor = char_cursor.saturating_sub(self.scroll_offset);
+        if self.cursor >= self.buffer.len() && visible_cursor < w {
+            surface.put(x + visible_cursor as u16, y, ' ', cursor_style);
         }
     }
 
