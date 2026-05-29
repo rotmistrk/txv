@@ -269,6 +269,11 @@ impl InputLine {
         if cursor_pos == width - 1 && start + width < total {
             start += 1;
         }
+        // If cursor lands on position 0 and there's left overflow,
+        // scroll one less so the cursor isn't on the left-overflow '…' position.
+        if start > 0 && self.cursor == start {
+            start -= 1;
+        }
         start
     }
 }
