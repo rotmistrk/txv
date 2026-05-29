@@ -123,7 +123,7 @@ impl TabBar {
             };
             if x + text_len as u16 <= w {
                 self.state.buffer_mut().print(x, 0, text, style);
-                // Overlay badge with custom style if set
+                // Apply badge with custom style if set
                 if let Some(Some(badge)) = self.badges.get(tab_idx) {
                     if let Some(Some(bs)) = self.badge_styles.get(tab_idx) {
                         let badge_len = badge.chars().count() as u16;

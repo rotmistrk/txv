@@ -74,7 +74,7 @@ impl View for TabPanel {
         }
 
         if self.bar().dropdown_open() {
-            self.draw_dropdown_overlay();
+            self.draw_dropdown();
         }
     }
 

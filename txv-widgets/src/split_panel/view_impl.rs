@@ -24,7 +24,7 @@ impl View for SplitPanel {
         };
         self.group.buffer_mut().fill(' ', transparent);
 
-        // Draw dividers BEFORE children so tab bars overlay via transparency
+        // Draw dividers BEFORE children so tab bars render on top
         if self.group.child_count() > 1 {
             let dim = txv_core::palette::palette().style(StyleId::Dim);
             let g = txv_core::glyphs::glyphs();

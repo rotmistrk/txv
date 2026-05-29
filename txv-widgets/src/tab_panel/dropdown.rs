@@ -1,4 +1,4 @@
-//! Dropdown overlay rendering for TabPanel.
+//! Dropdown rendering for TabPanel.
 //!
 //! Draws a dropdown below the tab bar, connecting directly to the active tab
 //! (no top border). Uses side borders and rounded bottom corners.
@@ -10,8 +10,8 @@ use txv_core::prelude::*;
 use super::TabPanel;
 
 impl TabPanel {
-    /// Draw the dropdown overlay into the panel's buffer (below row 0).
-    pub(crate) fn draw_dropdown_overlay(&mut self) {
+    /// Draw the dropdown into the panel's buffer (below row 0).
+    pub(crate) fn draw_dropdown(&mut self) {
         let entries = self.bar().dropdown_entries();
         if entries.is_empty() {
             return;
