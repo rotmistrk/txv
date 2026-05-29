@@ -193,6 +193,10 @@ impl ModalKey {
             }
         }
 
-        HandleResult::Consumed
+        // Only consume key events — let commands pass through to postprocess.
+        match event {
+            Event::Key(_) => HandleResult::Consumed,
+            _ => result,
+        }
     }
 }
