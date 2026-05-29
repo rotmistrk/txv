@@ -1,8 +1,11 @@
 //! InputLine completion and sidekick integration.
 
+use std::sync::{Arc, Mutex};
+
 use txv_core::prelude::*;
 
 use super::InputLine;
+use crate::sidekick::{SidekickShow, CM_SIDEKICK_HIDE, CM_SIDEKICK_SHOW};
 
 impl InputLine {
     pub(crate) fn try_complete(&mut self) {
@@ -47,34 +50,42 @@ impl InputLine {
     }
 
     fn show_sidekick(&mut self, items: Vec<String>) {
-        self.sidekick.set_items(items, 0);
-        self.sidekick_visible = true;
-        self.emit_sidekick_show();
+        if let Ok(mut sk) = self.sidekick.lock() {
+            sk.set_items(items, 0);
+        }
+        if !self.sidekick_visible {
+            self.sidekick_visible = true;
+            self.emit_sidekick_show();
+        }
     }
 
     pub(crate) fn hide_sidekick(&mut self) {
         if self.sidekick_visible {
             self.sidekick_visible = false;
-            self.state.put_command(crate::sidekick::CM_SIDEKICK_HIDE, None);
+            self.state.put_command(CM_SIDEKICK_HIDE, None);
         }
     }
 
     fn emit_sidekick_show(&mut self) {
         let b = self.state.bounds();
-        let rect = Rect::new(b.x, b.y + 1, b.w.max(20), self.sidekick.len().min(8) as u16);
-        let data = crate::sidekick::SidekickShow {
+        let h = self.sidekick.lock().map(|sk| sk.len()).unwrap_or(0).min(8) as u16;
+        let rect = Rect::new(b.x, b.y.saturating_sub(h), b.w.max(20), h);
+        let data = SidekickShow {
             rect,
-            items: self.sidekick.items.clone(),
-            selected: 0,
+            view: Arc::clone(&self.sidekick) as Arc<Mutex<dyn View>>,
         };
-        self.state
-            .put_command(crate::sidekick::CM_SIDEKICK_SHOW, Some(Box::new(data)));
+        self.state.put_command(CM_SIDEKICK_SHOW, Some(Box::new(data)));
     }
 
     /// Apply the currently selected sidekick item.
     pub(crate) fn apply_sidekick_selection(&mut self) {
-        if let Some(text) = self.sidekick.selected_text() {
-            self.text = text.to_string();
+        let text = self
+            .sidekick
+            .lock()
+            .ok()
+            .and_then(|sk| sk.selected_text().map(String::from));
+        if let Some(t) = text {
+            self.text = t;
             self.cursor = self.char_count();
             self.update_width();
         }

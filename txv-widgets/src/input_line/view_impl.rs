@@ -142,14 +142,18 @@ impl View for InputLine {
             KeyCode::End => self.handle_nav(shift, self.char_count()),
             KeyCode::Up => {
                 if self.sidekick_visible {
-                    self.sidekick.select_prev();
+                    if let Ok(mut sk) = self.sidekick.lock() {
+                        sk.select_prev();
+                    }
                 } else {
                     self.handle_history_up();
                 }
             }
             KeyCode::Down => {
                 if self.sidekick_visible {
-                    self.sidekick.select_next();
+                    if let Ok(mut sk) = self.sidekick.lock() {
+                        sk.select_next();
+                    }
                 } else {
                     self.handle_history_down();
                 }

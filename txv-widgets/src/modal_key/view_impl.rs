@@ -115,8 +115,8 @@ impl ModalKey {
 
     /// Commands that should pass through without deactivating the modal.
     fn is_passthrough_command(id: CommandId) -> bool {
-        use crate::sidekick::{CM_SIDEKICK_HIDE, CM_SIDEKICK_SHOW, CM_SIDEKICK_UPDATE};
-        matches!(id, CM_SIDEKICK_SHOW | CM_SIDEKICK_HIDE | CM_SIDEKICK_UPDATE)
+        use crate::sidekick::{CM_SIDEKICK_HIDE, CM_SIDEKICK_SHOW};
+        matches!(id, CM_SIDEKICK_SHOW | CM_SIDEKICK_HIDE)
     }
 
     fn layout_children_modal(&mut self) {

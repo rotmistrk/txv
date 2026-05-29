@@ -6,6 +6,9 @@
 //! 3. Postprocess: children with `options().postprocess` see event last
 
 mod dispatch;
+mod view_fwd;
+
+use std::collections::HashMap;
 
 use crate::view::{View, ViewOptions, ViewState};
 
@@ -14,6 +17,8 @@ pub struct GroupState {
     view: ViewState,
     pub(crate) children: Vec<Box<dyn View>>,
     pub(crate) focused: usize,
+    /// Named children: name → index.
+    named: HashMap<String, usize>,
 }
 
 impl GroupState {
@@ -22,6 +27,7 @@ impl GroupState {
             view: ViewState::new(options),
             children: Vec::new(),
             focused: 0,
+            named: HashMap::new(),
         }
     }
 
@@ -43,8 +49,39 @@ impl GroupState {
         if self.focused >= self.children.len() && self.focused > 0 {
             self.focused -= 1;
         }
+        // Update named indices that shifted.
+        for val in self.named.values_mut() {
+            if *val > index {
+                *val -= 1;
+            }
+        }
         self.view.mark_dirty();
         child
+    }
+
+    /// Insert a named child. Replaces any existing child with the same name.
+    pub fn insert_named(&mut self, name: &str, child: Box<dyn View>) {
+        if let Some(&old_idx) = self.named.get(name) {
+            self.children[old_idx] = child;
+            self.propagate_sink_to(old_idx);
+        } else {
+            self.children.push(child);
+            let idx = self.children.len() - 1;
+            self.propagate_sink_to(idx);
+            self.named.insert(name.to_string(), idx);
+        }
+        self.view.mark_dirty();
+    }
+
+    /// Remove a named child. Returns it if found.
+    pub fn remove_named(&mut self, name: &str) -> Option<Box<dyn View>> {
+        let idx = self.named.remove(name)?;
+        Some(self.remove(idx))
+    }
+
+    /// Check if a named child exists.
+    pub fn has_named(&self, name: &str) -> bool {
+        self.named.contains_key(name)
     }
 
     pub fn child_count(&self) -> usize {
@@ -184,97 +221,6 @@ impl GroupState {
             self.children[prev].select();
             self.view.mark_dirty();
         }
-    }
-
-    // --- Forwarding methods (delegate to self.view) ---
-
-    pub fn bounds(&self) -> crate::geometry::Rect {
-        self.view.bounds()
-    }
-
-    pub fn set_bounds(&mut self, r: crate::geometry::Rect) {
-        self.view.set_bounds(r);
-    }
-
-    pub fn mark_dirty(&mut self) {
-        self.view.mark_dirty();
-    }
-
-    pub fn mark_redrawn(&mut self) {
-        self.view.mark_redrawn();
-    }
-
-    pub fn is_dirty(&self) -> bool {
-        self.view.is_dirty()
-    }
-
-    pub fn is_focused(&self) -> bool {
-        self.view.is_focused()
-    }
-
-    pub fn set_focused(&mut self, f: bool) {
-        self.view.set_focused(f);
-    }
-
-    pub fn buffer(&self) -> &crate::buffer::Buffer {
-        self.view.buffer()
-    }
-
-    pub fn buffer_mut(&mut self) -> &mut crate::buffer::Buffer {
-        self.view.buffer_mut()
-    }
-
-    pub fn options(&self) -> ViewOptions {
-        self.view.options()
-    }
-
-    pub fn sink(&self) -> Option<&crate::view::EventSink> {
-        self.view.sink()
-    }
-
-    /// Set the sink on this group only, without propagating to children.
-    pub fn set_own_sink(&mut self, sink: crate::view::EventSink) {
-        self.view.set_sink(sink);
-    }
-
-    pub fn title(&self) -> &str {
-        self.view.title()
-    }
-
-    pub fn set_title(&mut self, t: impl Into<String>) {
-        self.view.set_title(t);
-    }
-
-    pub fn put_event(&self, event: crate::event::Event) {
-        self.view.put_event(event);
-    }
-
-    pub fn put_command(&self, id: crate::event::CommandId, data: Option<Box<dyn std::any::Any + Send>>) {
-        self.view.put_command(id, data);
-    }
-
-    /// Query the focused child's cursor request and translate to group-relative coords.
-    /// Preprocess children that report a cursor take priority (they capture input when active).
-    pub fn cursor(&self) -> Option<crate::cursor::CursorRequest> {
-        let gb = self.view.bounds();
-        // Check preprocess children first — if they report a cursor, they're active.
-        for i in 0..self.children.len() {
-            let child = &*self.children[i];
-            if child.options().preprocess {
-                if let Some(mut req) = child.cursor() {
-                    let cb = child.bounds();
-                    req.x = req.x.saturating_add(cb.x).saturating_sub(gb.x);
-                    req.y = req.y.saturating_add(cb.y).saturating_sub(gb.y);
-                    return Some(req);
-                }
-            }
-        }
-        let child = self.focused_child()?;
-        let mut req = child.cursor()?;
-        let cb = child.bounds();
-        req.x = req.x.saturating_add(cb.x).saturating_sub(gb.x);
-        req.y = req.y.saturating_add(cb.y).saturating_sub(gb.y);
-        Some(req)
     }
 }
 

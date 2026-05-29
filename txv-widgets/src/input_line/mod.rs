@@ -3,7 +3,7 @@
 mod completion;
 mod view_impl;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use txv_core::prelude::*;
 
@@ -28,8 +28,8 @@ pub struct InputLine {
     pub(crate) completer: Option<Box<dyn Completer>>,
     pub(crate) submit_command: CommandId,
     pub(crate) palette: Option<Arc<dyn Palette>>,
-    /// Sidekick popup for completions.
-    pub(crate) sidekick: SidekickView,
+    /// Sidekick popup for completions (shared with SidekickManager).
+    pub(crate) sidekick: Arc<Mutex<SidekickView>>,
     /// Whether sidekick is currently visible.
     pub(crate) sidekick_visible: bool,
 }
@@ -46,7 +46,7 @@ impl InputLine {
             completer: None,
             submit_command: CM_OK,
             palette: None,
-            sidekick: SidekickView::new(),
+            sidekick: Arc::new(Mutex::new(SidekickView::new())),
             sidekick_visible: false,
         }
     }

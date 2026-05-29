@@ -113,4 +113,19 @@ impl TiledWorkspace {
     pub fn panel_count(&self) -> usize {
         self.configs.len()
     }
+
+    /// Insert an extra child (drawn on top of panels). Returns its index.
+    pub fn insert_extra(&mut self, child: Box<dyn View>) -> usize {
+        let idx = self.group.child_count();
+        self.group.insert(child);
+        self.group.mark_dirty();
+        idx
+    }
+
+    /// Remove an extra child by index. Panics if index is within panel range.
+    pub fn remove_extra(&mut self, idx: usize) -> Box<dyn View> {
+        assert!(idx >= self.configs.len(), "cannot remove a panel child");
+        self.group.mark_dirty();
+        self.group.remove(idx)
+    }
 }

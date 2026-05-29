@@ -1,34 +1,26 @@
 //! Sidekick — completion popup managed by a host component.
 //!
 //! The sidekick is a puppet View: InputLine populates it and brokers keys to it.
-//! A SidekickManager at the desktop level handles placement and drawing.
+//! A SidekickManager at the Program level handles placement and lifecycle.
+//! The View is shared via Arc<Mutex<>> so the owner can mutate it in place.
+
+use std::sync::{Arc, Mutex};
 
 use txv_core::prelude::*;
 
 use crate::tiled_workspace::commands::CM_TW_MAX;
 
-/// Command: show sidekick at given rect with items.
+/// Command: show a sidekick popup at given rect.
 /// Data: `Box<SidekickShow>`.
 pub const CM_SIDEKICK_SHOW: CommandId = CM_TW_MAX + 1;
 
-/// Command: hide the sidekick.
+/// Command: hide the sidekick popup.
 pub const CM_SIDEKICK_HIDE: CommandId = CM_TW_MAX + 2;
-
-/// Command: update sidekick items and selection.
-/// Data: `Box<SidekickUpdate>`.
-pub const CM_SIDEKICK_UPDATE: CommandId = CM_TW_MAX + 3;
 
 /// Data payload for CM_SIDEKICK_SHOW.
 pub struct SidekickShow {
     pub rect: Rect,
-    pub items: Vec<String>,
-    pub selected: usize,
-}
-
-/// Data payload for CM_SIDEKICK_UPDATE.
-pub struct SidekickUpdate {
-    pub items: Vec<String>,
-    pub selected: usize,
+    pub view: Arc<Mutex<dyn View>>,
 }
 
 /// Sidekick view — draws a list of completion candidates.
@@ -56,6 +48,10 @@ impl SidekickView {
 
     pub fn selected_text(&self) -> Option<&str> {
         self.items.get(self.selected).map(|s| s.as_str())
+    }
+
+    pub fn selected(&self) -> usize {
+        self.selected
     }
 
     pub fn select_next(&mut self) {

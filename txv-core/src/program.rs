@@ -263,6 +263,16 @@ impl Program {
         &self.sink
     }
 
+    /// Insert a named child view (drawn on top in standard cycle).
+    pub fn insert_named(&mut self, name: &str, child: Box<dyn View>) {
+        self.group.insert_named(name, child);
+    }
+
+    /// Remove a named child view.
+    pub fn remove_named(&mut self, name: &str) {
+        self.group.remove_named(name);
+    }
+
     /// Returns true if CM_QUIT was received during the last run_cycles.
     pub fn should_quit(&self) -> bool {
         self.quit_requested
