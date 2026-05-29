@@ -1,10 +1,13 @@
 //! InputLine — single-line text input with history, completion, and selection.
 
+mod completion;
 mod view_impl;
 
 use std::sync::Arc;
 
 use txv_core::prelude::*;
+
+use crate::sidekick::SidekickView;
 
 pub struct InputLine {
     pub(crate) state: ViewState,
@@ -20,6 +23,10 @@ pub struct InputLine {
     pub(crate) palette: Option<Arc<dyn Palette>>,
     /// When true, draw preserves underlying cell bg instead of filling.
     pub(crate) inherit_bg: bool,
+    /// Sidekick popup for completions.
+    pub(crate) sidekick: SidekickView,
+    /// Whether sidekick is currently visible.
+    pub(crate) sidekick_visible: bool,
 }
 
 impl InputLine {
@@ -35,6 +42,8 @@ impl InputLine {
             submit_command: CM_OK,
             palette: None,
             inherit_bg: false,
+            sidekick: SidekickView::new(),
+            sidekick_visible: false,
         }
     }
 
@@ -219,29 +228,6 @@ impl InputLine {
             return HandleResult::Consumed;
         }
         HandleResult::Ignored
-    }
-
-    pub(crate) fn try_complete(&mut self) {
-        let Some(ref completer) = self.completer else {
-            return;
-        };
-        let byte_cursor = self.char_to_byte(self.cursor);
-        let mut first: Option<String> = None;
-        let mut count = 0u32;
-        let _ = completer.complete(&self.text, byte_cursor, &mut |c| {
-            count += 1;
-            if count == 1 {
-                first = Some(c.text().to_string());
-            }
-            Ok(count < 2)
-        });
-        if count == 1 {
-            if let Some(text) = first {
-                self.text = text;
-                self.cursor = self.char_count();
-                self.update_width();
-            }
-        }
     }
 
     pub(crate) fn resolve_style(&self, id: StyleId) -> Style {

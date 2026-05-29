@@ -41,7 +41,6 @@ impl View for InputLine {
         let sel_style = self.resolve_style(StyleId::EditSelection);
         let ww = w as usize;
         let start = self.visible_start(ww);
-        // Clear line
         if !self.inherit_bg {
             self.state.buffer_mut().hline(0, 0, w, ' ', style);
         } else {
@@ -50,7 +49,6 @@ impl View for InputLine {
                 self.state.buffer_mut().put(i, 0, ' ', Style { bg, ..style });
             }
         }
-        // Draw text
         let sel_range = self.selection_range();
         for (i, ch) in self.text.chars().enumerate().skip(start).take(ww) {
             let x = (i - start) as u16;
@@ -65,7 +63,6 @@ impl View for InputLine {
             }
             self.state.buffer_mut().put(x, 0, ch, s);
         }
-        // Cursor block
         if self.selection.is_none() {
             let cx = (self.cursor - start) as u16;
             if cx < w {
@@ -74,7 +71,6 @@ impl View for InputLine {
                 self.state.buffer_mut().put(cx, 0, ch, cs);
             }
         }
-        // Overflow indicators
         let total_chars = self.char_count();
         if ww > 0 && total_chars > ww {
             let ov_fg = self.resolve_style(StyleId::OverflowIndicator).fg;
@@ -105,9 +101,21 @@ impl View for InputLine {
         };
         let shift = key.modifiers.shift;
         match &key.code {
-            KeyCode::Char(ch) => self.handle_char(*ch),
-            KeyCode::Backspace => self.handle_backspace(),
-            KeyCode::Delete => self.handle_delete(),
+            KeyCode::Char(ch) => {
+                if key.modifiers.alt || key.modifiers.ctrl {
+                    return HandleResult::Ignored;
+                }
+                self.handle_char(*ch);
+                self.update_completions();
+            }
+            KeyCode::Backspace => {
+                self.handle_backspace();
+                self.update_completions();
+            }
+            KeyCode::Delete => {
+                self.handle_delete();
+                self.update_completions();
+            }
             KeyCode::Left => {
                 let new = self.cursor.saturating_sub(1);
                 if new != self.cursor {
@@ -123,15 +131,40 @@ impl View for InputLine {
             }
             KeyCode::Home => self.handle_nav(shift, 0),
             KeyCode::End => self.handle_nav(shift, self.char_count()),
-            KeyCode::Up => self.handle_history_up(),
-            KeyCode::Down => self.handle_history_down(),
-            KeyCode::Tab => self.try_complete(),
+            KeyCode::Up => {
+                if self.sidekick_visible {
+                    self.sidekick.select_prev();
+                } else {
+                    self.handle_history_up();
+                }
+            }
+            KeyCode::Down => {
+                if self.sidekick_visible {
+                    self.sidekick.select_next();
+                } else {
+                    self.handle_history_down();
+                }
+            }
+            KeyCode::Tab => {
+                if self.sidekick_visible {
+                    self.apply_sidekick_selection();
+                } else {
+                    self.try_complete();
+                }
+            }
             KeyCode::Enter => {
+                self.hide_sidekick();
                 self.push_history();
                 self.state
                     .put_command(self.submit_command, Some(Box::new(self.text.clone())));
             }
-            KeyCode::Esc => self.state.put_command(CM_CANCEL, None),
+            KeyCode::Esc => {
+                if self.sidekick_visible {
+                    self.hide_sidekick();
+                } else {
+                    self.state.put_command(CM_CANCEL, None);
+                }
+            }
             _ => return HandleResult::Ignored,
         }
         HandleResult::Consumed

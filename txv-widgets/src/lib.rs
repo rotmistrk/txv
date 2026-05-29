@@ -26,6 +26,7 @@ mod pty_terminal_scroll;
 mod pty_terminal_spawn;
 pub mod scroll_view;
 pub mod scrollbar;
+pub mod sidekick;
 pub mod split_pane;
 pub mod split_panel;
 pub mod status_bar;

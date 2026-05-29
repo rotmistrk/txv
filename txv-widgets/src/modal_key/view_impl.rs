@@ -101,14 +101,22 @@ impl ModalKey {
 
     fn drain_child_commands(&mut self) -> bool {
         let events = self.child_sink.drain();
-        let mut had_command = false;
+        let mut had_terminal = false;
         for ev in events {
-            if matches!(&ev, Event::Command { .. }) {
-                had_command = true;
+            if let Event::Command { id, .. } = &ev {
+                if !Self::is_passthrough_command(*id) {
+                    had_terminal = true;
+                }
             }
             self.group.put_event(ev);
         }
-        had_command
+        had_terminal
+    }
+
+    /// Commands that should pass through without deactivating the modal.
+    fn is_passthrough_command(id: CommandId) -> bool {
+        use crate::sidekick::{CM_SIDEKICK_HIDE, CM_SIDEKICK_SHOW, CM_SIDEKICK_UPDATE};
+        matches!(id, CM_SIDEKICK_SHOW | CM_SIDEKICK_HIDE | CM_SIDEKICK_UPDATE)
     }
 
     fn layout_children_modal(&mut self) {
