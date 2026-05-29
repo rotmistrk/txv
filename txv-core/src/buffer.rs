@@ -51,6 +51,13 @@ impl Buffer {
         &self.cells[self.idx(x, y)]
     }
 
+    /// Mutable reference to a cell at (x, y).
+    pub fn cell_mut(&mut self, x: u16, y: u16) -> &mut Cell {
+        debug_assert!(x < self.width && y < self.height);
+        let i = self.idx(x, y);
+        &mut self.cells[i]
+    }
+
     /// Write a character at (x, y).
     pub fn put(&mut self, x: u16, y: u16, ch: char, style: Style) {
         if x >= self.width || y >= self.height {

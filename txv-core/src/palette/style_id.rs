@@ -17,6 +17,7 @@ pub enum StyleId {
     InputCursor,
     EditOverlay,
     EditSelection,
+    OverflowIndicator,
     SearchMatch,
     VisualSelection,
     Disabled,
@@ -49,5 +50,5 @@ pub enum StyleId {
 }
 
 impl StyleId {
-    pub const COUNT: usize = 39;
+    pub const COUNT: usize = 40;
 }

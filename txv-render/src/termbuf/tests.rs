@@ -56,10 +56,10 @@ fn scroll_on_overflow() {
 fn render_to_surface() {
     let mut tb = TermBuf::new(10, 5);
     tb.process(b"Hi");
-    let mut surface = Surface::new(10, 5);
-    tb.render_to(&mut surface);
-    assert_eq!(surface.cell(0, 0).ch, 'H');
-    assert_eq!(surface.cell(1, 0).ch, 'i');
+    let mut buf = Buffer::new(10, 5);
+    tb.render_to(&mut buf);
+    assert_eq!(buf.cell(0, 0).ch, 'H');
+    assert_eq!(buf.cell(1, 0).ch, 'i');
 }
 
 #[test]

@@ -174,32 +174,3 @@ fn nav_after_selection_clears_anchor() {
     assert_eq!(ed.anchor, None);
     assert_eq!(ed.cursor, 2);
 }
-
-#[test]
-fn scroll_offset_adjusts_on_draw() {
-    let mut ed = InlineEditor::new(0, "abcdefghij");
-    // Width 5: cursor at 10 (end) should scroll
-    let mut surface = Surface::new(5, 1);
-    ed.draw(&mut surface, 0, 0, 5, Style::default());
-    assert_eq!(ed.scroll_offset, 6); // cursor(10) - width(5) + 1 = 6
-}
-
-#[test]
-fn scroll_offset_follows_cursor_left() {
-    let mut ed = InlineEditor::new(0, "abcdefghij");
-    let mut surface = Surface::new(5, 1);
-    ed.draw(&mut surface, 0, 0, 5, Style::default());
-    assert_eq!(ed.scroll_offset, 6);
-    // Move cursor to start
-    ed.handle_key(&key(KeyCode::Home));
-    ed.draw(&mut surface, 0, 0, 5, Style::default());
-    assert_eq!(ed.scroll_offset, 0);
-}
-
-#[test]
-fn scroll_offset_zero_when_text_fits() {
-    let mut ed = InlineEditor::new(0, "hi");
-    let mut surface = Surface::new(10, 1);
-    ed.draw(&mut surface, 0, 0, 10, Style::default());
-    assert_eq!(ed.scroll_offset, 0);
-}

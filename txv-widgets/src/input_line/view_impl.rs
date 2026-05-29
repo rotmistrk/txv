@@ -57,6 +57,20 @@ impl View for InputLine {
                 self.state.buffer_mut().put(cx, 0, ch, cs);
             }
         }
+        // Overflow indicators
+        let total_chars = self.text.chars().count();
+        if ww > 0 && total_chars > ww {
+            let ov = Style {
+                fg: self.resolve_style(StyleId::OverflowIndicator).fg,
+                ..style
+            };
+            if start > 0 {
+                self.state.buffer_mut().put(0, 0, '…', ov);
+            }
+            if start + ww < total_chars {
+                self.state.buffer_mut().put((ww - 1) as u16, 0, '…', ov);
+            }
+        }
     }
 
     fn set_palette(&mut self, palette: Arc<dyn Palette>) {

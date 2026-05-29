@@ -120,9 +120,9 @@ impl Backend for CrosstermBackend {
         None
     }
 
-    fn flush(&mut self, surface: &Buffer) {
-        let w = surface.width();
-        let h = surface.height();
+    fn flush(&mut self, buf: &Buffer) {
+        let w = buf.width();
+        let h = buf.height();
 
         // Resize or force-full: invalidate previous buffer so all cells are emitted
         if self.previous.width() != w || self.previous.height() != h {
@@ -146,7 +146,7 @@ impl Backend for CrosstermBackend {
             let last_meaningful = (0..w)
                 .rev()
                 .find(|&x| {
-                    let c = surface.cell(x, y);
+                    let c = buf.cell(x, y);
                     c.ch != ' ' || c.style != Style::default() || c.width != 1
                 })
                 .map(|x| x + 1)
@@ -154,7 +154,7 @@ impl Backend for CrosstermBackend {
 
             let mut x = 0u16;
             while x < w {
-                let cell = surface.cell(x, y);
+                let cell = buf.cell(x, y);
                 let prev = self.previous.cell(x, y);
 
                 // Beyond last meaningful: only emit EL if previous had content here
@@ -229,7 +229,7 @@ impl Backend for CrosstermBackend {
         // Copy current to previous (full copy, always)
         for y in 0..h {
             for x in 0..w {
-                let cell = surface.cell(x, y);
+                let cell = buf.cell(x, y);
                 self.previous.put(x, y, cell.ch, cell.style);
             }
         }

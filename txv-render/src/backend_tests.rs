@@ -1,16 +1,16 @@
 use super::*;
 use crate::diff::diff_cells;
+use txv_core::buffer::Buffer;
 use txv_core::cell::{Attrs, Style};
-use txv_core::surface::Surface;
 
 #[test]
 fn diff_detects_all_changed_cells() {
-    let mut s1 = Surface::new(10, 5);
+    let mut s1 = Buffer::new(10, 5);
     s1.print(0, 0, "hello", Style::default());
     s1.print(0, 1, "world", Style::default());
 
     // Simulate: previous = copy of s1
-    let mut prev = Surface::new(10, 5);
+    let mut prev = Buffer::new(10, 5);
     for y in 0..5 {
         for x in 0..10 {
             let c = s1.cell(x, y);
@@ -19,7 +19,7 @@ fn diff_detects_all_changed_cells() {
     }
 
     // Draw different content
-    let mut s2 = Surface::new(10, 5);
+    let mut s2 = Buffer::new(10, 5);
     s2.fill(' ', Style::default());
     s2.print(0, 0, "HELLO", Style::default());
     s2.print(0, 1, "WORLD", Style::default());
@@ -35,17 +35,17 @@ fn diff_detects_all_changed_cells() {
 
 #[test]
 fn diff_detects_style_changes() {
-    let mut s1 = Surface::new(10, 1);
+    let mut s1 = Buffer::new(10, 1);
     s1.print(0, 0, "test", Style::default());
 
-    let mut prev = Surface::new(10, 1);
+    let mut prev = Buffer::new(10, 1);
     for x in 0..10 {
         let c = s1.cell(x, 0);
         prev.put(x, 0, c.ch, c.style);
     }
 
     // Same chars but different style
-    let mut s2 = Surface::new(10, 1);
+    let mut s2 = Buffer::new(10, 1);
     let bold = Style {
         attrs: Attrs {
             bold: true,
@@ -62,10 +62,10 @@ fn diff_detects_style_changes() {
 #[test]
 fn previous_buffer_updated_after_flush_simulation() {
     // Simulate the flush copy logic
-    let mut prev = Surface::new(10, 3);
+    let mut prev = Buffer::new(10, 3);
 
     // Frame 1: draw "AAAA"
-    let mut frame1 = Surface::new(10, 3);
+    let mut frame1 = Buffer::new(10, 3);
     frame1.fill(' ', Style::default());
     frame1.print(0, 0, "AAAA", Style::default());
 
@@ -78,7 +78,7 @@ fn previous_buffer_updated_after_flush_simulation() {
     }
 
     // Frame 2: draw "BB" (shorter)
-    let mut frame2 = Surface::new(10, 3);
+    let mut frame2 = Buffer::new(10, 3);
     frame2.fill(' ', Style::default());
     frame2.print(0, 0, "BB", Style::default());
 

@@ -35,11 +35,11 @@ fn palette_integration() {
     let expected_bg = pal.style(StyleId::EditSelection).bg;
 
     let mut ed = InlineEditor::new_selected(0, "hello");
-    let mut surface = Surface::new(20, 1);
+    let mut buf = Buffer::new(20, 1);
     let style = Style::default();
-    ed.draw(&mut surface, 0, 0, 20, style);
+    ed.draw(&mut buf, 0, 0, 20, style);
 
-    let cell = surface.cell(1, 0);
+    let cell = buf.cell(1, 0);
     assert_eq!(cell.style.bg, expected_bg, "selection bg should come from palette");
 
     // --- split_pane_separator_uses_palette_dim ---
@@ -80,10 +80,10 @@ fn palette_change_affects_widget_rendering() {
     set_palette(Arc::new(CustomPalette));
 
     let mut ed = InlineEditor::new_selected(0, "test");
-    let mut surface = Surface::new(20, 1);
-    ed.draw(&mut surface, 0, 0, 20, Style::default());
+    let mut buf = Buffer::new(20, 1);
+    ed.draw(&mut buf, 0, 0, 20, Style::default());
 
-    let cell = surface.cell(1, 0);
+    let cell = buf.cell(1, 0);
     assert_eq!(cell.style.bg, Color::Ansi(5), "widget should reflect updated palette");
 
     // Restore
