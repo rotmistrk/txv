@@ -19,6 +19,7 @@ impl InlineEditor {
             self.scroll_offset = char_cursor - w + 1;
         }
         let pal = palette();
+        let inherit_bg = style.bg == Color::Reset;
         let sel_bg = pal.style(StyleId::EditSelection).bg;
         let sel_style = Style {
             bg: if sel_bg != Color::Reset {
@@ -28,7 +29,7 @@ impl InlineEditor {
             },
             ..style
         };
-        let cursor_style = if style.bg != Color::Reset {
+        let cursor_style = if !inherit_bg {
             Style {
                 fg: style.bg,
                 bg: style.fg,
@@ -38,8 +39,14 @@ impl InlineEditor {
             pal.style(StyleId::InputCursor)
         };
         let sel = self.selection_range();
-        if style.bg != Color::Reset {
+        if !inherit_bg {
             buf.hline(x, y, width, ' ', style);
+        } else {
+            // Clear text area preserving existing bg
+            for i in 0..width {
+                let bg = buf.cell(x + i, y).style.bg;
+                buf.put(x + i, y, ' ', Style { bg, ..style });
+            }
         }
         // Render chars starting from scroll_offset
         let mut byte_pos = 0;
@@ -49,13 +56,16 @@ impl InlineEditor {
             }
             if ci >= self.scroll_offset {
                 let vi = ci - self.scroll_offset;
-                let st = if byte_pos == self.cursor {
+                let mut st = if byte_pos == self.cursor {
                     cursor_style
                 } else if sel.is_some_and(|(s, e)| byte_pos >= s && byte_pos < e) {
                     sel_style
                 } else {
                     style
                 };
+                if inherit_bg && st.bg == Color::Reset {
+                    st.bg = buf.cell(x + vi as u16, y).style.bg;
+                }
                 buf.put(x + vi as u16, y, ch, st);
             }
             byte_pos += ch.len_utf8();
@@ -63,19 +73,30 @@ impl InlineEditor {
         // Cursor at end of text
         let visible_cursor = char_cursor.saturating_sub(self.scroll_offset);
         if self.cursor >= self.buffer.len() && visible_cursor < w {
-            buf.put(x + visible_cursor as u16, y, ' ', cursor_style);
+            let mut cs = cursor_style;
+            if inherit_bg && cs.bg == Color::Reset {
+                cs.bg = buf.cell(x + visible_cursor as u16, y).style.bg;
+            }
+            buf.put(x + visible_cursor as u16, y, ' ', cs);
         }
         // Overflow indicators
         if w > 0 && total_chars > w {
-            let ov = Style {
+            let mut ov = Style {
                 fg: pal.style(StyleId::OverflowIndicator).fg,
                 ..style
             };
             if self.scroll_offset > 0 {
+                if inherit_bg {
+                    ov.bg = buf.cell(x, y).style.bg;
+                }
                 buf.put(x, y, '…', ov);
             }
             if self.scroll_offset + w < total_chars {
-                buf.put(x + (w - 1) as u16, y, '…', ov);
+                let rx = x + (w - 1) as u16;
+                if inherit_bg {
+                    ov.bg = buf.cell(rx, y).style.bg;
+                }
+                buf.put(rx, y, '…', ov);
             }
         }
     }
