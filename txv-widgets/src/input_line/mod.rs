@@ -21,8 +21,6 @@ pub struct InputLine {
     pub(crate) completer: Option<Box<dyn Completer>>,
     pub(crate) submit_command: CommandId,
     pub(crate) palette: Option<Arc<dyn Palette>>,
-    /// When true, draw preserves underlying cell bg instead of filling.
-    pub(crate) inherit_bg: bool,
     /// Sidekick popup for completions.
     pub(crate) sidekick: SidekickView,
     /// Whether sidekick is currently visible.
@@ -41,7 +39,6 @@ impl InputLine {
             completer: None,
             submit_command: CM_OK,
             palette: None,
-            inherit_bg: false,
             sidekick: SidekickView::new(),
             sidekick_visible: false,
         }
@@ -54,11 +51,6 @@ impl InputLine {
 
     pub fn with_completer(mut self, c: Box<dyn Completer>) -> Self {
         self.completer = Some(c);
-        self
-    }
-
-    pub fn with_inherit_bg(mut self) -> Self {
-        self.inherit_bg = true;
         self
     }
 
@@ -128,12 +120,9 @@ impl InputLine {
             .unwrap_or(self.text.len())
     }
 
-    /// Auto-resize bounds to fit text (only in standalone mode).
+    /// Auto-resize bounds to fit text (standalone mode).
     fn update_width(&mut self) {
         self.state.mark_dirty();
-        if self.inherit_bg {
-            return;
-        }
         let w = (self.char_count() as u16).saturating_add(2).max(10);
         let b = self.state.bounds();
         if b.w != w {

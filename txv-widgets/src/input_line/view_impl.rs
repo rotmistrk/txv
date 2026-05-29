@@ -7,7 +7,7 @@ use txv_core::prelude::*;
 use super::InputLine;
 
 impl View for InputLine {
-    delegate_view_state!(state, override { cursor, select });
+    delegate_view_state!(state, override { cursor, select, as_any_mut });
 
     fn select(&mut self) {
         self.state.set_focused(true);
@@ -33,34 +33,20 @@ impl View for InputLine {
         if w == 0 || self.state.buffer_mut().height() == 0 {
             return;
         }
-        let style = if self.inherit_bg {
-            self.resolve_style(StyleId::EditOverlay)
-        } else {
-            self.resolve_style(StyleId::StatusBar)
-        };
+        let style = self.resolve_style(StyleId::StatusBar);
         let sel_style = self.resolve_style(StyleId::EditSelection);
         let ww = w as usize;
         let start = self.visible_start(ww);
-        if !self.inherit_bg {
-            self.state.buffer_mut().hline(0, 0, w, ' ', style);
-        } else {
-            for i in 0..w {
-                let bg = self.state.buffer_mut().cell(i, 0).style.bg;
-                self.state.buffer_mut().put(i, 0, ' ', Style { bg, ..style });
-            }
-        }
+        self.state.buffer_mut().hline(0, 0, w, ' ', style);
         let sel_range = self.selection_range();
         for (i, ch) in self.text.chars().enumerate().skip(start).take(ww) {
             let x = (i - start) as u16;
             let in_sel = sel_range.is_some_and(|(lo, hi)| i >= lo && i < hi);
-            let mut s = if in_sel {
+            let s = if in_sel {
                 sel_style
             } else {
                 style
             };
-            if self.inherit_bg && s.bg == Color::Reset {
-                s.bg = self.state.buffer_mut().cell(x, 0).style.bg;
-            }
             self.state.buffer_mut().put(x, 0, ch, s);
         }
         if self.selection.is_none() {
@@ -71,25 +57,26 @@ impl View for InputLine {
                 self.state.buffer_mut().put(cx, 0, ch, cs);
             }
         }
+        // Overflow indicators
         let total_chars = self.char_count();
         if ww > 0 && total_chars > ww {
             let ov_fg = self.resolve_style(StyleId::OverflowIndicator).fg;
             if start > 0 {
-                let bg = self.state.buffer_mut().cell(0, 0).style.bg;
-                self.state.buffer_mut().put(0, 0, '…', Style { fg: ov_fg, bg, ..style });
+                self.state.buffer_mut().put(0, 0, '…', Style { fg: ov_fg, ..style });
             }
             if start + ww < total_chars {
                 let rx = (ww - 1) as u16;
-                let bg = self.state.buffer_mut().cell(rx, 0).style.bg;
-                self.state
-                    .buffer_mut()
-                    .put(rx, 0, '…', Style { fg: ov_fg, bg, ..style });
+                self.state.buffer_mut().put(rx, 0, '…', Style { fg: ov_fg, ..style });
             }
         }
     }
 
     fn set_palette(&mut self, palette: Arc<dyn Palette>) {
         self.palette = Some(palette);
+    }
+
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(self)
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
