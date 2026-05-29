@@ -22,7 +22,6 @@ impl Palette for DarkPalette {
             StyleId::CursorFocused => PaletteStyle::bg(ansi(4)).underline().to_style(),
             StyleId::CursorUnfocused => PaletteStyle::bg(ansi(8)).to_style(),
             StyleId::InputCursor => PaletteStyle::colors(ansi(0), ansi(7)).to_style(),
-            StyleId::EditOverlay => PaletteStyle::fg(ansi(3)).to_style(),
             StyleId::EditSelection => PaletteStyle::bg(ansi(2)).to_style(),
             StyleId::OverflowIndicator => PaletteStyle::fg(ansi(1)).to_style(),
             StyleId::SearchMatch => PaletteStyle::bg(ansi(3)).to_style(),

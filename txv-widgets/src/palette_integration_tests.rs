@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use txv_core::prelude::*;
 
-use crate::inline_edit::InlineEditor;
+use crate::input_line::InputLine;
 use crate::split_pane::{SplitDirection, SplitPane};
 
 struct Dummy {
@@ -29,17 +29,18 @@ impl View for Dummy {
 fn palette_integration() {
     use txv_core::palette::dark::DarkPalette;
 
-    // --- inline_edit_selection_uses_palette ---
+    // --- input_line_selection_uses_palette ---
     set_palette(Arc::new(DarkPalette));
     let pal = palette();
     let expected_bg = pal.style(StyleId::EditSelection).bg;
 
-    let mut ed = InlineEditor::new_selected(0, "hello");
-    let mut buf = Buffer::new(20, 1);
-    let style = Style::default();
-    ed.draw(&mut buf, 0, 0, 20, style);
+    let mut il = InputLine::new();
+    il.set_text("hello");
+    il.select_all();
+    il.set_bounds(Rect::new(0, 0, 20, 1));
+    il.draw();
 
-    let cell = buf.cell(1, 0);
+    let cell = il.buffer().cell(1, 0);
     assert_eq!(cell.style.bg, expected_bg, "selection bg should come from palette");
 
     // --- split_pane_separator_uses_palette_dim ---
@@ -79,11 +80,13 @@ fn palette_change_affects_widget_rendering() {
     }
     set_palette(Arc::new(CustomPalette));
 
-    let mut ed = InlineEditor::new_selected(0, "test");
-    let mut buf = Buffer::new(20, 1);
-    ed.draw(&mut buf, 0, 0, 20, Style::default());
+    let mut il = InputLine::new();
+    il.set_text("test");
+    il.select_all();
+    il.set_bounds(Rect::new(0, 0, 20, 1));
+    il.draw();
 
-    let cell = buf.cell(1, 0);
+    let cell = il.buffer().cell(1, 0);
     assert_eq!(cell.style.bg, Color::Ansi(5), "widget should reflect updated palette");
 
     // Restore

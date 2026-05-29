@@ -22,7 +22,6 @@ impl Palette for LightPalette {
             StyleId::CursorFocused => PaletteStyle::bg(ansi(12)).underline().to_style(),
             StyleId::CursorUnfocused => PaletteStyle::bg(ansi(7)).to_style(),
             StyleId::InputCursor => PaletteStyle::colors(ansi(15), ansi(0)).to_style(),
-            StyleId::EditOverlay => PaletteStyle::fg(ansi(3)).to_style(),
             StyleId::EditSelection => PaletteStyle::bg(ansi(10)).to_style(),
             StyleId::OverflowIndicator => PaletteStyle::fg(ansi(1)).to_style(),
             StyleId::SearchMatch => PaletteStyle::bg(ansi(11)).to_style(),

@@ -33,7 +33,7 @@ impl View for InputLine {
         if w == 0 || self.state.buffer_mut().height() == 0 {
             return;
         }
-        let style = self.resolve_style(StyleId::StatusBar);
+        let style = self.resolve_style(StyleId::Text);
         let sel_style = self.resolve_style(StyleId::EditSelection);
         let ww = w as usize;
         let start = self.visible_start(ww);

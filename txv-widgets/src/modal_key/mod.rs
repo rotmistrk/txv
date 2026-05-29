@@ -119,8 +119,11 @@ impl ModalKey {
         use txv_core::palette::{DerivedPalette, Palette, StyleId};
         let base = txv_core::palette::palette();
         let modal_style = base.style(StyleId::StatusBarModal);
-        let derived: Arc<dyn Palette> =
-            Arc::new(DerivedPalette::new(base).with_override(StyleId::StatusBar, modal_style));
+        let derived: Arc<dyn Palette> = Arc::new(
+            DerivedPalette::new(base)
+                .with_override(StyleId::Text, modal_style)
+                .with_override(StyleId::StatusBar, modal_style),
+        );
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
                 child.set_palette(derived.clone());

@@ -1,16 +1,27 @@
 {
-  "version": 1,
+  "version": 4,
   "layout": "auto",
-  "left_width": 28,
-  "right_width": 57,
+  "wide_proportions": [
+    0.2,
+    0.4,
+    0.4
+  ],
+  "narrow_proportions": [
+    0.7,
+    0.16000003,
+    0.81999993,
+    0.3
+  ],
+  "hidden_panels": [],
   "active_tab": 0,
   "editor_tabs": [
     {
       "path": ".kairn.log",
-      "line": 736,
+      "line": 0,
       "col": 0
     }
   ],
   "unfolded_dirs": [],
-  "kiro_sessions": []
+  "kiro_sessions": [],
+  "split": null
 }

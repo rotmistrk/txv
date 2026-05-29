@@ -19,7 +19,17 @@
       "important": false,
       "folded": false,
       "note": "",
-      "items": []
+      "items": [
+        {
+          "id": "971936d0-48ce-4c7a-bb22-04397664a815",
+          "title": "very long todo item",
+          "completed": "Open",
+          "important": false,
+          "folded": false,
+          "note": "",
+          "items": []
+        }
+      ]
     },
     {
       "id": "6d67c218-e980-40b1-b52b-c0ab7f9e4cff",
