@@ -75,7 +75,16 @@ impl View for InputLine {
         if let Event::Command { id, data, .. } = event {
             if *id == CM_CLIPBOARD_PASTE {
                 if let Some(text) = data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
-                    self.insert_text(text);
+                    let first_line = text.lines().next().unwrap_or("");
+                    self.insert_text(first_line);
+                    let line_count = text.lines().count();
+                    if line_count > 1 {
+                        let msg = txv_core::message::Message::warn(
+                            "paste",
+                            format!("inserted only 1st of {} lines", line_count),
+                        );
+                        self.state.put_command(crate::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                    }
                     return HandleResult::Consumed;
                 }
             }
