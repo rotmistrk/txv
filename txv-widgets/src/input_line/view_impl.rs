@@ -33,22 +33,39 @@ impl View for InputLine {
         if w == 0 || self.state.buffer_mut().height() == 0 {
             return;
         }
-        let style = self.resolve_style(StyleId::StatusBar);
+        let style = if self.inherit_bg {
+            self.resolve_style(StyleId::EditOverlay)
+        } else {
+            self.resolve_style(StyleId::StatusBar)
+        };
         let sel_style = self.resolve_style(StyleId::EditSelection);
-        self.state.buffer_mut().hline(0, 0, w, ' ', style);
         let ww = w as usize;
         let start = self.visible_start(ww);
+        // Clear line
+        if !self.inherit_bg {
+            self.state.buffer_mut().hline(0, 0, w, ' ', style);
+        } else {
+            for i in 0..w {
+                let bg = self.state.buffer_mut().cell(i, 0).style.bg;
+                self.state.buffer_mut().put(i, 0, ' ', Style { bg, ..style });
+            }
+        }
+        // Draw text
         let sel_range = self.selection_range();
         for (i, ch) in self.text.chars().enumerate().skip(start).take(ww) {
             let x = (i - start) as u16;
             let in_sel = sel_range.is_some_and(|(lo, hi)| i >= lo && i < hi);
-            let s = if in_sel {
+            let mut s = if in_sel {
                 sel_style
             } else {
                 style
             };
+            if self.inherit_bg && s.bg == Color::Reset {
+                s.bg = self.state.buffer_mut().cell(x, 0).style.bg;
+            }
             self.state.buffer_mut().put(x, 0, ch, s);
         }
+        // Cursor block
         if self.selection.is_none() {
             let cx = (self.cursor - start) as u16;
             if cx < w {
@@ -58,17 +75,19 @@ impl View for InputLine {
             }
         }
         // Overflow indicators
-        let total_chars = self.text.chars().count();
+        let total_chars = self.char_count();
         if ww > 0 && total_chars > ww {
-            let ov = Style {
-                fg: self.resolve_style(StyleId::OverflowIndicator).fg,
-                ..style
-            };
+            let ov_fg = self.resolve_style(StyleId::OverflowIndicator).fg;
             if start > 0 {
-                self.state.buffer_mut().put(0, 0, '…', ov);
+                let bg = self.state.buffer_mut().cell(0, 0).style.bg;
+                self.state.buffer_mut().put(0, 0, '…', Style { fg: ov_fg, bg, ..style });
             }
             if start + ww < total_chars {
-                self.state.buffer_mut().put((ww - 1) as u16, 0, '…', ov);
+                let rx = (ww - 1) as u16;
+                let bg = self.state.buffer_mut().cell(rx, 0).style.bg;
+                self.state
+                    .buffer_mut()
+                    .put(rx, 0, '…', Style { fg: ov_fg, bg, ..style });
             }
         }
     }
@@ -84,30 +103,26 @@ impl View for InputLine {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
+        let shift = key.modifiers.shift;
         match &key.code {
             KeyCode::Char(ch) => self.handle_char(*ch),
             KeyCode::Backspace => self.handle_backspace(),
             KeyCode::Delete => self.handle_delete(),
-            KeyCode::Left if self.cursor > 0 => {
-                self.selection = None;
-                self.cursor -= 1;
-                self.state.mark_dirty()
+            KeyCode::Left => {
+                let new = self.cursor.saturating_sub(1);
+                if new != self.cursor {
+                    self.handle_nav(shift, new);
+                }
             }
-            KeyCode::Right if self.cursor < self.text.len() => {
-                self.selection = None;
-                self.cursor += 1;
-                self.state.mark_dirty()
+            KeyCode::Right => {
+                let max = self.char_count();
+                let new = (self.cursor + 1).min(max);
+                if new != self.cursor {
+                    self.handle_nav(shift, new);
+                }
             }
-            KeyCode::Home => {
-                self.selection = None;
-                self.cursor = 0;
-                self.state.mark_dirty()
-            }
-            KeyCode::End => {
-                self.selection = None;
-                self.cursor = self.text.len();
-                self.state.mark_dirty()
-            }
+            KeyCode::Home => self.handle_nav(shift, 0),
+            KeyCode::End => self.handle_nav(shift, self.char_count()),
             KeyCode::Up => self.handle_history_up(),
             KeyCode::Down => self.handle_history_down(),
             KeyCode::Tab => self.try_complete(),

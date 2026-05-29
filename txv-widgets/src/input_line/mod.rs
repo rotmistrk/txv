@@ -9,14 +9,17 @@ use txv_core::prelude::*;
 pub struct InputLine {
     pub(crate) state: ViewState,
     pub(crate) text: String,
+    /// Cursor position as char index.
     pub(crate) cursor: usize,
-    /// Selection anchor. When Some, text between anchor and cursor is selected.
+    /// Selection anchor (char index). Selection spans anchor..cursor.
     pub(crate) selection: Option<usize>,
     pub(crate) history: Vec<String>,
     pub(crate) history_pos: Option<usize>,
     pub(crate) completer: Option<Box<dyn Completer>>,
     pub(crate) submit_command: CommandId,
     pub(crate) palette: Option<Arc<dyn Palette>>,
+    /// When true, draw preserves underlying cell bg instead of filling.
+    pub(crate) inherit_bg: bool,
 }
 
 impl InputLine {
@@ -31,6 +34,7 @@ impl InputLine {
             completer: None,
             submit_command: CM_OK,
             palette: None,
+            inherit_bg: false,
         }
     }
 
@@ -41,6 +45,11 @@ impl InputLine {
 
     pub fn with_completer(mut self, c: Box<dyn Completer>) -> Self {
         self.completer = Some(c);
+        self
+    }
+
+    pub fn with_inherit_bg(mut self) -> Self {
+        self.inherit_bg = true;
         self
     }
 
@@ -58,7 +67,7 @@ impl InputLine {
 
     pub fn set_text(&mut self, text: &str) {
         self.text = text.to_string();
-        self.cursor = self.text.len();
+        self.cursor = self.text.chars().count();
         self.selection = None;
         self.update_width();
     }
@@ -70,16 +79,18 @@ impl InputLine {
         self.update_width();
     }
 
-    /// Select all text. Typing replaces selection; nav deselects.
     pub fn select_all(&mut self) {
         if !self.text.is_empty() {
             self.selection = Some(0);
-            self.cursor = self.text.len();
+            self.cursor = self.text.chars().count();
         }
         self.state.mark_dirty();
     }
 
-    /// Returns (start, end) of selection range, or None.
+    pub(crate) fn char_count(&self) -> usize {
+        self.text.chars().count()
+    }
+
     pub(crate) fn selection_range(&self) -> Option<(usize, usize)> {
         self.selection.map(|anchor| {
             let lo = anchor.min(self.cursor);
@@ -88,23 +99,37 @@ impl InputLine {
         })
     }
 
-    /// Delete selected text, place cursor at start of selection.
     pub(crate) fn delete_selection(&mut self) {
         if let Some((lo, hi)) = self.selection_range() {
-            self.text.drain(lo..hi);
+            let byte_lo = self.char_to_byte(lo);
+            let byte_hi = self.char_to_byte(hi);
+            self.text.drain(byte_lo..byte_hi);
             self.cursor = lo;
             self.selection = None;
             self.update_width();
         }
     }
 
-    pub(crate) fn update_width(&mut self) {
-        let w = (self.text.len() as u16).saturating_add(2).max(10);
+    /// Convert char index to byte offset.
+    fn char_to_byte(&self, char_idx: usize) -> usize {
+        self.text
+            .char_indices()
+            .nth(char_idx)
+            .map(|(b, _)| b)
+            .unwrap_or(self.text.len())
+    }
+
+    /// Auto-resize bounds to fit text (only in standalone mode).
+    fn update_width(&mut self) {
+        self.state.mark_dirty();
+        if self.inherit_bg {
+            return;
+        }
+        let w = (self.char_count() as u16).saturating_add(2).max(10);
         let b = self.state.bounds();
         if b.w != w {
             self.state.set_bounds(Rect::new(b.x, b.y, w, 1));
         }
-        self.state.mark_dirty();
     }
 
     pub(crate) fn push_history(&mut self) {
@@ -116,7 +141,8 @@ impl InputLine {
 
     pub(crate) fn handle_char(&mut self, ch: char) {
         self.delete_selection();
-        self.text.insert(self.cursor, ch);
+        let byte_pos = self.char_to_byte(self.cursor);
+        self.text.insert(byte_pos, ch);
         self.cursor += 1;
         self.update_width();
     }
@@ -126,7 +152,9 @@ impl InputLine {
             self.delete_selection();
         } else if self.cursor > 0 {
             self.cursor -= 1;
-            self.text.remove(self.cursor);
+            let byte_pos = self.char_to_byte(self.cursor);
+            let next_byte = self.char_to_byte(self.cursor + 1);
+            self.text.drain(byte_pos..next_byte);
             self.update_width();
         }
     }
@@ -134,10 +162,24 @@ impl InputLine {
     pub(crate) fn handle_delete(&mut self) {
         if self.selection.is_some() {
             self.delete_selection();
-        } else if self.cursor < self.text.len() {
-            self.text.remove(self.cursor);
+        } else if self.cursor < self.char_count() {
+            let byte_pos = self.char_to_byte(self.cursor);
+            let next_byte = self.char_to_byte(self.cursor + 1);
+            self.text.drain(byte_pos..next_byte);
             self.update_width();
         }
+    }
+
+    pub(crate) fn handle_nav(&mut self, shift: bool, new_cursor: usize) {
+        if shift {
+            if self.selection.is_none() {
+                self.selection = Some(self.cursor);
+            }
+        } else {
+            self.selection = None;
+        }
+        self.cursor = new_cursor;
+        self.state.mark_dirty();
     }
 
     pub(crate) fn handle_history_up(&mut self) {
@@ -150,7 +192,7 @@ impl InputLine {
         };
         self.history_pos = Some(pos);
         self.text = self.history[pos].clone();
-        self.cursor = self.text.len();
+        self.cursor = self.char_count();
         self.selection = None;
         self.update_width();
     }
@@ -166,7 +208,7 @@ impl InputLine {
             self.history_pos = None;
             self.text.clear();
         }
-        self.cursor = self.text.len();
+        self.cursor = self.char_count();
         self.selection = None;
         self.update_width();
     }
@@ -183,9 +225,10 @@ impl InputLine {
         let Some(ref completer) = self.completer else {
             return;
         };
+        let byte_cursor = self.char_to_byte(self.cursor);
         let mut first: Option<String> = None;
         let mut count = 0u32;
-        let _ = completer.complete(&self.text, self.cursor, &mut |c| {
+        let _ = completer.complete(&self.text, byte_cursor, &mut |c| {
             count += 1;
             if count == 1 {
                 first = Some(c.text().to_string());
@@ -195,7 +238,7 @@ impl InputLine {
         if count == 1 {
             if let Some(text) = first {
                 self.text = text;
-                self.cursor = self.text.len();
+                self.cursor = self.char_count();
                 self.update_width();
             }
         }
@@ -209,6 +252,9 @@ impl InputLine {
     }
 
     pub(crate) fn visible_start(&self, width: usize) -> usize {
+        if width == 0 {
+            return 0;
+        }
         if self.cursor >= width {
             self.cursor - width + 1
         } else {
