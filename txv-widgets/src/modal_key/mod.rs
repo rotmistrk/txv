@@ -155,7 +155,8 @@ impl ModalKey {
 
     pub(crate) fn update_bounds(&mut self) {
         let w = if self.active {
-            self.active_width()
+            // Report min width; StatusBar stretch fills the rest
+            self.active_min_width()
         } else {
             self.dormant_width()
         };
@@ -172,15 +173,6 @@ impl ModalKey {
         } else {
             self.idle_label.len() as u16 + 2
         }
-    }
-
-    pub(crate) fn active_width(&self) -> u16 {
-        let prompt_w = self.prompt.len() as u16;
-        let children_w: u16 = (0..self.group.child_count())
-            .map(|i| self.group.child(i).map_or(0, |c| c.bounds().w))
-            .sum();
-        // +2 for power caps (left + right)
-        prompt_w + children_w + 3
     }
 
     /// Minimum width when active (prompt + caps + reasonable input space).
