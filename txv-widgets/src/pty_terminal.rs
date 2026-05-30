@@ -116,7 +116,13 @@ impl View for PtyTerminal {
         if cols > 0 && rows > 0 && (cols != self.prev_cols || rows != self.prev_rows) {
             self.prev_cols = cols;
             self.prev_rows = rows;
-            self.termbuf.resize(cols, rows);
+            if self.session.is_some() {
+                // Live PTY: simple resize, shell will redraw
+                self.termbuf.resize_simple(cols, rows);
+            } else {
+                // Dead session: reflow for scrollback review
+                self.termbuf.resize(cols, rows);
+            }
             if let Some(session) = &self.session {
                 session.resize(cols, rows);
             }

@@ -5,8 +5,8 @@ use txv_core::cell::Color;
 fn basic_print() {
     let mut tb = TermBuf::new(80, 24);
     tb.process(b"Hello");
-    assert_eq!(tb.cells[0][0].ch, 'H');
-    assert_eq!(tb.cells[0][4].ch, 'o');
+    assert_eq!(tb.cells[0].cells[0].ch, 'H');
+    assert_eq!(tb.cells[0].cells[4].ch, 'o');
     assert_eq!(tb.cursor(), (5, 0));
 }
 
@@ -14,8 +14,8 @@ fn basic_print() {
 fn newline_and_cr() {
     let mut tb = TermBuf::new(80, 24);
     tb.process(b"A\r\nB");
-    assert_eq!(tb.cells[0][0].ch, 'A');
-    assert_eq!(tb.cells[1][0].ch, 'B');
+    assert_eq!(tb.cells[0].cells[0].ch, 'A');
+    assert_eq!(tb.cells[1].cells[0].ch, 'B');
 }
 
 #[test]
@@ -29,27 +29,27 @@ fn cursor_movement() {
 fn erase_line() {
     let mut tb = TermBuf::new(80, 24);
     tb.process(b"ABCDEF\x1b[4G\x1b[K");
-    assert_eq!(tb.cells[0][0].ch, 'A');
-    assert_eq!(tb.cells[0][1].ch, 'B');
-    assert_eq!(tb.cells[0][2].ch, 'C');
-    assert_eq!(tb.cells[0][3].ch, ' ');
+    assert_eq!(tb.cells[0].cells[0].ch, 'A');
+    assert_eq!(tb.cells[0].cells[1].ch, 'B');
+    assert_eq!(tb.cells[0].cells[2].ch, 'C');
+    assert_eq!(tb.cells[0].cells[3].ch, ' ');
 }
 
 #[test]
 fn sgr_colors() {
     let mut tb = TermBuf::new(80, 24);
     tb.process(b"\x1b[31mR\x1b[0m");
-    assert_eq!(tb.cells[0][0].ch, 'R');
-    assert_eq!(tb.cells[0][0].style.fg, Color::Ansi(1));
+    assert_eq!(tb.cells[0].cells[0].ch, 'R');
+    assert_eq!(tb.cells[0].cells[0].style.fg, Color::Ansi(1));
 }
 
 #[test]
 fn scroll_on_overflow() {
     let mut tb = TermBuf::new(80, 3);
     tb.process(b"A\r\nB\r\nC\r\nD");
-    assert_eq!(tb.cells[0][0].ch, 'B');
-    assert_eq!(tb.cells[1][0].ch, 'C');
-    assert_eq!(tb.cells[2][0].ch, 'D');
+    assert_eq!(tb.cells[0].cells[0].ch, 'B');
+    assert_eq!(tb.cells[1].cells[0].ch, 'C');
+    assert_eq!(tb.cells[2].cells[0].ch, 'D');
 }
 
 #[test]
@@ -67,7 +67,7 @@ fn resize_preserves_content() {
     let mut tb = TermBuf::new(80, 24);
     tb.process(b"Hello");
     tb.resize(40, 12);
-    assert_eq!(tb.cells[0][0].ch, 'H');
+    assert_eq!(tb.cells[0].cells[0].ch, 'H');
     assert_eq!(tb.cols, 40);
     assert_eq!(tb.rows, 12);
 }
@@ -87,8 +87,8 @@ fn swallow_esc_k_title_sequence() {
     let mut tb = TermBuf::new(80, 24);
     // ESC k sets tmux title — content should NOT appear on screen
     tb.process(b"A\x1bktitle text\x1b\\B");
-    assert_eq!(tb.cells[0][0].ch, 'A');
-    assert_eq!(tb.cells[0][1].ch, 'B');
+    assert_eq!(tb.cells[0].cells[0].ch, 'A');
+    assert_eq!(tb.cells[0].cells[1].ch, 'B');
     assert_eq!(tb.cursor(), (2, 0));
 }
 
@@ -96,8 +96,8 @@ fn swallow_esc_k_title_sequence() {
 fn swallow_esc_k_terminated_by_bel() {
     let mut tb = TermBuf::new(80, 24);
     tb.process(b"X\x1bkmy title\x07Y");
-    assert_eq!(tb.cells[0][0].ch, 'X');
-    assert_eq!(tb.cells[0][1].ch, 'Y');
+    assert_eq!(tb.cells[0].cells[0].ch, 'X');
+    assert_eq!(tb.cells[0].cells[1].ch, 'Y');
 }
 
 #[test]
@@ -106,7 +106,7 @@ fn swallow_real_prompt_esc_k() {
     // Real prompt: ESC[32m ESC_k kairn/f4 ESC\ core ESC[34m : ...
     tb.process(b"\x1b[00;32m\x1bkkairn/f4\x1b\\core\x1b[01;34m:");
     // Should see "core:" without "kairn/f4"
-    let row: String = tb.cells[0].iter().take(10).map(|c| c.ch).collect();
+    let row: String = tb.cells[0].cells.iter().take(10).map(|c| c.ch).collect();
     assert_eq!(row.trim(), "core:");
 }
 
@@ -139,7 +139,7 @@ fn rprompt_no_spill_with_tmux_sequences() {
     // Should end at column 60 (= cols), no wrap
     assert_eq!(tb.cursor(), (60, 0));
     // Row 1 should be empty
-    let row1: String = tb.cells[1].iter().take(10).map(|c| c.ch).collect();
+    let row1: String = tb.cells[1].cells.iter().take(10).map(|c| c.ch).collect();
     assert_eq!(row1.trim(), "");
 }
 
@@ -161,8 +161,8 @@ fn rprompt_spills_when_columns_exceeds_actual_width() {
     tb.process(b"master");
     // "m" at col 59, then wraps: "aster" on next line
     // This demonstrates the bug!
-    let row0: String = tb.cells[0].iter().map(|c| c.ch).collect();
-    let row1: String = tb.cells[1].iter().take(10).map(|c| c.ch).collect();
+    let row0: String = tb.cells[0].cells.iter().map(|c| c.ch).collect();
+    let row1: String = tb.cells[1].cells.iter().take(10).map(|c| c.ch).collect();
     assert!(row0.ends_with('m'), "Only 'm' should fit: {:?}", row0.trim_end());
     assert!(row1.starts_with("aster"), "Rest spills: {:?}", row1.trim_end());
 }
@@ -230,8 +230,8 @@ fn resize_grow_keeps_content() {
     // Cursor position unchanged
     assert_eq!(tb.cursor().1, cy);
     // Content preserved
-    assert_eq!(tb.cells[0][0].ch, 'l');
-    assert_eq!(tb.cells[0][4].ch, '0');
+    assert_eq!(tb.cells[0].cells[0].ch, 'l');
+    assert_eq!(tb.cells[0].cells[4].ch, '0');
 }
 
 #[test]
@@ -240,6 +240,69 @@ fn resize_shrink_cols_preserves_content() {
     tb.process(b"hello world");
     tb.resize(5, 10);
     // First 5 chars preserved
-    assert_eq!(tb.cells[0][0].ch, 'h');
-    assert_eq!(tb.cells[0][4].ch, 'o');
+    assert_eq!(tb.cells[0].cells[0].ch, 'h');
+    assert_eq!(tb.cells[0].cells[4].ch, 'o');
+}
+
+#[test]
+fn reflow_wrap_on_shrink() {
+    let mut tb = TermBuf::new(20, 5);
+    tb.process(b"abcdefghij1234567890"); // 20 chars, fills row 0 exactly
+    tb.process(b"ABCDE"); // 5 more on row 1
+                          // Row 0 is full (wrapped=true because cursor hit col 20)
+                          // Row 1 has "ABCDE"
+    assert_eq!(tb.cells[0].cells[0].ch, 'a');
+    assert_eq!(tb.cells[1].cells[0].ch, 'A');
+
+    // Shrink to 10 cols: "abcdefghij1234567890ABCDE" reflows to 3 rows of 10
+    tb.resize(10, 5);
+    let r0: String = tb.cells[0].cells.iter().take(10).map(|c| c.ch).collect();
+    let r1: String = tb.cells[1].cells.iter().take(10).map(|c| c.ch).collect();
+    let r2: String = tb.cells[2].cells.iter().take(10).map(|c| c.ch).collect();
+    assert_eq!(r0.trim(), "abcdefghij");
+    assert_eq!(r1.trim(), "1234567890");
+    assert_eq!(r2.trim(), "ABCDE");
+}
+
+#[test]
+fn reflow_unwrap_on_grow() {
+    let mut tb = TermBuf::new(10, 5);
+    // Write 20 chars — wraps to 2 rows of 10
+    tb.process(b"abcdefghij1234567890");
+    assert_eq!(tb.cells[0].cells[0].ch, 'a');
+    assert_eq!(tb.cells[1].cells[0].ch, '1');
+
+    // Grow to 20 cols: should unwrap back to 1 row
+    tb.resize(20, 5);
+    let r0: String = tb.cells[0].cells.iter().take(20).map(|c| c.ch).collect();
+    assert_eq!(r0.trim(), "abcdefghij1234567890");
+    // Row 1 should be blank
+    assert!(tb.cells[1].is_blank());
+}
+
+#[test]
+fn reflow_preserves_hard_newlines() {
+    let mut tb = TermBuf::new(20, 5);
+    tb.process(b"hello\r\nworld");
+    // Two separate logical lines
+    assert_eq!(tb.cells[0].cells[0].ch, 'h');
+    assert_eq!(tb.cells[1].cells[0].ch, 'w');
+
+    // Shrink to 3 cols: "hello" → "hel"+"lo", "world" → "wor"+"ld"
+    tb.resize(3, 10);
+    let r0: String = tb.cells[0].cells.iter().take(3).map(|c| c.ch).collect();
+    let r1: String = tb.cells[1].cells.iter().take(3).map(|c| c.ch).collect();
+    let r2: String = tb.cells[2].cells.iter().take(3).map(|c| c.ch).collect();
+    let r3: String = tb.cells[3].cells.iter().take(3).map(|c| c.ch).collect();
+    assert_eq!(r0.trim(), "hel");
+    assert_eq!(r1.trim(), "lo");
+    assert_eq!(r2.trim(), "wor");
+    assert_eq!(r3.trim(), "ld");
+
+    // Grow back to 20: should restore original 2 lines
+    tb.resize(20, 5);
+    let r0: String = tb.cells[0].cells.iter().take(5).map(|c| c.ch).collect();
+    let r1: String = tb.cells[1].cells.iter().take(5).map(|c| c.ch).collect();
+    assert_eq!(r0.trim(), "hello");
+    assert_eq!(r1.trim(), "world");
 }
