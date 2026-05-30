@@ -5,11 +5,9 @@
 //! Items that don't fit (lowest priority) get zero-width bounds (hidden).
 
 use crate::buffer::Buffer;
-
-use crate::event::Event;
 use crate::geometry::Rect;
 use crate::group::GroupState;
-use crate::view::{EventSink, HandleResult, View, ViewOptions};
+use crate::view::{View, ViewOptions};
 
 use super::gravity::Gravity;
 use super::hints::Hints;
@@ -100,9 +98,7 @@ impl Default for StatusBar {
 }
 
 impl View for StatusBar {
-    fn bounds(&self) -> Rect {
-        self.group.bounds()
-    }
+    crate::delegate_group_state!(group, override { set_bounds, select, unselect });
 
     fn set_bounds(&mut self, rect: Rect) {
         self.group.set_bounds(rect);
@@ -110,33 +106,12 @@ impl View for StatusBar {
         self.group.mark_dirty();
     }
 
-    fn set_sink(&mut self, sink: EventSink) {
-        self.group.set_sink(sink);
-    }
-
-    fn options(&self) -> ViewOptions {
-        self.group.options()
-    }
-
-    fn title(&self) -> &str {
-        ""
-    }
-
-    fn needs_redraw(&self) -> bool {
-        self.group.any_dirty()
-    }
-
-    fn mark_redrawn(&mut self) {
-        self.group.mark_redrawn();
-        for i in 0..self.group.child_count() {
-            if let Some(child) = self.group.child_mut(i) {
-                child.mark_redrawn();
-            }
-        }
-    }
-
     fn select(&mut self) {}
     fn unselect(&mut self) {}
+
+    fn handle(&mut self, event: &crate::event::Event) -> crate::view::HandleResult {
+        self.group.dispatch(event)
+    }
 
     fn draw(&mut self) {
         let bounds = self.group.bounds();
@@ -168,21 +143,5 @@ impl View for StatusBar {
                 unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
             }
         }
-    }
-
-    fn handle(&mut self, event: &Event) -> HandleResult {
-        self.group.dispatch(event)
-    }
-
-    fn cursor(&self) -> Option<crate::cursor::CursorRequest> {
-        self.group.cursor()
-    }
-
-    fn buffer(&self) -> &Buffer {
-        self.group.buffer()
-    }
-
-    fn group_state(&self) -> Option<&crate::group::GroupState> {
-        Some(&self.group)
     }
 }
