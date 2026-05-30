@@ -53,6 +53,10 @@ pub trait VisibleItem: Send {
     fn style(&self) -> crate::cell::Style {
         crate::cell::Style::default()
     }
+    /// Position of a single highlighted character (animated). None = no highlight.
+    fn highlight_offset(&self) -> Option<usize> {
+        None
+    }
     /// Called on tick so the item can update its label.
     fn tick(&mut self) {}
 }
@@ -208,6 +212,14 @@ impl StatusBar {
             ItemSlot::Full(item) => item.style(),
             ItemSlot::VisibleOnly(item) => item.style(),
             ItemSlot::ActiveOnly(_) => crate::cell::Style::default(),
+        }
+    }
+
+    fn item_highlight_offset(&self, idx: usize) -> Option<usize> {
+        match &self.items[idx] {
+            ItemSlot::Full(item) => item.highlight_offset(),
+            ItemSlot::VisibleOnly(item) => item.highlight_offset(),
+            ItemSlot::ActiveOnly(_) => None,
         }
     }
 }

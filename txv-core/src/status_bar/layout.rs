@@ -81,7 +81,13 @@ impl StatusBar {
                     let min_w = if min_width > 0 {
                         min_width
                     } else if stretch > 0 {
-                        1
+                        // Use child's current width (content-driven) or 1 as fallback
+                        let current = self.child_buffer_width(idx);
+                        if current > 0 {
+                            current
+                        } else {
+                            1
+                        }
                     } else {
                         // Use current child width if non-zero, otherwise fall back to
                         // the width captured at insertion time. This prevents items from

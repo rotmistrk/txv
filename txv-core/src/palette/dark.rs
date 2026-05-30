@@ -51,6 +51,8 @@ impl Palette for DarkPalette {
             StyleId::StateSuccess => PaletteStyle::fg(ansi(2)).to_style(),
             StyleId::StateHint => PaletteStyle::fg(ansi(8)).to_style(),
             StyleId::EditorGutter => PaletteStyle::fg(ansi(8)).to_style(),
+            StyleId::StatusQuestion => PaletteStyle::fg(ansi(11)).bold().to_style(),
+            StyleId::StatusHighlight => PaletteStyle::fg(ansi(15)).bold().to_style(),
         }
     }
 }

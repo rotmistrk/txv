@@ -46,8 +46,11 @@ pub enum StyleId {
     StateHint,
     // Editor (app-level, but common enough)
     EditorGutter,
+    // Status bar prompts
+    StatusQuestion,
+    StatusHighlight,
 }
 
 impl StyleId {
-    pub const COUNT: usize = 39;
+    pub const COUNT: usize = 41;
 }

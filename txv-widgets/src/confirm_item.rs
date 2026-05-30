@@ -12,6 +12,8 @@ pub struct ConfirmItem {
     response_command: CommandId,
     active: bool,
     label: String,
+    highlight_pos: usize,
+    tick_counter: u8,
 }
 
 impl ConfirmItem {
@@ -21,6 +23,8 @@ impl ConfirmItem {
             response_command,
             active: false,
             label: String::new(),
+            highlight_pos: 0,
+            tick_counter: 0,
         }
     }
 }
@@ -34,6 +38,8 @@ impl ActiveItem for ConfirmItem {
                         if let Some(text) = boxed.downcast_ref::<String>() {
                             self.label = text.clone();
                             self.active = true;
+                            self.highlight_pos = 0;
+                            self.tick_counter = 0;
                             return HandleResult::Consumed;
                         }
                     }
@@ -68,5 +74,36 @@ impl VisibleItem for ConfirmItem {
 
     fn gravity(&self) -> Gravity {
         Gravity::Left
+    }
+
+    fn style(&self) -> txv_core::cell::Style {
+        if self.active {
+            txv_core::palette::palette().style(txv_core::palette::StyleId::StatusQuestion)
+        } else {
+            txv_core::cell::Style::default()
+        }
+    }
+
+    fn highlight_offset(&self) -> Option<usize> {
+        if self.active && !self.label.is_empty() {
+            Some(self.highlight_pos)
+        } else {
+            None
+        }
+    }
+
+    fn tick(&mut self) {
+        if !self.active || self.label.is_empty() {
+            return;
+        }
+        // Advance highlight at ~2 chars/sec (tick is ~100ms, so every 5 ticks)
+        self.tick_counter += 1;
+        if self.tick_counter >= 5 {
+            self.tick_counter = 0;
+            self.highlight_pos += 1;
+            if self.highlight_pos >= self.label.len() {
+                self.highlight_pos = 0;
+            }
+        }
     }
 }
