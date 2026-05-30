@@ -110,6 +110,11 @@ impl ModalKey {
     pub(crate) fn deactivate(&mut self) {
         self.active = false;
         self.activated_at = None;
+        for i in 0..self.group.child_count() {
+            if let Some(child) = self.group.child_mut(i) {
+                child.unselect();
+            }
+        }
         self.propagate_default_palette();
         self.update_bounds();
     }

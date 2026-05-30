@@ -29,7 +29,19 @@ impl SidekickManager {
 }
 
 impl View for SidekickManager {
-    delegate_view_state!(state, override { draw, handle });
+    delegate_view_state!(state, override { draw, handle, needs_redraw });
+
+    fn needs_redraw(&self) -> bool {
+        if self.state.is_dirty() {
+            return true;
+        }
+        if let Some(arc) = &self.child {
+            if let Ok(child) = arc.lock() {
+                return child.needs_redraw();
+            }
+        }
+        false
+    }
 
     fn draw(&mut self) {
         let w = self.state.buffer_mut().width();
@@ -40,6 +52,7 @@ impl View for SidekickManager {
         if let Some(arc) = &self.child {
             if let Ok(mut child) = arc.lock() {
                 child.draw();
+                child.mark_redrawn();
                 self.state.buffer_mut().blit(child.buffer(), 0, 0);
             }
         }
@@ -52,6 +65,9 @@ impl View for SidekickManager {
         match *id {
             CM_SIDEKICK_SHOW => {
                 if let Some(show) = data.as_ref().and_then(|d| d.downcast_ref::<SidekickShow>()) {
+                    if let Ok(mut child) = show.view.lock() {
+                        child.set_bounds(Rect::new(0, 0, show.rect.w, show.rect.h));
+                    }
                     self.child = Some(Arc::clone(&show.view));
                     self.state.set_bounds(show.rect);
                     self.state.mark_dirty();

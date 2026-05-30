@@ -1,13 +1,15 @@
 //! InputLine — single-line text input with history, completion, and selection.
 
 mod completion;
+mod completion_list;
 mod view_impl;
 
 use std::sync::{Arc, Mutex};
 
 use txv_core::prelude::*;
 
-use crate::sidekick::SidekickView;
+use crate::list_view::ListView;
+pub use completion_list::CompletionList;
 
 /// Emitted by InputLine on Ctrl-C when selection exists. Data: `Box<String>`.
 pub const CM_COPY_TO_CLIPBOARD: CommandId = 150;
@@ -28,14 +30,15 @@ pub struct InputLine {
     pub(crate) completer: Option<Box<dyn Completer>>,
     pub(crate) submit_command: CommandId,
     pub(crate) palette: Option<Arc<dyn Palette>>,
-    /// Sidekick popup for completions (shared with SidekickManager).
-    pub(crate) sidekick: Arc<Mutex<SidekickView>>,
-    /// Whether sidekick is currently visible.
+    /// Shared completion popup (ListView held by SidekickManager).
+    pub(crate) popup: Arc<Mutex<ListView<CompletionList>>>,
+    /// Whether popup is currently visible.
     pub(crate) sidekick_visible: bool,
 }
 
 impl InputLine {
     pub fn new() -> Self {
+        let list = ListView::new(CompletionList::new(Vec::new()));
         Self {
             state: ViewState::default(),
             text: String::new(),
@@ -46,7 +49,7 @@ impl InputLine {
             completer: None,
             submit_command: CM_OK,
             palette: None,
-            sidekick: Arc::new(Mutex::new(SidekickView::new())),
+            popup: Arc::new(Mutex::new(list)),
             sidekick_visible: false,
         }
     }

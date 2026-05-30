@@ -23,6 +23,7 @@ pub struct CrosstermBackend {
     previous: Buffer,
     color_mode: ColorMode,
     force_full: bool,
+    last_cursor: Option<CursorRequest>,
     wake_read: std::os::unix::io::RawFd,
     wake_write: std::os::unix::io::RawFd,
 }
@@ -43,6 +44,7 @@ impl CrosstermBackend {
             previous: Buffer::new(w, h),
             color_mode,
             force_full: true,
+            last_cursor: None,
             wake_read: fds[0],
             wake_write: fds[1],
         }
@@ -244,6 +246,10 @@ impl Backend for CrosstermBackend {
     }
 
     fn set_cursor(&mut self, req: Option<CursorRequest>) {
+        if self.last_cursor == req {
+            return;
+        }
+        self.last_cursor = req;
         let mut out = io::stdout().lock();
         match req {
             Some(c) if c.shape != CursorShape::Hidden => {

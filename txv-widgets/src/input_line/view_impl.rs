@@ -142,18 +142,14 @@ impl View for InputLine {
             KeyCode::End => self.handle_nav(shift, self.char_count()),
             KeyCode::Up => {
                 if self.sidekick_visible {
-                    if let Ok(mut sk) = self.sidekick.lock() {
-                        sk.select_prev();
-                    }
+                    self.sidekick_select_prev();
                 } else {
                     self.handle_history_up();
                 }
             }
             KeyCode::Down => {
                 if self.sidekick_visible {
-                    if let Ok(mut sk) = self.sidekick.lock() {
-                        sk.select_next();
-                    }
+                    self.sidekick_select_next();
                 } else {
                     self.handle_history_down();
                 }
@@ -166,7 +162,11 @@ impl View for InputLine {
                 }
             }
             KeyCode::Enter => {
-                self.hide_sidekick();
+                if self.sidekick_visible {
+                    self.apply_sidekick_selection();
+                } else {
+                    self.hide_sidekick();
+                }
                 self.push_history();
                 self.state
                     .put_command(self.submit_command, Some(Box::new(self.text.clone())));

@@ -16,9 +16,9 @@ pub trait ListData: Send + 'static {
 
 pub struct ListView<D: ListData> {
     state: ViewState,
-    pub data: D,
-    pub cursor: usize,
-    pub scroll: ScrollView,
+    data: D,
+    cursor: usize,
+    scroll: ScrollView,
 }
 
 impl<D: ListData> ListView<D> {
@@ -29,6 +29,48 @@ impl<D: ListData> ListView<D> {
             cursor: 0,
             scroll: ScrollView::new(),
         }
+    }
+
+    pub fn data(&self) -> &D {
+        &self.data
+    }
+
+    pub fn data_mut(&mut self) -> &mut D {
+        self.state.mark_dirty();
+        &mut self.data
+    }
+
+    pub fn cursor(&self) -> usize {
+        self.cursor
+    }
+
+    pub fn set_cursor(&mut self, pos: usize) {
+        self.cursor = pos.min(self.data.len().saturating_sub(1));
+        self.sync_scroll();
+        self.state.mark_dirty();
+    }
+
+    pub fn select_next(&mut self) {
+        let max = self.data.len().saturating_sub(1);
+        if self.cursor < max {
+            self.cursor += 1;
+            self.sync_scroll();
+            self.state.mark_dirty();
+        }
+    }
+
+    pub fn select_prev(&mut self) {
+        if self.cursor > 0 {
+            self.cursor -= 1;
+            self.sync_scroll();
+            self.state.mark_dirty();
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.cursor = 0;
+        self.scroll.scroll_to(0);
+        self.state.mark_dirty();
     }
 
     fn sync_scroll(&mut self) {
@@ -48,10 +90,11 @@ impl<D: ListData> View for ListView<D> {
         if w == 0 || h == 0 {
             return;
         }
+        self.sync_scroll();
         let selected = if self.state.is_focused() {
             txv_core::palette::palette().style(StyleId::CursorFocused)
         } else {
-            txv_core::palette::palette().style(StyleId::CursorUnfocused)
+            txv_core::palette::palette().style(StyleId::PopupSelected)
         };
         for row in 0..h as usize {
             let idx = self.scroll.offset + row;
@@ -70,58 +113,42 @@ impl<D: ListData> View for ListView<D> {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        match event {
-            Event::Key(key) => match key.code {
-                KeyCode::Up => {
-                    if self.cursor > 0 {
-                        self.cursor -= 1;
-                        self.sync_scroll();
-                        self.state.mark_dirty();
-                    }
-                    HandleResult::Consumed
-                }
-                KeyCode::Down => {
-                    let max = self.data.len().saturating_sub(1);
-                    if self.cursor < max {
-                        self.cursor += 1;
-                        self.sync_scroll();
-                        self.state.mark_dirty();
-                    }
-                    HandleResult::Consumed
-                }
-                KeyCode::Enter => {
-                    self.state.put_command(CM_OK, Some(Box::new(self.cursor)));
-                    HandleResult::Consumed
-                }
-                KeyCode::Home => {
-                    self.cursor = 0;
-                    self.sync_scroll();
-                    self.state.mark_dirty();
-                    HandleResult::Consumed
-                }
-                KeyCode::End => {
-                    self.cursor = self.data.len().saturating_sub(1);
-                    self.sync_scroll();
-                    self.state.mark_dirty();
-                    HandleResult::Consumed
-                }
-                KeyCode::PageDown => {
-                    let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
-                    let max = self.data.len().saturating_sub(1);
-                    self.cursor = (self.cursor + page).min(max);
-                    self.sync_scroll();
-                    self.state.mark_dirty();
-                    HandleResult::Consumed
-                }
-                KeyCode::PageUp => {
-                    let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
-                    self.cursor = self.cursor.saturating_sub(page);
-                    self.sync_scroll();
-                    self.state.mark_dirty();
-                    HandleResult::Consumed
-                }
-                _ => HandleResult::Ignored,
-            },
+        let Event::Key(key) = event else {
+            return HandleResult::Ignored;
+        };
+        match key.code {
+            KeyCode::Up => {
+                self.select_prev();
+                HandleResult::Consumed
+            }
+            KeyCode::Down => {
+                self.select_next();
+                HandleResult::Consumed
+            }
+            KeyCode::Home => {
+                self.set_cursor(0);
+                HandleResult::Consumed
+            }
+            KeyCode::End => {
+                let last = self.data.len().saturating_sub(1);
+                self.set_cursor(last);
+                HandleResult::Consumed
+            }
+            KeyCode::PageDown => {
+                let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
+                let max = self.data.len().saturating_sub(1);
+                self.set_cursor((self.cursor + page).min(max));
+                HandleResult::Consumed
+            }
+            KeyCode::PageUp => {
+                let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
+                self.set_cursor(self.cursor.saturating_sub(page));
+                HandleResult::Consumed
+            }
+            KeyCode::Enter => {
+                self.state.put_command(CM_OK, Some(Box::new(self.cursor)));
+                HandleResult::Consumed
+            }
             _ => HandleResult::Ignored,
         }
     }

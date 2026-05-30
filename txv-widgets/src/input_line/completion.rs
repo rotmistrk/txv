@@ -4,7 +4,9 @@ use std::sync::{Arc, Mutex};
 
 use txv_core::prelude::*;
 
+use super::completion_list::{CompletionItem, CompletionList};
 use super::InputLine;
+use crate::list_view::ListView;
 use crate::sidekick::{SidekickShow, CM_SIDEKICK_HIDE, CM_SIDEKICK_SHOW};
 
 impl InputLine {
@@ -13,15 +15,15 @@ impl InputLine {
             return;
         };
         let byte_cursor = self.char_to_byte(self.cursor);
-        let mut items: Vec<String> = Vec::new();
+        let mut items: Vec<CompletionItem> = Vec::new();
         let _ = completer.complete(&self.text, byte_cursor, &mut |c| {
-            items.push(c.text().to_string());
+            items.push(CompletionItem::new(c.text().to_string(), c.display().to_string()));
             Ok(items.len() < 20)
         });
         match items.len() {
             0 => self.hide_sidekick(),
             1 => {
-                self.text = items.into_iter().next().unwrap_or_default();
+                self.text = items.remove(0).text().to_string();
                 self.cursor = self.char_count();
                 self.hide_sidekick();
                 self.update_width();
@@ -37,9 +39,9 @@ impl InputLine {
             return;
         };
         let byte_cursor = self.char_to_byte(self.cursor);
-        let mut items: Vec<String> = Vec::new();
+        let mut items: Vec<CompletionItem> = Vec::new();
         let _ = completer.complete(&self.text, byte_cursor, &mut |c| {
-            items.push(c.text().to_string());
+            items.push(CompletionItem::new(c.text().to_string(), c.display().to_string()));
             Ok(items.len() < 20)
         });
         if items.len() > 1 {
@@ -49,14 +51,14 @@ impl InputLine {
         }
     }
 
-    fn show_sidekick(&mut self, items: Vec<String>) {
-        if let Ok(mut sk) = self.sidekick.lock() {
-            sk.set_items(items, 0);
+    fn show_sidekick(&mut self, items: Vec<CompletionItem>) {
+        let list = CompletionList::new(items);
+        let max_w = list.max_display_width();
+        if let Ok(mut lv) = self.popup.lock() {
+            *lv = ListView::new(list);
         }
-        if !self.sidekick_visible {
-            self.sidekick_visible = true;
-            self.emit_sidekick_show();
-        }
+        self.sidekick_visible = true;
+        self.emit_sidekick_show(max_w);
     }
 
     pub(crate) fn hide_sidekick(&mut self) {
@@ -66,24 +68,37 @@ impl InputLine {
         }
     }
 
-    fn emit_sidekick_show(&mut self) {
+    fn emit_sidekick_show(&self, content_width: usize) {
         let b = self.state.bounds();
-        let h = self.sidekick.lock().map(|sk| sk.len()).unwrap_or(0).min(8) as u16;
-        let rect = Rect::new(b.x, b.y.saturating_sub(h), b.w.max(20), h);
+        let h = self.popup.lock().map(|lv| lv.data().len()).unwrap_or(0).min(8) as u16;
+        let w = (content_width as u16 + 2).max(10);
+        let rect = Rect::new(b.x, b.y.saturating_sub(h), w, h);
         let data = SidekickShow {
             rect,
-            view: Arc::clone(&self.sidekick) as Arc<Mutex<dyn View>>,
+            view: Arc::clone(&self.popup) as Arc<Mutex<dyn View>>,
         };
         self.state.put_command(CM_SIDEKICK_SHOW, Some(Box::new(data)));
     }
 
-    /// Apply the currently selected sidekick item.
+    pub(crate) fn sidekick_select_next(&mut self) {
+        if let Ok(mut lv) = self.popup.lock() {
+            lv.select_next();
+        }
+    }
+
+    pub(crate) fn sidekick_select_prev(&mut self) {
+        if let Ok(mut lv) = self.popup.lock() {
+            lv.select_prev();
+        }
+    }
+
+    /// Apply the currently selected completion item.
     pub(crate) fn apply_sidekick_selection(&mut self) {
         let text = self
-            .sidekick
+            .popup
             .lock()
             .ok()
-            .and_then(|sk| sk.selected_text().map(String::from));
+            .and_then(|lv| lv.data().selected_text(lv.cursor()).map(String::from));
         if let Some(t) = text {
             self.text = t;
             self.cursor = self.char_count();
