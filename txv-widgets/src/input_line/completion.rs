@@ -33,7 +33,20 @@ impl InputLine {
                     self.hide_sidekick();
                 }
             }
-            _ => self.show_sidekick(items),
+            _ => {
+                // Expand to longest common prefix of all matches
+                let lcp = Self::longest_common_prefix(&items);
+                if lcp.len() > self.text.len() {
+                    self.text = lcp;
+                    self.cursor = self.char_count();
+                    self.update_width();
+                    if self.text.ends_with('/') {
+                        self.update_completions();
+                        return;
+                    }
+                }
+                self.show_sidekick(items);
+            }
         }
     }
 
@@ -98,6 +111,21 @@ impl InputLine {
         if let Ok(mut lv) = self.popup.lock() {
             lv.select_prev();
         }
+    }
+
+    /// Apply the currently selected completion item.
+    fn longest_common_prefix(items: &[CompletionItem]) -> String {
+        let first = items[0].text();
+        let mut len = first.len();
+        for item in &items[1..] {
+            len = first
+                .bytes()
+                .zip(item.text().bytes())
+                .take(len)
+                .take_while(|(a, b)| a == b)
+                .count();
+        }
+        first[..len].to_string()
     }
 
     /// Apply the currently selected completion item.
