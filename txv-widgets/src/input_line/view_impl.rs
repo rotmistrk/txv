@@ -148,11 +148,8 @@ impl View for InputLine {
                             self.update_completions();
                         }
                         'w' => {
-                            let killed = self.kill_word_back();
-                            if !killed.is_empty() {
-                                self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(killed)));
-                            }
-                            self.update_completions();
+                            // C-w conflicts with global split prefix; use Alt-Backspace instead
+                            return HandleResult::Ignored;
                         }
                         't' => {
                             self.transpose_chars();
@@ -179,7 +176,14 @@ impl View for InputLine {
                 self.update_completions();
             }
             KeyCode::Backspace => {
-                self.handle_backspace();
+                if key.modifiers.alt {
+                    let killed = self.kill_word_back();
+                    if !killed.is_empty() {
+                        self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(killed)));
+                    }
+                } else {
+                    self.handle_backspace();
+                }
                 self.update_completions();
             }
             KeyCode::Delete => {
