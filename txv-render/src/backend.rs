@@ -246,9 +246,7 @@ impl Backend for CrosstermBackend {
     }
 
     fn set_cursor(&mut self, req: Option<CursorRequest>) {
-        if self.last_cursor == req {
-            return;
-        }
+        let changed = self.last_cursor != req;
         self.last_cursor = req;
         let mut out = io::stdout().lock();
         match req {
@@ -260,10 +258,14 @@ impl Backend for CrosstermBackend {
                     CursorShape::Hidden => unreachable!(),
                 };
                 queue!(out, cursor::MoveTo(c.x, c.y), cursor::Show).ok();
-                out.write_all(seq.as_bytes()).ok();
+                if changed {
+                    out.write_all(seq.as_bytes()).ok();
+                }
             }
             _ => {
-                queue!(out, cursor::Hide).ok();
+                if changed {
+                    queue!(out, cursor::Hide).ok();
+                }
             }
         }
         out.flush().ok();
