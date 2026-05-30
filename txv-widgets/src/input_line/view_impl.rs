@@ -127,14 +127,14 @@ impl View for InputLine {
             }
             KeyCode::Left => {
                 let new = self.cursor.saturating_sub(1);
-                if new != self.cursor {
+                if new != self.cursor || self.selection.is_some() {
                     self.handle_nav(shift, new);
                 }
             }
             KeyCode::Right => {
                 let max = self.char_count();
                 let new = (self.cursor + 1).min(max);
-                if new != self.cursor {
+                if new != self.cursor || self.selection.is_some() {
                     self.handle_nav(shift, new);
                 }
             }
@@ -181,5 +181,11 @@ impl View for InputLine {
             _ => return HandleResult::Ignored,
         }
         HandleResult::Consumed
+    }
+}
+
+impl Default for InputLine {
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -2,6 +2,8 @@
 
 mod completion;
 mod completion_list;
+#[cfg(test)]
+mod tests;
 mod view_impl;
 
 use std::sync::{Arc, Mutex};
@@ -278,11 +280,5 @@ impl InputLine {
             start -= 1;
         }
         start
-    }
-}
-
-impl Default for InputLine {
-    fn default() -> Self {
-        Self::new()
     }
 }
