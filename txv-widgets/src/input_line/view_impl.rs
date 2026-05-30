@@ -97,10 +97,70 @@ impl View for InputLine {
         match &key.code {
             KeyCode::Char(ch) => {
                 if key.modifiers.alt {
-                    return HandleResult::Ignored;
+                    match ch {
+                        'f' => {
+                            let new = self.word_forward();
+                            self.handle_nav(shift, new);
+                        }
+                        'b' => {
+                            let new = self.word_backward();
+                            self.handle_nav(shift, new);
+                        }
+                        'd' => {
+                            let killed = self.kill_word_forward();
+                            if !killed.is_empty() {
+                                self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(killed)));
+                            }
+                            self.update_completions();
+                        }
+                        _ => return HandleResult::Ignored,
+                    }
+                    return HandleResult::Consumed;
                 }
                 if key.modifiers.ctrl {
                     match ch {
+                        'a' => self.handle_nav(shift, 0),
+                        'e' => self.handle_nav(shift, self.char_count()),
+                        'f' => {
+                            let new = (self.cursor + 1).min(self.char_count());
+                            self.handle_nav(shift, new);
+                        }
+                        'b' => {
+                            let new = self.cursor.saturating_sub(1);
+                            self.handle_nav(shift, new);
+                        }
+                        'd' => {
+                            self.handle_delete();
+                            self.update_completions();
+                        }
+                        'k' => {
+                            let killed = self.kill_to_end();
+                            if !killed.is_empty() {
+                                self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(killed)));
+                            }
+                            self.update_completions();
+                        }
+                        'u' => {
+                            let killed = self.kill_to_start();
+                            if !killed.is_empty() {
+                                self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(killed)));
+                            }
+                            self.update_completions();
+                        }
+                        'w' => {
+                            let killed = self.kill_word_back();
+                            if !killed.is_empty() {
+                                self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(killed)));
+                            }
+                            self.update_completions();
+                        }
+                        't' => {
+                            self.transpose_chars();
+                        }
+                        'y' => {
+                            self.state.put_command(CM_PASTE_REQUEST, None);
+                            return HandleResult::Consumed;
+                        }
                         'c' => {
                             if let Some(text) = self.selected_text() {
                                 self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(text)));
@@ -113,6 +173,7 @@ impl View for InputLine {
                         }
                         _ => return HandleResult::Ignored,
                     }
+                    return HandleResult::Consumed;
                 }
                 self.handle_char(*ch);
                 self.update_completions();

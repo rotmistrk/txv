@@ -4,6 +4,7 @@ mod completion;
 mod completion_frame;
 mod completion_list;
 mod history;
+mod readline;
 #[cfg(test)]
 mod tests;
 mod view_impl;
