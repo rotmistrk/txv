@@ -120,6 +120,8 @@ impl ModalKey {
             if let Some(child) = self.group.child_mut(i) {
                 child.unselect();
             }
+            // Children must not participate in layout when dormant
+            self.group.set_child_bounds(i, Rect::new(0, 0, 0, 0));
         }
         self.propagate_default_palette();
         self.update_bounds();
@@ -153,12 +155,7 @@ impl ModalKey {
 
     pub(crate) fn update_bounds(&mut self) {
         let w = if self.active {
-            // Grow up to what the StatusBar allocated, not beyond.
-            // The InputLine scrolls internally if text exceeds available width.
-            let desired = self.active_width();
-            let current = self.group.bounds().w;
-            let min = self.active_min_width();
-            desired.clamp(min, current.max(min))
+            self.active_width()
         } else {
             self.dormant_width()
         };

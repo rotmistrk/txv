@@ -172,11 +172,8 @@ impl View for InputLine {
                     .put_command(self.submit_command, Some(Box::new(self.text.clone())));
             }
             KeyCode::Esc => {
-                if self.sidekick_visible {
-                    self.hide_sidekick();
-                } else {
-                    self.state.put_command(CM_CANCEL, None);
-                }
+                self.hide_sidekick();
+                self.state.put_command(CM_CANCEL, None);
             }
             _ => return HandleResult::Ignored,
         }
