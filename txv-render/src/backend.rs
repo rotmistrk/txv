@@ -3,27 +3,22 @@
 use std::io::{self, Write};
 use std::time::Duration;
 
-use crossterm::{
-    cursor, event as ct_event, execute, queue,
-    style::{self, Attribute, SetAttribute},
-    terminal::{self, Clear, ClearType},
-};
+use crossterm::{cursor, event as ct_event, execute, queue, terminal};
 use txv_core::buffer::Buffer;
-use txv_core::cell::Style;
 use txv_core::cursor::{CursorRequest, CursorShape};
 use txv_core::event::Event;
 use txv_core::run::{Backend, Waker};
 
 use crate::color::ColorMode;
 use crate::event_translate::{translate_key, translate_mouse};
-use crate::style_emit::{apply_color_mode, emit_style};
 
 /// Crossterm-based terminal backend with dual-buffer diffing.
 pub struct CrosstermBackend {
-    previous: Buffer,
-    color_mode: ColorMode,
-    force_full: bool,
-    last_cursor: Option<CursorRequest>,
+    pub(crate) previous: Buffer,
+    pub(crate) color_mode: ColorMode,
+    pub(crate) force_full: bool,
+    pub(crate) last_cursor: Option<CursorRequest>,
+    pub(crate) cursor_dirty: bool,
     wake_read: std::os::unix::io::RawFd,
     wake_write: std::os::unix::io::RawFd,
 }
@@ -45,6 +40,7 @@ impl CrosstermBackend {
             color_mode,
             force_full: true,
             last_cursor: None,
+            cursor_dirty: true,
             wake_read: fds[0],
             wake_write: fds[1],
         }
@@ -123,118 +119,7 @@ impl Backend for CrosstermBackend {
     }
 
     fn flush(&mut self, buf: &Buffer) {
-        let w = buf.width();
-        let h = buf.height();
-
-        // Resize or force-full: invalidate previous buffer so all cells are emitted
-        if self.previous.width() != w || self.previous.height() != h {
-            self.previous = Buffer::new(w, h);
-            self.force_full = true;
-        }
-
-        let mut out = io::stdout().lock();
-        let mut last_style: Option<Style> = None;
-
-        if self.force_full {
-            queue!(out, SetAttribute(Attribute::Reset)).ok();
-            queue!(out, Clear(ClearType::All)).ok();
-            last_style = None;
-        }
-
-        for y in 0..h {
-            let mut cursor_x: Option<u16> = None;
-
-            // Find last meaningful cell on this row (non-default-space).
-            let last_meaningful = (0..w)
-                .rev()
-                .find(|&x| {
-                    let c = buf.cell(x, y);
-                    c.ch != ' ' || c.style != Style::default() || c.width != 1
-                })
-                .map(|x| x + 1)
-                .unwrap_or(0);
-
-            let mut x = 0u16;
-            while x < w {
-                let cell = buf.cell(x, y);
-                let prev = self.previous.cell(x, y);
-
-                // Beyond last meaningful: only emit EL if previous had content here
-                if x >= last_meaningful {
-                    // Check if any remaining previous cells are non-default-space
-                    if !self.force_full {
-                        let prev_had_content = (x..w).any(|px| {
-                            let p = self.previous.cell(px, y);
-                            p.ch != ' ' || p.style != Style::default() || p.width != 1
-                        });
-                        if prev_had_content {
-                            queue!(out, cursor::MoveTo(x, y)).ok();
-                            queue!(out, SetAttribute(Attribute::Reset)).ok();
-                            queue!(out, Clear(ClearType::UntilNewLine)).ok();
-                            last_style = None;
-                        }
-                    }
-                    break;
-                }
-
-                // Skip unchanged cells — but NEVER skip if previous frame had
-                // a wide char or placeholder here (terminal state may differ)
-                if !self.force_full
-                    && cell.ch == prev.ch
-                    && cell.style == prev.style
-                    && cell.width == prev.width
-                    && prev.width == 1
-                {
-                    x += 1;
-                    cursor_x = None;
-                    continue;
-                }
-
-                // Skip continuation cells that haven't changed
-                if cell.width == 0 && prev.width == 0 {
-                    x += 1;
-                    continue;
-                }
-
-                // Need to emit this cell
-                if cursor_x != Some(x) {
-                    queue!(out, cursor::MoveTo(x, y)).ok();
-                }
-
-                let style = apply_color_mode(cell.style, self.color_mode);
-                if last_style.as_ref() != Some(&style) {
-                    emit_style(&mut out, &style);
-                    last_style = Some(style);
-                }
-
-                let ch = if cell.width == 0 {
-                    ' '
-                } else {
-                    cell.ch
-                };
-                queue!(out, style::Print(ch)).ok();
-                let advance = if cell.width > 1 {
-                    cell.width as u16
-                } else {
-                    1
-                };
-                cursor_x = Some(x + advance);
-                x += 1;
-            }
-        }
-
-        queue!(out, SetAttribute(Attribute::Reset)).ok();
-        out.flush().ok();
-
-        self.force_full = false;
-
-        // Copy current to previous (full copy, always)
-        for y in 0..h {
-            for x in 0..w {
-                let cell = buf.cell(x, y);
-                self.previous.put(x, y, cell.ch, cell.style);
-            }
-        }
+        self.flush_buffer(buf);
     }
 
     fn invalidate(&mut self) {
@@ -247,18 +132,22 @@ impl Backend for CrosstermBackend {
 
     fn set_cursor(&mut self, req: Option<CursorRequest>) {
         let changed = self.last_cursor != req;
+        if !changed && !self.cursor_dirty {
+            return;
+        }
         self.last_cursor = req;
+        self.cursor_dirty = false;
         let mut out = io::stdout().lock();
         match req {
             Some(c) if c.shape != CursorShape::Hidden => {
-                let seq = match c.shape {
-                    CursorShape::Block => "\x1b[2 q",
-                    CursorShape::Underline => "\x1b[4 q",
-                    CursorShape::Bar => "\x1b[6 q",
-                    CursorShape::Hidden => unreachable!(),
-                };
                 queue!(out, cursor::MoveTo(c.x, c.y), cursor::Show).ok();
                 if changed {
+                    let seq = match c.shape {
+                        CursorShape::Block => "\x1b[2 q",
+                        CursorShape::Underline => "\x1b[4 q",
+                        CursorShape::Bar => "\x1b[6 q",
+                        CursorShape::Hidden => unreachable!(),
+                    };
                     out.write_all(seq.as_bytes()).ok();
                 }
             }

@@ -5,6 +5,7 @@
 //! emulator (`TermBuf`), color mode detection/downgrade, and text utilities.
 
 pub mod backend;
+mod backend_flush;
 pub mod color;
 pub mod diff;
 mod event_translate;
