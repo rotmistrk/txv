@@ -122,7 +122,6 @@ impl View for SplitPane {
             return;
         }
         self.group.buffer_mut().fill(' ', Style::default());
-        let my_bounds = self.group.bounds();
 
         // Draw and blit children
         for child in self.group.children_iter_mut() {
@@ -133,10 +132,8 @@ impl View for SplitPane {
         let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child(i) {
-                let cb = child.bounds();
-                let dx = cb.x.saturating_sub(my_bounds.x);
-                let dy = cb.y.saturating_sub(my_bounds.y);
-                unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
+                let (ox, oy) = self.group.child_origin(i);
+                unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
             }
         }
 

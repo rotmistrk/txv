@@ -60,12 +60,18 @@ impl TiledWorkspace {
         }
     }
 
-    fn collect_panel_rects(&self, origin: Rect) -> Vec<Rect> {
+    fn collect_panel_rects(&self, _origin: Rect) -> Vec<Rect> {
         (0..self.configs.len())
             .filter(|&i| !self.hidden[i])
-            .filter_map(|i| self.group.child(i).map(|c| c.bounds()))
-            .filter(|r| r.w > 0 && r.h > 0)
-            .map(|r| Rect::new(r.x.saturating_sub(origin.x), r.y.saturating_sub(origin.y), r.w, r.h))
+            .filter_map(|i| {
+                let child = self.group.child(i)?;
+                let cs = child.bounds();
+                if cs.w == 0 || cs.h == 0 {
+                    return None;
+                }
+                let (ox, oy) = self.group.child_origin(i);
+                Some(Rect::new(ox, oy, cs.w, cs.h))
+            })
             .collect()
     }
 

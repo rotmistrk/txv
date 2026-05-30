@@ -203,9 +203,9 @@ impl ViewState {
     pub fn set_bounds(&mut self, r: Rect) {
         if self.bounds.w != r.w || self.bounds.h != r.h {
             self.buf.resize(r.w, r.h);
+            self.bounds = Rect::new(0, 0, r.w, r.h);
+            self.dirty = true;
         }
-        self.bounds = r;
-        self.dirty = true;
     }
 
     pub fn buffer(&self) -> &Buffer {

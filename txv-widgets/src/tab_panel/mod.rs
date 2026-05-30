@@ -160,6 +160,12 @@ impl TabPanel {
         self.group.child(gi)
     }
 
+    /// Get origin of the active child in panel-local coordinates.
+    pub fn active_child_origin(&self) -> (u16, u16) {
+        let gi = self.bar().active_index() + 1;
+        self.group.child_origin(gi)
+    }
+
     /// Access active child view mutably (Box).
     pub fn active_child_mut(&mut self) -> Option<&mut Box<dyn View>> {
         let gi = self.bar().active_index() + 1;

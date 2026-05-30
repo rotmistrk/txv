@@ -26,7 +26,6 @@ impl View for TiledWorkspace {
         }
         self.group.buffer_mut().fill(' ', Style::default());
         self.draw_chrome();
-        let my_bounds = self.group.bounds();
 
         for i in 0..self.configs.len() {
             if !self.is_panel_visible(i) {
@@ -43,13 +42,12 @@ impl View for TiledWorkspace {
                 continue;
             }
             if let Some(child) = self.group.child(i) {
-                let cb = child.bounds();
-                if cb.w == 0 || cb.h == 0 {
+                let cs = child.bounds();
+                if cs.w == 0 || cs.h == 0 {
                     continue;
                 }
-                let dx = cb.x.saturating_sub(my_bounds.x);
-                let dy = cb.y.saturating_sub(my_bounds.y);
-                unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
+                let (ox, oy) = self.group.child_origin(i);
+                unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
             }
         }
     }

@@ -161,13 +161,11 @@ impl View for StatusBar {
         let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child(i) {
-                let cb = child.bounds();
-                if cb.w == 0 {
+                if child.bounds().w == 0 {
                     continue;
                 }
-                let dx = cb.x.saturating_sub(bounds.x);
-                let dy = cb.y.saturating_sub(bounds.y);
-                unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
+                let (ox, oy) = self.group.child_origin(i);
+                unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
             }
         }
     }

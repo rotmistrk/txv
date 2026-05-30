@@ -79,6 +79,11 @@ impl SplitPanel {
         self.group.child(idx)
     }
 
+    /// Get origin of a child in panel-local coordinates.
+    pub fn child_origin(&self, idx: usize) -> (u16, u16) {
+        self.group.child_origin(idx)
+    }
+
     /// Access a child mutably.
     pub fn child_mut(&mut self, idx: usize) -> Option<&mut Box<dyn View>> {
         self.group.child_mut(idx)

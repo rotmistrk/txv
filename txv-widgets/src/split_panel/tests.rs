@@ -32,12 +32,14 @@ fn horizontal_split_divides_width() {
 
     let b0 = sp.child(0).unwrap().bounds();
     let b1 = sp.child(1).unwrap().bounds();
+    let (o0x, _) = sp.child_origin(0);
+    let (o1x, _) = sp.child_origin(1);
     // 1 column reserved for divider
     assert_eq!(b0.w + b1.w + 1, 100);
     assert_eq!(b0.h, 40);
     assert_eq!(b1.h, 40);
-    assert_eq!(b0.x, 0);
-    assert!(b1.x > 0);
+    assert_eq!(o0x, 0);
+    assert!(o1x > 0);
 }
 
 #[test]
@@ -49,11 +51,13 @@ fn vertical_split_divides_height() {
 
     let b0 = sp.child(0).unwrap().bounds();
     let b1 = sp.child(1).unwrap().bounds();
-    // Second child starts where first ends (overlaps divider row)
-    assert_eq!(b1.y, b0.y + b0.h, "second child starts at divider row");
+    let (_, o0y) = sp.child_origin(0);
+    let (_, o1y) = sp.child_origin(1);
+    // Second child starts where first ends
+    assert_eq!(o1y, o0y + b0.h, "second child starts after first");
     assert_eq!(b0.h + b1.h, 40, "children fill full height");
     assert_eq!(b0.w, 80);
-    assert_eq!(b0.y, 0);
+    assert_eq!(o0y, 0);
 }
 
 #[test]

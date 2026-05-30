@@ -16,6 +16,8 @@ use crate::view::{View, ViewOptions, ViewState};
 pub struct GroupState {
     view: ViewState,
     pub(crate) children: Vec<Box<dyn View>>,
+    /// Origin of each child in parent-local coordinates.
+    pub(crate) origins: Vec<(u16, u16)>,
     pub(crate) focused: usize,
     /// Named children: name → index.
     named: HashMap<String, usize>,
@@ -26,6 +28,7 @@ impl GroupState {
         Self {
             view: ViewState::new(options),
             children: Vec::new(),
+            origins: Vec::new(),
             focused: 0,
             named: HashMap::new(),
         }
@@ -33,6 +36,7 @@ impl GroupState {
 
     pub fn insert(&mut self, child: Box<dyn View>) {
         self.children.push(child);
+        self.origins.push((0, 0));
         let idx = self.children.len() - 1;
         self.propagate_sink_to(idx);
         self.view.mark_dirty();
@@ -40,12 +44,14 @@ impl GroupState {
 
     pub fn insert_at(&mut self, index: usize, child: Box<dyn View>) {
         self.children.insert(index, child);
+        self.origins.insert(index, (0, 0));
         self.propagate_sink_to(index);
         self.view.mark_dirty();
     }
 
     pub fn remove(&mut self, index: usize) -> Box<dyn View> {
         let child = self.children.remove(index);
+        self.origins.remove(index);
         if self.focused >= self.children.len() && self.focused > 0 {
             self.focused -= 1;
         }
@@ -66,6 +72,7 @@ impl GroupState {
             self.propagate_sink_to(old_idx);
         } else {
             self.children.push(child);
+            self.origins.push((0, 0));
             let idx = self.children.len() - 1;
             self.propagate_sink_to(idx);
             self.named.insert(name.to_string(), idx);
@@ -118,11 +125,26 @@ impl GroupState {
         self.children.get_mut(self.focused)
     }
 
-    /// Set bounds on a child by index.
+    /// Set origin (position within parent) and size for a child.
     pub fn set_child_bounds(&mut self, index: usize, rect: crate::geometry::Rect) {
-        if let Some(child) = self.children.get_mut(index) {
-            child.set_bounds(rect);
+        if let Some(origin) = self.origins.get_mut(index) {
+            *origin = (rect.x, rect.y);
         }
+        if let Some(child) = self.children.get_mut(index) {
+            child.set_bounds(crate::geometry::Rect::new(0, 0, rect.w, rect.h));
+        }
+    }
+
+    /// Set origin of a child in parent-local coordinates.
+    pub fn set_child_origin(&mut self, index: usize, x: u16, y: u16) {
+        if let Some(origin) = self.origins.get_mut(index) {
+            *origin = (x, y);
+        }
+    }
+
+    /// Get origin of a child in parent-local coordinates.
+    pub fn child_origin(&self, index: usize) -> (u16, u16) {
+        self.origins.get(index).copied().unwrap_or((0, 0))
     }
 
     /// Select the focused child, unselect the previous.

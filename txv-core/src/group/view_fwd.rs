@@ -73,23 +73,22 @@ impl GroupState {
     /// Query the focused child's cursor request and translate to group-relative coords.
     /// Preprocess children that report a cursor take priority (they capture input when active).
     pub fn cursor(&self) -> Option<crate::cursor::CursorRequest> {
-        let gb = self.view.bounds();
         // Check preprocess children first — if they report a cursor, they're active.
-        for child in &self.children {
+        for (i, child) in self.children.iter().enumerate() {
             if child.options().preprocess {
                 if let Some(mut req) = child.cursor() {
-                    let cb = child.bounds();
-                    req.x = req.x.saturating_add(cb.x).saturating_sub(gb.x);
-                    req.y = req.y.saturating_add(cb.y).saturating_sub(gb.y);
+                    let (ox, oy) = self.origins.get(i).copied().unwrap_or((0, 0));
+                    req.x = req.x.saturating_add(ox);
+                    req.y = req.y.saturating_add(oy);
                     return Some(req);
                 }
             }
         }
         let child = self.focused_child()?;
         let mut req = child.cursor()?;
-        let cb = child.bounds();
-        req.x = req.x.saturating_add(cb.x).saturating_sub(gb.x);
-        req.y = req.y.saturating_add(cb.y).saturating_sub(gb.y);
+        let (ox, oy) = self.origins.get(self.focused).copied().unwrap_or((0, 0));
+        req.x = req.x.saturating_add(ox);
+        req.y = req.y.saturating_add(oy);
         Some(req)
     }
 }

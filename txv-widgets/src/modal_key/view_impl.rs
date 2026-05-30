@@ -121,18 +121,17 @@ impl ModalKey {
 
     fn layout_children_modal(&mut self) {
         let prompt_w = self.prompt.len() as u16;
-        let y = self.group.bounds().y;
         // +1 for left power cap
-        let base_x = self.group.bounds().x + prompt_w + 1;
+        let base_x = prompt_w + 1;
         let mut x = base_x;
         for i in 0..self.group.child_count() {
             let cw = self.group.child(i).map_or(0, |c| c.bounds().w);
-            self.group.set_child_bounds(i, Rect::new(x, y, cw, 1));
+            self.group.set_child_bounds(i, Rect::new(x, 0, cw, 1));
             x += cw;
         }
     }
 
-    fn draw_children(&mut self, bounds: Rect) {
+    fn draw_children(&mut self, _bounds: Rect) {
         let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
@@ -141,11 +140,9 @@ impl ModalKey {
                 }
             }
             if let Some(child) = self.group.child(i) {
-                let cb = child.bounds();
-                if cb.w > 0 {
-                    let dx = cb.x.saturating_sub(bounds.x);
-                    let dy = cb.y.saturating_sub(bounds.y);
-                    unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
+                if child.bounds().w > 0 {
+                    let (ox, oy) = self.group.child_origin(i);
+                    unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
                 }
             }
         }

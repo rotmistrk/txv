@@ -55,14 +55,17 @@ fn wide_layout_three_columns() {
     let b0 = ws.group.child(0).unwrap().bounds();
     let b1 = ws.group.child(1).unwrap().bounds();
     let b2 = ws.group.child(2).unwrap().bounds();
+    let (o0x, _) = ws.group.child_origin(0);
+    let (o1x, _) = ws.group.child_origin(1);
+    let (o2x, _) = ws.group.child_origin(2);
 
     assert!(b0.w > 0, "tree should have width");
     assert!(b1.w > 0, "main should have width");
     assert!(b2.w > 0, "tools should have width");
     // 2 divider gaps (1 cell each) between 3 panels
     assert_eq!(b0.w + b1.w + b2.w + 2, 200);
-    assert!(b0.x < b1.x, "tree left of main");
-    assert!(b1.x < b2.x, "main left of tools");
+    assert!(o0x < o1x, "tree left of main");
+    assert!(o1x < o2x, "main left of tools");
 }
 
 #[test]
@@ -77,12 +80,14 @@ fn narrow_layout_stacked() {
     let b0 = ws.group.child(0).unwrap().bounds();
     let b1 = ws.group.child(1).unwrap().bounds();
     let b2 = ws.group.child(2).unwrap().bounds();
+    let (_, o1y) = ws.group.child_origin(1);
+    let (_, o2y) = ws.group.child_origin(2);
 
     // Narrow: tree on left, main+tools stacked vertically on right
     assert!(b0.w > 0);
     assert!(b1.w > 0);
     assert!(b2.w > 0);
-    assert!(b1.y < b2.y, "main above tools in narrow mode: b1={b1:?} b2={b2:?}");
+    assert!(o1y < o2y, "main above tools in narrow mode");
 }
 
 #[test]
@@ -95,10 +100,10 @@ fn toggle_hides_panel() {
 
     ws.toggle_panel(0); // hide tree
     let b0 = ws.group.child(0).unwrap().bounds();
-    let b1 = ws.group.child(1).unwrap().bounds();
+    let (o1x, _) = ws.group.child_origin(1);
     // Tree gets no space, main+tools fill width
     assert_eq!(b0.w, 0);
-    assert_eq!(b1.x, 0, "main starts at left edge when tree hidden");
+    assert_eq!(o1x, 0, "main starts at left edge when tree hidden");
 }
 
 #[test]
@@ -110,7 +115,8 @@ fn zoom_gives_full_bounds() {
     ws.toggle_zoom();
 
     let b1 = ws.group.child(1).unwrap().bounds();
-    assert_eq!(b1, Rect::new(0, 0, 200, 50));
+    assert_eq!(b1.w, 200);
+    assert_eq!(b1.h, 50);
 }
 
 #[test]
@@ -165,28 +171,28 @@ fn layout_cycle_changes_mode() {
     ws.set_bounds(Rect::new(0, 0, 80, 40)); // narrow by threshold
 
     // Auto mode: narrow terminal → narrow layout (tools below)
-    let b2 = ws.group.child(2).unwrap().bounds();
-    let b1 = ws.group.child(1).unwrap().bounds();
-    assert!(b2.y > b1.y, "narrow auto: tools below main");
+    let (_, o2y) = ws.group.child_origin(2);
+    let (_, o1y) = ws.group.child_origin(1);
+    assert!(o2y > o1y, "narrow auto: tools below main");
 
     // Force wide
     ws.cycle_layout(); // Auto → Wide
-    let b2 = ws.group.child(2).unwrap().bounds();
-    let b1 = ws.group.child(1).unwrap().bounds();
-    assert_eq!(b2.y, b1.y, "forced wide: tools beside main");
+    let (_, o2y) = ws.group.child_origin(2);
+    let (_, o1y) = ws.group.child_origin(1);
+    assert_eq!(o2y, o1y, "forced wide: tools beside main");
 
     // Force narrow
     ws.cycle_layout(); // Wide → Narrow
     ws.set_bounds(Rect::new(0, 0, 200, 50)); // wide terminal but forced narrow
-    let b2 = ws.group.child(2).unwrap().bounds();
-    let b1 = ws.group.child(1).unwrap().bounds();
-    assert!(b2.y > b1.y, "forced narrow: tools below even on wide terminal");
+    let (_, o2y) = ws.group.child_origin(2);
+    let (_, o1y) = ws.group.child_origin(1);
+    assert!(o2y > o1y, "forced narrow: tools below even on wide terminal");
 
     // Back to auto
     ws.cycle_layout(); // Narrow → Auto
-    let b2 = ws.group.child(2).unwrap().bounds();
-    let b1 = ws.group.child(1).unwrap().bounds();
-    assert_eq!(b2.y, b1.y, "auto on wide terminal: tools beside");
+    let (_, o2y) = ws.group.child_origin(2);
+    let (_, o1y) = ws.group.child_origin(1);
+    assert_eq!(o2y, o1y, "auto on wide terminal: tools beside");
 }
 
 #[test]

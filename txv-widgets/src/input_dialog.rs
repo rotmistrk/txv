@@ -102,16 +102,11 @@ impl View for InputDialog {
         if let Some(child) = self.group.child_mut(0) {
             child.draw();
         }
-        let my_bounds = self.group.bounds();
-        let cb = self.group.child(0).map(|c| c.bounds());
-        if let Some(cb) = cb {
-            let dx = cb.x.saturating_sub(my_bounds.x);
-            let dy = cb.y.saturating_sub(my_bounds.y);
-            let buf_ptr = self.group.buffer_mut() as *mut Buffer;
-            let child_buf = self.group.child(0).map(|c| c.buffer() as *const Buffer);
-            if let Some(cbuf) = child_buf {
-                unsafe { (*buf_ptr).blit(&*cbuf, dx, dy) };
-            }
+        let (ox, oy) = self.group.child_origin(0);
+        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
+        let child_buf = self.group.child(0).map(|c| c.buffer() as *const Buffer);
+        if let Some(cbuf) = child_buf {
+            unsafe { (*buf_ptr).blit(&*cbuf, ox, oy) };
         }
     }
 
