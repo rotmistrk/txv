@@ -25,8 +25,13 @@ impl InputLine {
             1 => {
                 self.text = items.remove(0).text().to_string();
                 self.cursor = self.char_count();
-                self.hide_sidekick();
                 self.update_width();
+                // If completed to a directory (ends with /), show contents
+                if self.text.ends_with('/') {
+                    self.update_completions();
+                } else {
+                    self.hide_sidekick();
+                }
             }
             _ => self.show_sidekick(items),
         }
@@ -105,6 +110,11 @@ impl InputLine {
             self.cursor = self.char_count();
             self.update_width();
         }
-        self.hide_sidekick();
+        // If completed to a directory, show its contents
+        if self.text.ends_with('/') {
+            self.update_completions();
+        } else {
+            self.hide_sidekick();
+        }
     }
 }
