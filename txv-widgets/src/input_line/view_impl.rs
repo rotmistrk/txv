@@ -148,8 +148,11 @@ impl View for InputLine {
                             self.update_completions();
                         }
                         'w' => {
-                            // C-w conflicts with global split prefix; use Alt-Backspace instead
-                            return HandleResult::Ignored;
+                            let killed = self.kill_word_back();
+                            if !killed.is_empty() {
+                                self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(killed)));
+                            }
+                            self.update_completions();
                         }
                         't' => {
                             self.transpose_chars();
