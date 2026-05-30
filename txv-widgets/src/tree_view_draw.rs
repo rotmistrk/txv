@@ -66,17 +66,16 @@ impl<D: TreeData> TreeView<D> {
             if let Some(positions) = self.data.highlight_positions(id) {
                 let sm = palette().style(StyleId::SearchMatch);
                 let hl_style = Style {
-                    fg: if sm.fg != Color::Reset {
-                        sm.fg
-                    } else {
-                        style.fg
-                    },
-                    bg: if sm.bg != Color::Reset {
+                    fg: if sm.bg != Color::Reset {
                         sm.bg
                     } else {
-                        style.bg
+                        sm.fg
                     },
-                    attrs: style.attrs,
+                    bg: style.bg,
+                    attrs: Attrs {
+                        bold: true,
+                        ..style.attrs
+                    },
                 };
                 for (ci, ch) in label.chars().enumerate() {
                     let cx = label_x + ci as u16;
