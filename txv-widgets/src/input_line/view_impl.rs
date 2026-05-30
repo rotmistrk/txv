@@ -155,11 +155,7 @@ impl View for InputLine {
                 }
             }
             KeyCode::Tab => {
-                if self.sidekick_visible {
-                    self.apply_sidekick_selection();
-                } else {
-                    self.try_complete();
-                }
+                self.try_complete();
             }
             KeyCode::Enter => {
                 if self.sidekick_visible {
