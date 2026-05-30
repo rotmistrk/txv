@@ -9,6 +9,7 @@ pub mod dialog;
 pub mod file_list;
 pub mod file_tree;
 mod file_tree_filter;
+pub mod frame;
 pub mod fuzzy_select;
 pub mod input_dialog;
 pub mod input_line;

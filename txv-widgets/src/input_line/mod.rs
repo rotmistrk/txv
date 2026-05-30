@@ -1,7 +1,9 @@
 //! InputLine — single-line text input with history, completion, and selection.
 
 mod completion;
+mod completion_frame;
 mod completion_list;
+mod history;
 #[cfg(test)]
 mod tests;
 mod view_impl;
@@ -34,6 +36,8 @@ pub struct InputLine {
     pub(crate) palette: Option<Arc<dyn Palette>>,
     /// Shared completion popup (ListView held by SidekickManager).
     pub(crate) popup: Arc<Mutex<ListView<CompletionList>>>,
+    /// Framed wrapper sent to SidekickManager.
+    pub(crate) popup_frame: Arc<Mutex<completion_frame::CompletionFrame>>,
     /// Whether popup is currently visible.
     pub(crate) sidekick_visible: bool,
 }
@@ -41,6 +45,8 @@ pub struct InputLine {
 impl InputLine {
     pub fn new() -> Self {
         let list = ListView::new(CompletionList::new(Vec::new()));
+        let popup = Arc::new(Mutex::new(list));
+        let frame = completion_frame::CompletionFrame::new(Arc::clone(&popup));
         Self {
             state: ViewState::default(),
             text: String::new(),
@@ -51,7 +57,8 @@ impl InputLine {
             completer: None,
             submit_command: CM_OK,
             palette: None,
-            popup: Arc::new(Mutex::new(list)),
+            popup,
+            popup_frame: Arc::new(Mutex::new(frame)),
             sidekick_visible: false,
         }
     }
@@ -162,13 +169,6 @@ impl InputLine {
         }
     }
 
-    pub(crate) fn push_history(&mut self) {
-        if !self.text.is_empty() {
-            self.history.push(self.text.clone());
-        }
-        self.history_pos = None;
-    }
-
     pub(crate) fn handle_char(&mut self, ch: char) {
         self.delete_selection();
         let byte_pos = self.char_to_byte(self.cursor);
@@ -210,37 +210,6 @@ impl InputLine {
         }
         self.cursor = new_cursor;
         self.state.mark_dirty();
-    }
-
-    pub(crate) fn handle_history_up(&mut self) {
-        if self.history.is_empty() {
-            return;
-        }
-        let pos = match self.history_pos {
-            Some(p) => p.saturating_sub(1),
-            None => self.history.len() - 1,
-        };
-        self.history_pos = Some(pos);
-        self.text = self.history[pos].clone();
-        self.cursor = self.char_count();
-        self.selection = None;
-        self.update_width();
-    }
-
-    pub(crate) fn handle_history_down(&mut self) {
-        let Some(pos) = self.history_pos else {
-            return;
-        };
-        if pos + 1 < self.history.len() {
-            self.history_pos = Some(pos + 1);
-            self.text = self.history[pos + 1].clone();
-        } else {
-            self.history_pos = None;
-            self.text.clear();
-        }
-        self.cursor = self.char_count();
-        self.selection = None;
-        self.update_width();
     }
 
     pub(crate) fn handle_command(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {

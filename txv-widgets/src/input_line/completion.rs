@@ -21,7 +21,7 @@ impl InputLine {
             Ok(items.len() < 20)
         });
         match items.len() {
-            0 => self.hide_sidekick(),
+            0 => self.show_sidekick(items),
             1 => {
                 self.text = items.remove(0).text().to_string();
                 self.cursor = self.char_count();
@@ -49,11 +49,7 @@ impl InputLine {
             items.push(CompletionItem::new(c.text().to_string(), c.display().to_string()));
             Ok(items.len() < 20)
         });
-        if items.len() > 1 {
-            self.show_sidekick(items);
-        } else {
-            self.hide_sidekick();
-        }
+        self.show_sidekick(items);
     }
 
     fn show_sidekick(&mut self, items: Vec<CompletionItem>) {
@@ -74,13 +70,19 @@ impl InputLine {
     }
 
     fn emit_sidekick_show(&self, content_width: usize) {
-        let h = self.popup.lock().map(|lv| lv.data().len()).unwrap_or(0).min(8) as u16;
-        let w = (content_width as u16 + 2).clamp(10, 40);
-        // Rect relative to self: x=0, y=0 (will be placed above emitter by manager).
+        let count = self.popup.lock().map(|lv| lv.data().len()).unwrap_or(0);
+        // Update count on the frame
+        if let Ok(mut frame) = self.popup_frame.lock() {
+            frame.set_count(count);
+        }
+        let content_h = count.min(8) as u16;
+        // +2 for top/bottom border
+        let h = content_h + 2;
+        let w = (content_width as u16 + 4).clamp(14, 42);
         let rect = Rect::new(0, 0, w, h);
         let data = SidekickShow {
             rect,
-            view: Arc::clone(&self.popup) as Arc<Mutex<dyn View>>,
+            view: Arc::clone(&self.popup_frame) as Arc<Mutex<dyn View>>,
             emitter_id: self.state.id(),
         };
         self.state.put_command(CM_SIDEKICK_SHOW, Some(Box::new(data)));
