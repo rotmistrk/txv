@@ -1,12 +1,13 @@
 //! SidekickManager — postprocess View that holds a shared popup View.
 //!
 //! When hidden: bounds 0×0, invisible.
-//! On CM_SIDEKICK_SHOW: stores the Arc<Mutex<dyn View>>, positions itself.
-//! On CM_SIDEKICK_HIDE: drops the Arc, goes invisible.
+//! On CM_SIDEKICK_SHOW: stores the Arc<Mutex<dyn View>>, emits CM_REPOSITION.
+//! On CM_SIDEKICK_HIDE: drops the Arc, repositions to 0×0.
 //! The owner (InputLine) mutates the shared View directly — no re-creation needed.
 
 use std::sync::{Arc, Mutex};
 
+use txv_core::commands::{RepositionRequest, CM_REPOSITION};
 use txv_core::prelude::*;
 
 use crate::sidekick::{SidekickShow, CM_SIDEKICK_HIDE, CM_SIDEKICK_SHOW};
@@ -26,10 +27,24 @@ impl SidekickManager {
             child: None,
         }
     }
+
+    fn request_reposition(&self, rect: Rect) {
+        self.state.put_command(
+            CM_REPOSITION,
+            Some(Box::new(RepositionRequest {
+                view_id: self.state.id(),
+                rect,
+            })),
+        );
+    }
 }
 
 impl View for SidekickManager {
-    delegate_view_state!(state, override { draw, handle, needs_redraw });
+    delegate_view_state!(state, override { draw, handle, needs_redraw, view_id });
+
+    fn view_id(&self) -> ViewId {
+        self.state.id()
+    }
 
     fn needs_redraw(&self) -> bool {
         if self.state.is_dirty() {
@@ -69,15 +84,13 @@ impl View for SidekickManager {
                         child.set_bounds(Rect::new(0, 0, show.rect.w, show.rect.h));
                     }
                     self.child = Some(Arc::clone(&show.view));
-                    self.state.set_bounds(show.rect);
-                    self.state.mark_dirty();
+                    self.request_reposition(show.rect);
                 }
                 HandleResult::Consumed
             }
             CM_SIDEKICK_HIDE => {
                 self.child = None;
-                self.state.set_bounds(Rect::new(0, 0, 0, 0));
-                self.state.mark_dirty();
+                self.request_reposition(Rect::new(0, 0, 0, 0));
                 HandleResult::Consumed
             }
             _ => HandleResult::Ignored,

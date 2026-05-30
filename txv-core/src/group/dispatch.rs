@@ -1,12 +1,29 @@
 //! Three-phase event dispatch and delegate_group_state! macro.
 
 use super::GroupState;
+use crate::commands::{RepositionRequest, CM_REPOSITION};
 use crate::event::Event;
 use crate::view::{EventSink, HandleResult};
 
 impl GroupState {
     /// Three-phase event dispatch.
     pub fn dispatch(&mut self, event: &Event) -> HandleResult {
+        // CM_REPOSITION: the group itself handles it (child asks parent to move it).
+        if let Event::Command { id, data } = event {
+            if *id == CM_REPOSITION {
+                if let Some(req) = data.as_ref().and_then(|d| d.downcast_ref::<RepositionRequest>()) {
+                    for i in 0..self.children.len() {
+                        if self.children[i].view_id() == req.view_id {
+                            self.set_child_bounds(i, req.rect);
+                            self.mark_dirty();
+                            return HandleResult::Consumed;
+                        }
+                    }
+                }
+                return HandleResult::Ignored;
+            }
+        }
+
         // Phase 1: preprocess
         for child in &mut self.children {
             if child.options().preprocess && child.handle(event) == HandleResult::Consumed {

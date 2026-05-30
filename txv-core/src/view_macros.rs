@@ -129,6 +129,7 @@ macro_rules! __dvs_maybe {
     (set_bounds, [set_bounds $(, $rest:ident)*], { $($body:tt)* }) => {};
     (set_sink, [set_sink $(, $rest:ident)*], { $($body:tt)* }) => {};
     (options, [options $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (view_id, [view_id $(, $rest:ident)*], { $($body:tt)* }) => {};
     (title, [title $(, $rest:ident)*], { $($body:tt)* }) => {};
     (needs_redraw, [needs_redraw $(, $rest:ident)*], { $($body:tt)* }) => {};
     (mark_redrawn, [mark_redrawn $(, $rest:ident)*], { $($body:tt)* }) => {};

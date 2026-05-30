@@ -182,7 +182,6 @@ impl Program {
                         return true;
                     }
                     if *id == crate::commands::CM_REPAINT {
-                        // handled below after drain
                         continue;
                     }
                 }
