@@ -153,7 +153,12 @@ impl ModalKey {
 
     pub(crate) fn update_bounds(&mut self) {
         let w = if self.active {
-            self.active_width()
+            // Grow up to what the StatusBar allocated, not beyond.
+            // The InputLine scrolls internally if text exceeds available width.
+            let desired = self.active_width();
+            let current = self.group.bounds().w;
+            let min = self.active_min_width();
+            desired.clamp(min, current.max(min))
         } else {
             self.dormant_width()
         };
