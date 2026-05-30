@@ -77,13 +77,16 @@ impl StatusBar {
         self.hint_iter()
             .enumerate()
             .map(
-                |(idx, (priority, min_width, max_width, stretch, gravity, natural_width))| {
+                |(idx, (priority, min_width, max_width, stretch, gravity, natural_width, last_alloc))| {
                     let min_w = if min_width > 0 {
                         min_width
                     } else {
-                        // Use current child width or natural width fallback
                         let current = self.child_buffer_width(idx);
-                        if current > 0 {
+                        if stretch > 0 && current == last_alloc {
+                            // Child width equals last layout allocation — it's inflated
+                            // by stretch. Use natural width as the true minimum.
+                            natural_width
+                        } else if current > 0 {
                             current
                         } else {
                             natural_width
@@ -130,11 +133,13 @@ impl StatusBar {
                     rx += item.alloc;
                 }
             }
+            self.set_last_alloc(item.idx, item.alloc);
         }
 
         for (idx, is_assigned) in assigned.iter().enumerate() {
             if !is_assigned {
                 self.set_child_rect(idx, Rect::new(0, 0, 0, bounds.h));
+                self.set_last_alloc(idx, 0);
             }
         }
     }

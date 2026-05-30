@@ -43,6 +43,7 @@ impl StatusBar {
             stretch,
             gravity,
             natural_width: initial_w,
+            last_alloc: 0,
         });
     }
 
@@ -65,7 +66,7 @@ impl StatusBar {
         self.group.bounds()
     }
 
-    pub(super) fn hint_iter(&self) -> impl Iterator<Item = (u8, u16, u16, u16, Gravity, u16)> + '_ {
+    pub(super) fn hint_iter(&self) -> impl Iterator<Item = (u8, u16, u16, u16, Gravity, u16, u16)> + '_ {
         self.hints.iter().map(|h| {
             (
                 h.priority,
@@ -74,6 +75,7 @@ impl StatusBar {
                 h.stretch,
                 h.gravity,
                 h.natural_width,
+                h.last_alloc,
             )
         })
     }
@@ -88,6 +90,12 @@ impl StatusBar {
 
     pub(super) fn set_child_rect(&mut self, idx: usize, rect: Rect) {
         self.group.set_child_bounds(idx, rect);
+    }
+
+    pub(super) fn set_last_alloc(&mut self, idx: usize, alloc: u16) {
+        if let Some(h) = self.hints.get_mut(idx) {
+            h.last_alloc = alloc;
+        }
     }
 }
 
