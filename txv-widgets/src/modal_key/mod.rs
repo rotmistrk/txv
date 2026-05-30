@@ -104,6 +104,12 @@ impl ModalKey {
                 child.select();
             }
         }
+        // Request minimum active width so parent layout can drop lower-priority items
+        let b = self.group.bounds();
+        let min_active = self.active_min_width();
+        if b.w < min_active {
+            self.group.set_bounds(Rect::new(b.x, b.y, min_active, b.h));
+        }
         self.group.mark_dirty();
     }
 
@@ -173,5 +179,12 @@ impl ModalKey {
             .sum();
         // +2 for power caps (left + right)
         prompt_w + children_w + 3
+    }
+
+    /// Minimum width when active (prompt + caps + reasonable input space).
+    fn active_min_width(&self) -> u16 {
+        let prompt_w = self.prompt.len() as u16;
+        // prompt + 2 caps + at least 20 chars for input
+        prompt_w + 2 + 20
     }
 }

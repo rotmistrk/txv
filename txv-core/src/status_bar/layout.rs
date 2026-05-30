@@ -80,11 +80,8 @@ impl StatusBar {
                 |(idx, (priority, min_width, max_width, stretch, gravity, natural_width))| {
                     let min_w = if min_width > 0 {
                         min_width
-                    } else if stretch > 0 {
-                        // Stretch items: use a small minimum, stretch handles the rest
-                        1
                     } else {
-                        // Fixed items: use current child width or natural width fallback
+                        // Use current child width or natural width fallback
                         let current = self.child_buffer_width(idx);
                         if current > 0 {
                             current
