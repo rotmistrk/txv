@@ -42,9 +42,15 @@ fn dormant_shows_idle_label() {
 fn activates_on_trigger_key() {
     let mut mk = setup_prefix();
     mk.set_sink(EventSink::new());
+    mk.set_bounds(Rect::new(0, 0, 80, 1));
     let result = mk.handle(&Event::Key(ctrl_w()));
     assert_eq!(result, HandleResult::Consumed);
-    assert!(mk.bounds().w > 5); // expanded
+    // After activation, draw shows children (not just idle label)
+    mk.draw();
+    let buf = mk.buffer();
+    // Should show "C-w: " prompt (modal style)
+    let modal_bg = txv_core::palette::palette().style(StyleId::StatusBarModal).bg;
+    assert_eq!(buf.cell(2, 0).style.bg, modal_bg, "should be in active/modal state");
 }
 
 #[test]
@@ -117,6 +123,7 @@ fn input_line_tab_completes() {
         .trigger_key(key(KeyCode::Char('x')))
         .add_child(Box::new(input));
     mk.set_sink(EventSink::new());
+    mk.set_bounds(Rect::new(0, 0, 80, 1));
 
     // Activate
     mk.handle(&Event::Key(key(KeyCode::Char('x'))));
@@ -126,12 +133,14 @@ fn input_line_tab_completes() {
     // Tab
     mk.handle(&Event::Key(key(KeyCode::Tab)));
 
-    // Verify completion expanded the width (prompt ":" + "help" + padding)
-    assert!(
-        mk.bounds().w > 5,
-        "expected expanded width after completion, got: {}",
-        mk.bounds().w
-    );
+    // Verify completion: draw and check that "help" appears in the buffer
+    mk.draw();
+    let buf = mk.buffer();
+    let mut text = String::new();
+    for x in 0..buf.width() {
+        text.push(buf.cell(x, 0).ch);
+    }
+    assert!(text.contains("help"), "expected 'help' in buffer, got: {}", text.trim());
 }
 
 #[test]

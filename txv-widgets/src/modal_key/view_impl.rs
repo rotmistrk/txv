@@ -22,9 +22,6 @@ impl View for ModalKey {
     }
 
     fn draw(&mut self) {
-        if self.active {
-            self.update_bounds();
-        }
         let bounds = self.group.bounds();
         if bounds.w == 0 || bounds.h == 0 {
             self.group.mark_redrawn();
@@ -121,11 +118,18 @@ impl ModalKey {
 
     fn layout_children_modal(&mut self) {
         let prompt_w = self.prompt.len() as u16;
-        // +1 for left power cap
+        // +1 for left power cap, +1 for right power cap
         let base_x = prompt_w + 1;
+        let total_w = self.group.bounds().w.saturating_sub(base_x + 1);
+        let n = self.group.child_count();
         let mut x = base_x;
-        for i in 0..self.group.child_count() {
-            let cw = self.group.child(i).map_or(0, |c| c.bounds().w);
+        for i in 0..n {
+            let cw = if i == n - 1 {
+                // Last child gets all remaining space
+                total_w.saturating_sub(x - base_x)
+            } else {
+                self.group.child(i).map_or(0, |c| c.bounds().w)
+            };
             self.group.set_child_bounds(i, Rect::new(x, 0, cw, 1));
             x += cw;
         }
@@ -180,9 +184,6 @@ impl ModalKey {
             self.deactivate();
             return HandleResult::Consumed;
         }
-
-        // Update bounds after children may have resized
-        self.update_bounds();
 
         if self.cancel_on_miss && result == HandleResult::Ignored {
             if let Event::Key(_) = event {

@@ -104,7 +104,7 @@ impl ModalKey {
                 child.select();
             }
         }
-        self.update_bounds();
+        self.group.mark_dirty();
     }
 
     pub(crate) fn deactivate(&mut self) {
