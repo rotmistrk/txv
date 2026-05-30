@@ -3,6 +3,7 @@
 use super::GroupState;
 use crate::commands::{RepositionRequest, CM_REPOSITION};
 use crate::event::Event;
+use crate::geometry::Rect;
 use crate::view::{EventSink, HandleResult};
 
 impl GroupState {
@@ -12,9 +13,16 @@ impl GroupState {
         if let Event::Command { id, data } = event {
             if *id == CM_REPOSITION {
                 if let Some(req) = data.as_ref().and_then(|d| d.downcast_ref::<RepositionRequest>()) {
+                    let base = match req.relative_to {
+                        Some(rel_id) => self.origin_of(rel_id).unwrap_or((0, 0)),
+                        None => (0, 0),
+                    };
+                    let x = (base.0 as i16 + req.offset_x).max(0) as u16;
+                    let y = (base.1 as i16 + req.offset_y).max(0) as u16;
+                    let translated = Rect::new(x, y, req.width, req.height);
                     for i in 0..self.children.len() {
                         if self.children[i].view_id() == req.view_id {
-                            self.set_child_bounds(i, req.rect);
+                            self.set_child_bounds(i, translated);
                             self.mark_dirty();
                             return HandleResult::Consumed;
                         }
@@ -106,6 +114,9 @@ macro_rules! delegate_group_state {
         fn buffer(&self) -> &$crate::buffer::Buffer {
             self.$field.buffer()
         }
+        fn group_state(&self) -> Option<&$crate::group::GroupState> {
+            Some(&self.$field)
+        }
     };
     ($field:ident, override { $($skip:ident),* $(,)? }) => {
         $crate::__dvs_maybe!(bounds, [$($skip),*], { fn bounds(&self) -> $crate::geometry::Rect { self.$field.bounds() } });
@@ -144,5 +155,8 @@ macro_rules! delegate_group_state {
                 self.$field.buffer()
             }
         });
+        fn group_state(&self) -> Option<&$crate::group::GroupState> {
+            Some(&self.$field)
+        }
     };
 }

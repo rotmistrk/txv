@@ -19,6 +19,9 @@ pub const CM_SIDEKICK_HIDE: CommandId = CM_TW_MAX + 21;
 
 /// Data payload for CM_SIDEKICK_SHOW.
 pub struct SidekickShow {
+    /// Rect relative to the emitter view.
     pub rect: Rect,
     pub view: Arc<Mutex<dyn View>>,
+    /// The view that emitted this (for coordinate translation).
+    pub emitter_id: ViewId,
 }

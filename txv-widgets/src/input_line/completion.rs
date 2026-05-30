@@ -71,11 +71,13 @@ impl InputLine {
     fn emit_sidekick_show(&self, content_width: usize) {
         let b = self.state.bounds();
         let h = self.popup.lock().map(|lv| lv.data().len()).unwrap_or(0).min(8) as u16;
-        let w = (content_width as u16 + 2).max(10);
-        let rect = Rect::new(b.x, b.y.saturating_sub(h), w, h);
+        let w = (content_width as u16 + 2).max(10).min(b.w);
+        // Rect relative to self: x=0, y=0 (will be placed above emitter by manager).
+        let rect = Rect::new(0, 0, w, h);
         let data = SidekickShow {
             rect,
             view: Arc::clone(&self.popup) as Arc<Mutex<dyn View>>,
+            emitter_id: self.state.id(),
         };
         self.state.put_command(CM_SIDEKICK_SHOW, Some(Box::new(data)));
     }

@@ -6,7 +6,6 @@
 //! - `CM_TXV_MAX+1..` — application-specific commands
 
 use crate::event::CommandId;
-use crate::geometry::Rect;
 use crate::view::ViewId;
 
 pub const CM_QUIT: CommandId = 1;
@@ -31,7 +30,14 @@ pub const CM_CORE_MAX: CommandId = 99;
 /// Data payload for CM_REPOSITION.
 pub struct RepositionRequest {
     pub view_id: ViewId,
-    pub rect: Rect,
+    /// Desired size.
+    pub width: u16,
+    pub height: u16,
+    /// Offset from `relative_to` (or from group origin if None). Signed for above/left.
+    pub offset_x: i16,
+    pub offset_y: i16,
+    /// If Some, offset is relative to this view's origin in the group.
+    pub relative_to: Option<ViewId>,
 }
 
 /// End of all TXV command ranges. Applications use IDs above this.

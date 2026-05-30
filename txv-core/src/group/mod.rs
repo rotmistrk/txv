@@ -10,7 +10,7 @@ mod view_fwd;
 
 use std::collections::HashMap;
 
-use crate::view::{View, ViewOptions, ViewState};
+use crate::view::{View, ViewId, ViewOptions, ViewState};
 
 /// Common group state — embed in any view that owns children.
 pub struct GroupState {
@@ -243,6 +243,23 @@ impl GroupState {
             self.children[prev].select();
             self.view.mark_dirty();
         }
+    }
+
+    /// Find a descendant's origin in this group's coordinate space.
+    /// Recursively searches children.
+    pub fn origin_of(&self, target: ViewId) -> Option<(u16, u16)> {
+        for (i, child) in self.children.iter().enumerate() {
+            let (ox, oy) = self.origins.get(i).copied().unwrap_or((0, 0));
+            if child.view_id() == target {
+                return Some((ox, oy));
+            }
+            if let Some(sub) = child.group_state() {
+                if let Some((sx, sy)) = sub.origin_of(target) {
+                    return Some((ox + sx, oy + sy));
+                }
+            }
+        }
+        None
     }
 }
 

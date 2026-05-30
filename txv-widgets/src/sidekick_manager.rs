@@ -28,12 +28,16 @@ impl SidekickManager {
         }
     }
 
-    fn request_reposition(&self, rect: Rect) {
+    fn request_reposition(&self, width: u16, height: u16, offset_x: i16, offset_y: i16, relative_to: Option<ViewId>) {
         self.state.put_command(
             CM_REPOSITION,
             Some(Box::new(RepositionRequest {
                 view_id: self.state.id(),
-                rect,
+                width,
+                height,
+                offset_x,
+                offset_y,
+                relative_to,
             })),
         );
     }
@@ -80,17 +84,20 @@ impl View for SidekickManager {
         match *id {
             CM_SIDEKICK_SHOW => {
                 if let Some(show) = data.as_ref().and_then(|d| d.downcast_ref::<SidekickShow>()) {
+                    let h = show.rect.h;
+                    let w = show.rect.w;
                     if let Ok(mut child) = show.view.lock() {
-                        child.set_bounds(Rect::new(0, 0, show.rect.w, show.rect.h));
+                        child.set_bounds(Rect::new(0, 0, w, h));
                     }
                     self.child = Some(Arc::clone(&show.view));
-                    self.request_reposition(show.rect);
+                    // Position above the emitter
+                    self.request_reposition(w, h, show.rect.x as i16, -(h as i16), Some(show.emitter_id));
                 }
                 HandleResult::Consumed
             }
             CM_SIDEKICK_HIDE => {
                 self.child = None;
-                self.request_reposition(Rect::new(0, 0, 0, 0));
+                self.request_reposition(0, 0, 0, 0, None);
                 HandleResult::Consumed
             }
             _ => HandleResult::Ignored,

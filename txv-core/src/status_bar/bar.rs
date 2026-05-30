@@ -181,4 +181,8 @@ impl View for StatusBar {
     fn buffer(&self) -> &Buffer {
         self.group.buffer()
     }
+
+    fn group_state(&self) -> Option<&crate::group::GroupState> {
+        Some(&self.group)
+    }
 }

@@ -125,6 +125,10 @@ pub trait View: Send {
     fn set_palette(&mut self, _palette: std::sync::Arc<dyn crate::palette::Palette>) {}
     /// Access the view's buffer after draw().
     fn buffer(&self) -> &Buffer;
+    /// If this view owns a GroupState, expose it for coordinate queries.
+    fn group_state(&self) -> Option<&crate::group::GroupState> {
+        None
+    }
 }
 
 /// Common view state — embed in every view.
