@@ -25,7 +25,7 @@ impl Palette for LightPalette {
             StyleId::EditSelection => PaletteStyle::bg(ansi(10)).to_style(),
             StyleId::OverflowIndicator => PaletteStyle::fg(ansi(1)).to_style(),
             StyleId::SearchMatch => PaletteStyle::bg(ansi(11)).to_style(),
-            StyleId::VisualSelection => PaletteStyle::colors(ansi(4), ansi(15)).to_style(),
+            StyleId::VisualSelection => PaletteStyle::colors(ansi(0), ansi(6)).to_style(),
             StyleId::Disabled => PaletteStyle::fg(ansi(7)).to_style(),
             StyleId::ChromeBar => PaletteStyle::colors(ansi(0), ansi(7)).to_style(),
             StyleId::TabFocused => PaletteStyle::colors(ansi(4), ansi(12)).bold().to_style(),
