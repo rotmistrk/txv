@@ -138,7 +138,7 @@ impl CommandLineView {
                 return HandleResult::Consumed;
             }
         }
-        if let Event::Command { id, data } = event {
+        if let Event::Command { id, data, .. } = event {
             if Some(*id) == self.prefill_command_id {
                 if let Some(prefix) = data.as_ref().and_then(|b| b.downcast_ref::<String>()) {
                     self.activate();

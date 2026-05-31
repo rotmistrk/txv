@@ -31,18 +31,32 @@ impl TabPanel {
         let normal = pal.style(StyleId::Text);
         let selected = pal.style(StyleId::CursorFocused);
 
+        let max_rows_est = 50usize; // upper bound for badge collection
+        let visible_est = entries.len().min(max_rows_est);
+        // Collect badge styles before mutable borrow of buffer
+        let badge_styles: Vec<Option<Style>> = entries
+            .iter()
+            .take(visible_est)
+            .map(|(tab_idx, _, _)| self.bar().badge_styles.get(*tab_idx).cloned().flatten())
+            .collect();
+        let has_badges = badge_styles.iter().any(|s| s.is_some());
+        let badge_extra = if has_badges {
+            2
+        } else {
+            0
+        };
+
         let buf = self.group.buffer_mut();
         let buf_w = buf.width();
         let buf_h = buf.height();
         let max_rows = (buf_h.saturating_sub(2)) as usize;
         let visible = entries.len().min(max_rows);
 
-        // Compute dropdown width: max label + padding + borders
-        // Add 2 extra for LRU active tab alignment (no number prefix → "  " padding)
+        // Compute dropdown width: max label + padding + borders + badge
         let content_w = entries
             .iter()
             .take(visible)
-            .map(|(_, label, _)| label.chars().count() + 4) // +4 for dots + padding
+            .map(|(_, label, _)| label.chars().count() + 4 + badge_extra) // +4 for dots + padding
             .max()
             .unwrap_or(10) as u16;
         let box_w = (content_w + 2).min(buf_w.saturating_sub(1)); // +2 for borders, -1 for shift
@@ -84,7 +98,7 @@ impl TabPanel {
         }
 
         // Content rows
-        for (row, (_, label, numbered)) in entries.iter().take(visible).enumerate() {
+        for (row, (_tab_idx, label, numbered)) in entries.iter().take(visible).enumerate() {
             let y = content_start_y + row as u16;
             if y >= buf_h {
                 break;
@@ -120,6 +134,19 @@ impl TabPanel {
             // Right dot pinned before border
             if is_cursor && inner_w > 0 {
                 buf.put(x_off + inner_w, y, '·', style);
+            }
+
+            // Badge color indicator (right-aligned before border)
+            if let Some(Some(bs)) = badge_styles.get(row) {
+                let badge_style = Style {
+                    fg: bs.fg,
+                    bg: style.bg,
+                    ..Style::default()
+                };
+                let bx = x_off + inner_w.saturating_sub(1);
+                if bx < buf_w {
+                    buf.put(bx, y, '●', badge_style);
+                }
             }
 
             // Right border

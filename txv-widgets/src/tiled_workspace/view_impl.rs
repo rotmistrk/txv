@@ -54,7 +54,7 @@ impl View for TiledWorkspace {
 
     fn handle(&mut self, event: &Event) -> HandleResult {
         // Handle command events
-        if let Event::Command { id, data } = event {
+        if let Event::Command { id, data, .. } = event {
             if self.handle_command(*id, data) {
                 return HandleResult::Consumed;
             }

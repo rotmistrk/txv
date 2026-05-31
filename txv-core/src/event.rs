@@ -75,9 +75,11 @@ pub enum Event {
     Mouse(MouseEvent),
     Paste(String),
     Resize(u16, u16),
+    /// Command event. When `broadcast` is true, dispatched to ALL children (not just focused).
     Command {
         id: CommandId,
         data: Option<Box<dyn Any + Send>>,
+        broadcast: bool,
     },
     Tick,
 }
@@ -89,7 +91,11 @@ impl core::fmt::Debug for Event {
             Self::Mouse(m) => f.debug_tuple("Mouse").field(m).finish(),
             Self::Paste(s) => f.debug_tuple("Paste").field(&s.len()).finish(),
             Self::Resize(w, h) => f.debug_tuple("Resize").field(w).field(h).finish(),
-            Self::Command { id, .. } => f.debug_struct("Command").field("id", id).finish(),
+            Self::Command { id, broadcast, .. } => f
+                .debug_struct("Command")
+                .field("id", id)
+                .field("broadcast", broadcast)
+                .finish(),
             Self::Tick => write!(f, "Tick"),
         }
     }

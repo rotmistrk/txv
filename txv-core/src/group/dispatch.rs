@@ -10,7 +10,7 @@ impl GroupState {
     /// Three-phase event dispatch.
     pub fn dispatch(&mut self, event: &Event) -> HandleResult {
         // CM_REPOSITION: the group itself handles it (child asks parent to move it).
-        if let Event::Command { id, data } = event {
+        if let Event::Command { id, data, .. } = event {
             if *id == CM_REPOSITION {
                 if let Some(req) = data.as_ref().and_then(|d| d.downcast_ref::<RepositionRequest>()) {
                     let base = match req.relative_to {
@@ -30,6 +30,14 @@ impl GroupState {
                 }
                 return HandleResult::Ignored;
             }
+        }
+
+        // Broadcast commands: deliver to ALL children.
+        if matches!(event, Event::Command { broadcast: true, .. }) {
+            for child in &mut self.children {
+                child.handle(event);
+            }
+            return HandleResult::Ignored;
         }
 
         // Phase 1: preprocess

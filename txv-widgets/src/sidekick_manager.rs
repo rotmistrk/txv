@@ -78,7 +78,7 @@ impl View for SidekickManager {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        let Event::Command { id, data } = event else {
+        let Event::Command { id, data, .. } = event else {
             return HandleResult::Ignored;
         };
         match *id {

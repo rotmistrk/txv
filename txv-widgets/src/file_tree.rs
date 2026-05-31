@@ -4,7 +4,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use ignore::WalkBuilder;
 use txv_core::cell::Color;
 
 #[derive(Clone)]
@@ -26,6 +25,10 @@ pub struct FileTreeData {
     pub(crate) visible: Vec<usize>,
     /// Per-path foreground color (relative path → color).
     pub(crate) colors: HashMap<String, Color>,
+    /// Badge colors for root nodes (index matches root order in extra_roots).
+    pub(crate) root_badge_colors: Vec<Color>,
+    /// Set of absolute paths currently open in editor tabs.
+    pub(crate) open_files: std::collections::HashSet<PathBuf>,
     /// Whether to show hidden (dot) files.
     pub show_hidden: bool,
     /// Active filter text (empty = no filter).
@@ -70,6 +73,8 @@ impl FileTreeData {
             nodes: Vec::new(),
             visible: Vec::new(),
             colors: HashMap::new(),
+            root_badge_colors: Vec::new(),
+            open_files: std::collections::HashSet::new(),
             show_hidden: true,
             filter: String::new(),
             match_positions: HashMap::new(),
@@ -96,6 +101,42 @@ impl FileTreeData {
     /// Whether this is a multi-root tree (roots shown as top-level nodes).
     pub fn is_multi_root(&self) -> bool {
         !self.extra_roots.is_empty()
+    }
+
+    /// Replace the set of roots and rebuild the tree.
+    pub fn set_roots(&mut self, roots: Vec<PathBuf>) {
+        self.nodes.clear();
+        self.visible.clear();
+        self.fully_loaded = false;
+        if roots.len() > 1 {
+            self.root = roots.first().cloned().unwrap_or_default();
+            self.extra_roots = roots;
+            for root_path in &self.extra_roots.clone() {
+                self.nodes.push(Self::root_node(root_path));
+            }
+        } else if let Some(r) = roots.into_iter().next() {
+            self.root = r.clone();
+            self.extra_roots.clear();
+            self.load_children(r, None, 0);
+        }
+        self.rebuild_visible();
+    }
+
+    /// Set disambiguated display labels for root nodes (multi-root only).
+    pub fn set_root_labels(&mut self, labels: &[String]) {
+        if self.extra_roots.is_empty() {
+            return;
+        }
+        for (i, node) in self.nodes.iter_mut().filter(|n| n.parent.is_none()).enumerate() {
+            if let Some(label) = labels.get(i) {
+                node.label = label.clone();
+            }
+        }
+    }
+
+    /// Update the set of currently open file paths.
+    pub fn set_open_files(&mut self, paths: std::collections::HashSet<PathBuf>) {
+        self.open_files = paths;
     }
 
     /// All root paths (for multi-root; single-root returns just the primary).
@@ -131,6 +172,11 @@ impl FileTreeData {
     /// Set per-path foreground colors (relative path → color).
     pub fn set_colors(&mut self, colors: HashMap<String, Color>) {
         self.colors = colors;
+    }
+
+    /// Set badge colors for root nodes (one per root, in order).
+    pub fn set_root_badge_colors(&mut self, colors: Vec<Color>) {
+        self.root_badge_colors = colors;
     }
 
     /// Rebuild the tree from disk, preserving expanded directories.
@@ -192,99 +238,6 @@ impl FileTreeData {
                 }
             }
         }
-        self.rebuild_visible();
-    }
-
-    pub(crate) fn load_children(&mut self, dir: PathBuf, parent: Option<usize>, depth: usize) {
-        let walker = WalkBuilder::new(&dir)
-            .max_depth(Some(1))
-            .hidden(!self.show_hidden)
-            .sort_by_file_name(|a, b| a.cmp(b))
-            .build();
-
-        let mut dirs = Vec::new();
-        let mut files = Vec::new();
-
-        for entry in walker.flatten() {
-            let path = entry.path().to_path_buf();
-            if path == dir {
-                continue;
-            }
-            let label = path
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            let is_dir = path.is_dir();
-            let node = TreeNode {
-                path,
-                label,
-                depth,
-                is_dir,
-                expanded: false,
-                parent,
-            };
-            if is_dir {
-                dirs.push(node);
-            } else {
-                files.push(node);
-            }
-        }
-
-        // Dirs first, then files
-        self.nodes.extend(dirs);
-        self.nodes.extend(files);
-    }
-
-    pub(crate) fn rebuild_visible(&mut self) {
-        self.visible.clear();
-        self.collect_visible(None, 0);
-    }
-
-    fn collect_visible(&mut self, parent: Option<usize>, depth: usize) {
-        self.collect_visible_inner(parent, depth, false);
-    }
-
-    /// `ancestor_matched` = an ancestor's name matched directly → show all descendants.
-    fn collect_visible_inner(&mut self, parent: Option<usize>, depth: usize, ancestor_matched: bool) {
-        let ids: Vec<usize> = self
-            .nodes
-            .iter()
-            .enumerate()
-            .filter(|(_, n)| n.parent == parent && n.depth == depth)
-            .map(|(i, _)| i)
-            .collect();
-        for id in ids {
-            if !self.filter.is_empty() && !ancestor_matched && !self.node_passes_filter(id) {
-                continue;
-            }
-            self.visible.push(id);
-            if self.nodes[id].is_dir && self.nodes[id].expanded {
-                let propagate = ancestor_matched || self.node_matches_directly(id);
-                self.collect_visible_inner(Some(id), depth + 1, propagate);
-            }
-        }
-    }
-
-    pub(crate) fn expand_node(&mut self, id: usize) {
-        if !self.nodes[id].is_dir || self.nodes[id].expanded {
-            return;
-        }
-        self.nodes[id].expanded = true;
-        let path = self.nodes[id].path.clone();
-        let depth = self.nodes[id].depth + 1;
-        // Only load if not already loaded
-        let has_children = self.nodes.iter().any(|n| n.parent == Some(id));
-        if !has_children {
-            self.load_children(path, Some(id), depth);
-        }
-        self.rebuild_visible();
-    }
-
-    pub(crate) fn collapse_node(&mut self, id: usize) {
-        if !self.nodes[id].expanded {
-            return;
-        }
-        self.nodes[id].expanded = false;
         self.rebuild_visible();
     }
 }

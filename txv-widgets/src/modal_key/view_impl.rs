@@ -6,7 +6,20 @@ use txv_core::prelude::*;
 use super::ModalKey;
 
 impl View for ModalKey {
-    delegate_group_state!(group, override { options, draw, handle, set_sink });
+    delegate_group_state!(group, override { options, draw, handle, set_sink, desired_width });
+
+    fn desired_width(&self) -> u16 {
+        if !self.active {
+            return 0;
+        }
+        // prompt + left cap + right cap + child desired widths
+        let prompt_w = self.prompt.len() as u16 + 2;
+        let child_w: u16 = (0..self.group.child_count())
+            .filter_map(|i| self.group.child(i))
+            .map(|c| c.desired_width().max(c.bounds().w))
+            .sum();
+        prompt_w + child_w
+    }
 
     fn set_sink(&mut self, sink: EventSink) {
         self.group.set_own_sink(sink);
@@ -159,7 +172,7 @@ impl ModalKey {
                 return HandleResult::Consumed;
             }
         }
-        if let Event::Command { id, data } = event {
+        if let Event::Command { id, data, .. } = event {
             if Some(*id) == self.trigger_command {
                 if let Some(text) = data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
                     self.prompt = text.clone();

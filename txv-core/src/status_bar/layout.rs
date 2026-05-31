@@ -78,8 +78,11 @@ impl StatusBar {
             .enumerate()
             .map(
                 |(idx, (priority, min_width, max_width, stretch, gravity, natural_width, last_alloc))| {
+                    let desired = self.child_desired_width(idx);
                     let min_w = if min_width > 0 {
                         min_width
+                    } else if desired > 0 {
+                        desired
                     } else {
                         let current = self.child_buffer_width(idx);
                         if stretch > 0 && current == last_alloc {

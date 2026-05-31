@@ -51,7 +51,19 @@ impl EventSink {
     }
 
     pub fn push_command(&self, id: CommandId, data: Option<Box<dyn Any + Send>>) {
-        self.push(Event::Command { id, data });
+        self.push(Event::Command {
+            id,
+            data,
+            broadcast: false,
+        });
+    }
+
+    pub fn push_broadcast(&self, id: CommandId, data: Option<Box<dyn Any + Send>>) {
+        self.push(Event::Command {
+            id,
+            data,
+            broadcast: true,
+        });
     }
 
     pub fn drain(&self) -> Vec<Event> {
@@ -128,6 +140,10 @@ pub trait View: Send {
     /// If this view owns a GroupState, expose it for coordinate queries.
     fn group_state(&self) -> Option<&crate::group::GroupState> {
         None
+    }
+    /// Desired width hint for layout. 0 = no preference (use natural/current).
+    fn desired_width(&self) -> u16 {
+        0
     }
 }
 
@@ -237,7 +253,19 @@ impl ViewState {
 
     /// Push a command event to the owner's sink.
     pub fn put_command(&self, id: CommandId, data: Option<Box<dyn Any + Send>>) {
-        self.put_event(Event::Command { id, data });
+        self.put_event(Event::Command {
+            id,
+            data,
+            broadcast: false,
+        });
+    }
+
+    pub fn put_broadcast(&self, id: CommandId, data: Option<Box<dyn Any + Send>>) {
+        self.put_event(Event::Command {
+            id,
+            data,
+            broadcast: true,
+        });
     }
 }
 

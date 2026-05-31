@@ -84,6 +84,10 @@ impl StatusBar {
         self.group.child(idx).map_or(0, |c| c.bounds().w)
     }
 
+    pub(super) fn child_desired_width(&self, idx: usize) -> u16 {
+        self.group.child(idx).map_or(0, |c| c.desired_width())
+    }
+
     pub(super) fn child_count(&self) -> usize {
         self.group.child_count()
     }

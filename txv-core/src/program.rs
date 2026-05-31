@@ -128,6 +128,7 @@ impl Program {
                 self.sink.push(Event::Command {
                     id: crate::commands::CM_TICK,
                     data: None,
+                    broadcast: false,
                 });
             }
 
@@ -190,7 +191,7 @@ impl Program {
                     continue;
                 }
                 // Unhandled command → app handler
-                if let Event::Command { id, ref data } = ev {
+                if let Event::Command { id, ref data, .. } = ev {
                     let desktop = &mut *self.group.children[1];
                     let mut ctx = CommandContext {
                         command: id,

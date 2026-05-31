@@ -78,7 +78,7 @@ impl ConfirmView {
     }
 
     fn try_activate(&mut self, event: &Event) -> HandleResult {
-        let Event::Command { id, data } = event else {
+        let Event::Command { id, data, .. } = event else {
             return HandleResult::Ignored;
         };
         if *id != self.activate_command {

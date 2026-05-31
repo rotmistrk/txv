@@ -58,6 +58,7 @@ pub mod commands;
 pub mod complete;
 pub mod cursor;
 pub mod dialog;
+pub mod disambiguate;
 pub mod event;
 pub mod geometry;
 pub mod glyphs;

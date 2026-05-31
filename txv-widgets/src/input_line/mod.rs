@@ -3,6 +3,7 @@
 mod completion;
 mod completion_frame;
 mod completion_list;
+mod handle_key;
 mod history;
 mod readline;
 #[cfg(test)]

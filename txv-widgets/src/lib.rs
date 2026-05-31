@@ -10,6 +10,7 @@ pub mod file_list;
 pub mod file_tree;
 mod file_tree_data;
 mod file_tree_filter;
+mod file_tree_ops;
 pub mod focus_gated_group;
 pub mod frame;
 pub mod fuzzy_select;

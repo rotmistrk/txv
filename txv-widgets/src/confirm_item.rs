@@ -32,7 +32,7 @@ impl ConfirmItem {
 impl ActiveItem for ConfirmItem {
     fn handle(&mut self, event: &Event, sink: &EventSink) -> HandleResult {
         if !self.active {
-            if let Event::Command { id, data } = event {
+            if let Event::Command { id, data, .. } = event {
                 if *id == self.activate_command {
                     if let Some(boxed) = data.as_ref() {
                         if let Some(text) = boxed.downcast_ref::<String>() {

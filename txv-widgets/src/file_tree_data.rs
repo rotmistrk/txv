@@ -1,6 +1,6 @@
 //! TreeData trait implementation for FileTreeData.
 
-use txv_core::cell::Style;
+use txv_core::cell::{Color, Style};
 use txv_core::palette::{palette, StyleId};
 
 use crate::file_tree::FileTreeData;
@@ -75,5 +75,23 @@ impl TreeData for FileTreeData {
         } else {
             Some(&self.filter)
         }
+    }
+
+    fn badge_color(&self, id: usize) -> Option<Color> {
+        if !self.is_multi_root() || self.root_badge_colors.is_empty() {
+            return None;
+        }
+        let node = &self.nodes[id];
+        if node.depth != 0 || node.parent.is_some() {
+            return None;
+        }
+        // Find root index by matching path
+        let idx = self.extra_roots.iter().position(|r| r == &node.path)?;
+        self.root_badge_colors.get(idx).copied()
+    }
+
+    fn is_open(&self, id: usize) -> bool {
+        let node = &self.nodes[id];
+        !node.is_dir && self.open_files.contains(&node.path)
     }
 }

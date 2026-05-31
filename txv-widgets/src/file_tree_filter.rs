@@ -64,7 +64,7 @@ impl FileTreeData {
     }
 
     /// Does this node pass the filter? (matches directly or has matching descendants)
-    pub(super) fn node_passes_filter(&self, id: usize) -> bool {
+    pub(crate) fn node_passes_filter(&self, id: usize) -> bool {
         if self.filter.is_empty() {
             return true;
         }
@@ -72,7 +72,7 @@ impl FileTreeData {
     }
 
     /// Does this node match the filter directly (by its own name)?
-    pub(super) fn node_matches_directly(&self, id: usize) -> bool {
+    pub(crate) fn node_matches_directly(&self, id: usize) -> bool {
         self.match_positions.contains_key(&id)
     }
 
