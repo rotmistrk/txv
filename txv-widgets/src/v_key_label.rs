@@ -19,12 +19,13 @@ impl KeyLabelView {
         let label_text = label.into();
         let mods = key.modifiers;
         let plain_char = !mods.ctrl && !mods.alt && !mods.shift;
+        let char_len = label_text.chars().count();
         let display_len = if label_text.is_empty() {
             0
         } else if matches!(key.code, txv_core::event::KeyCode::Char(_)) && plain_char {
-            label_text.len() + 2 // "k:label"
+            char_len + 2 // "k:label"
         } else {
-            label_text.len()
+            char_len
         };
         let w = if display_len == 0 {
             0

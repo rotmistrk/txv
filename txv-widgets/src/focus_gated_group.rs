@@ -1,11 +1,9 @@
-//! FocusGatedGroup — a Group that activates/deactivates via commands.
+//! FocusGatedGroup — a status bar item that shows/hides based on focus commands.
 //!
-//! When inactive: size is 0, events are ignored, draw is a no-op.
-//! When active: renders children, dispatches events to them normally.
+//! Dormant: width=0, events ignored, draw is no-op.
+//! Active: renders children (key labels), dispatches events to them.
 //!
-//! Activation is command-driven: the associated widget sends
-//! `CM_ACTIVATE_GROUP(group_id)` on focus and `CM_DEACTIVATE_GROUP(group_id)`
-//! on blur.
+//! Follows the same pattern as ModalKey: manages own bounds via set_bounds.
 
 use txv_core::buffer::Buffer;
 use txv_core::event::Event;
@@ -18,33 +16,51 @@ pub const CM_ACTIVATE_GROUP: CommandId = 160;
 /// Command to deactivate a FocusGatedGroup by ID.
 pub const CM_DEACTIVATE_GROUP: CommandId = 161;
 
-/// A Group container that is invisible and inert when inactive.
 pub struct FocusGatedGroup {
     group: GroupState,
     active: bool,
     group_id: u16,
+    natural_width: u16,
 }
 
 impl FocusGatedGroup {
     pub fn new(group_id: u16) -> Self {
-        let group = GroupState::new(ViewOptions {
+        let mut group = GroupState::new(ViewOptions {
             preprocess: true,
             focusable: false,
             ..ViewOptions::default()
         });
+        // Start with zero width (dormant).
+        group.set_bounds(Rect::new(0, 0, 0, 1));
         Self {
             group,
             active: false,
             group_id,
+            natural_width: 0,
         }
     }
 
     pub fn add_child(&mut self, child: Box<dyn View>) {
+        self.natural_width += child.bounds().w;
         self.group.insert(child);
     }
 
     pub fn is_active(&self) -> bool {
         self.active
+    }
+
+    fn activate(&mut self) {
+        self.active = true;
+        let b = self.group.bounds();
+        self.group.set_bounds(Rect::new(b.x, b.y, self.natural_width, 1));
+        self.group.mark_dirty();
+    }
+
+    fn deactivate(&mut self) {
+        self.active = false;
+        let b = self.group.bounds();
+        self.group.set_bounds(Rect::new(b.x, b.y, 0, 1));
+        self.group.mark_dirty();
     }
 
     fn layout_children(&mut self) {
@@ -55,44 +71,13 @@ impl FocusGatedGroup {
             x += cw;
         }
     }
-
-    fn draw_children(&mut self) {
-        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
-        for i in 0..self.group.child_count() {
-            if let Some(child) = self.group.child_mut(i) {
-                if child.bounds().w > 0 {
-                    child.draw();
-                }
-            }
-            if let Some(child) = self.group.child(i) {
-                let (ox, oy) = self.group.child_origin(i);
-                if child.bounds().w > 0 {
-                    unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
-                }
-            }
-        }
-    }
 }
 
 impl View for FocusGatedGroup {
-    delegate_group_state!(group, override { bounds, draw, handle, set_sink });
+    delegate_group_state!(group, override { draw, handle, set_sink });
 
     fn set_sink(&mut self, sink: EventSink) {
-        self.group.set_own_sink(sink);
-    }
-
-    fn bounds(&self) -> Rect {
-        let b = self.group.bounds();
-        if self.active {
-            b
-        } else {
-            Rect {
-                x: b.x,
-                y: b.y,
-                w: 0,
-                h: 1,
-            }
-        }
+        self.group.set_sink(sink);
     }
 
     fn draw(&mut self) {
@@ -108,18 +93,29 @@ impl View for FocusGatedGroup {
         let style = txv_core::palette::palette().style(StyleId::StatusBar);
         self.group.buffer_mut().fill(' ', style);
         self.layout_children();
-        self.draw_children();
+        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
+        for i in 0..self.group.child_count() {
+            if let Some(child) = self.group.child_mut(i) {
+                if child.bounds().w > 0 {
+                    child.draw();
+                }
+            }
+            if let Some(child) = self.group.child(i) {
+                if child.bounds().w > 0 {
+                    let (ox, oy) = self.group.child_origin(i);
+                    unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
+                }
+            }
+        }
         self.group.mark_redrawn();
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        // Always listen for activate/deactivate commands
         if let Event::Command { id, data, .. } = event {
             if *id == CM_ACTIVATE_GROUP {
                 if let Some(gid) = data.as_ref().and_then(|d| d.downcast_ref::<u16>()) {
                     if *gid == self.group_id {
-                        self.active = true;
-                        self.group.mark_dirty();
+                        self.activate();
                         return HandleResult::Consumed;
                     }
                 }
@@ -127,8 +123,7 @@ impl View for FocusGatedGroup {
             if *id == CM_DEACTIVATE_GROUP {
                 if let Some(gid) = data.as_ref().and_then(|d| d.downcast_ref::<u16>()) {
                     if *gid == self.group_id {
-                        self.active = false;
-                        self.group.mark_dirty();
+                        self.deactivate();
                         return HandleResult::Consumed;
                     }
                 }

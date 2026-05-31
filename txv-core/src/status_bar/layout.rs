@@ -83,8 +83,6 @@ impl StatusBar {
                     } else {
                         let current = self.child_buffer_width(idx);
                         if stretch > 0 && current == last_alloc {
-                            // Child width equals last layout allocation — it's inflated
-                            // by stretch. Use natural width as the true minimum.
                             natural_width
                         } else if current > 0 {
                             current

@@ -39,6 +39,8 @@ pub mod tab_panel;
 pub mod table;
 pub mod text_area;
 pub mod tiled_workspace;
+pub mod tree_table_source;
+pub mod tree_table_view;
 pub mod tree_view;
 pub mod v_branch;
 pub mod v_clock;
@@ -75,6 +77,9 @@ pub use tab_bar::{TabBar, TabBarMode};
 pub use tab_panel::TabPanel;
 pub use table::{Column, Table};
 pub use text_area::TextArea;
+pub use tree_table_source::TreeTableSource;
+pub use tree_table_source::{auto_detect_align, AcceptAll, CellValidator, ColAlign};
+pub use tree_table_view::TreeTableView;
 pub use tree_view::{TreeData, TreeView};
 pub use v_branch::BranchView;
 pub use v_clock::ClockView;
@@ -99,3 +104,7 @@ mod cursor_integration_tests;
 #[cfg(test)]
 #[path = "modal_key_tests.rs"]
 mod modal_key_tests;
+
+#[cfg(test)]
+#[path = "tree_table_view_tests.rs"]
+mod tree_table_view_tests;
