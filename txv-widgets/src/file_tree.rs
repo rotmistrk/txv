@@ -5,10 +5,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use ignore::WalkBuilder;
-use txv_core::cell::{Color, Style};
-use txv_core::palette::{palette, StyleId};
-
-use crate::tree_view::TreeData;
+use txv_core::cell::Color;
 
 #[derive(Clone)]
 pub(crate) struct TreeNode {
@@ -23,10 +20,12 @@ pub(crate) struct TreeNode {
 /// Filesystem tree data provider.
 pub struct FileTreeData {
     root: PathBuf,
+    /// Additional roots for multi-root workspace (empty = single root mode).
+    pub(crate) extra_roots: Vec<PathBuf>,
     pub(crate) nodes: Vec<TreeNode>,
-    visible: Vec<usize>,
+    pub(crate) visible: Vec<usize>,
     /// Per-path foreground color (relative path → color).
-    colors: HashMap<String, Color>,
+    pub(crate) colors: HashMap<String, Color>,
     /// Whether to show hidden (dot) files.
     pub show_hidden: bool,
     /// Active filter text (empty = no filter).
@@ -42,8 +41,32 @@ pub struct FileTreeData {
 impl FileTreeData {
     pub fn new(root: impl Into<PathBuf>) -> Self {
         let root = root.into();
-        let mut data = Self {
-            root: root.clone(),
+        let mut data = Self::empty(root.clone());
+        data.load_children(root, None, 0);
+        data.rebuild_visible();
+        data
+    }
+
+    /// Create with multiple root directories. Each root becomes a top-level node.
+    pub fn with_roots(roots: Vec<PathBuf>) -> Self {
+        let primary = roots.first().cloned().unwrap_or_default();
+        let mut data = Self::empty(primary);
+        if roots.len() > 1 {
+            for root_path in &roots {
+                data.nodes.push(Self::root_node(root_path));
+            }
+            data.extra_roots = roots;
+        } else if let Some(r) = roots.into_iter().next() {
+            data.load_children(r, None, 0);
+        }
+        data.rebuild_visible();
+        data
+    }
+
+    fn empty(root: PathBuf) -> Self {
+        Self {
+            root,
+            extra_roots: Vec::new(),
             nodes: Vec::new(),
             visible: Vec::new(),
             colors: HashMap::new(),
@@ -52,10 +75,49 @@ impl FileTreeData {
             match_positions: HashMap::new(),
             has_match_below: Vec::new(),
             fully_loaded: false,
-        };
-        data.load_children(root, None, 0);
-        data.rebuild_visible();
-        data
+        }
+    }
+
+    fn root_node(path: &Path) -> TreeNode {
+        let label = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| path.to_string_lossy().into_owned());
+        TreeNode {
+            path: path.to_path_buf(),
+            label,
+            depth: 0,
+            is_dir: true,
+            expanded: false,
+            parent: None,
+        }
+    }
+
+    /// Whether this is a multi-root tree (roots shown as top-level nodes).
+    pub fn is_multi_root(&self) -> bool {
+        !self.extra_roots.is_empty()
+    }
+
+    /// All root paths (for multi-root; single-root returns just the primary).
+    pub fn all_roots(&self) -> Vec<&Path> {
+        if self.extra_roots.is_empty() {
+            vec![self.root.as_path()]
+        } else {
+            self.extra_roots.iter().map(|p| p.as_path()).collect()
+        }
+    }
+
+    /// Return the root directory that contains the given node.
+    pub fn root_of(&self, id: usize) -> &Path {
+        if self.extra_roots.is_empty() {
+            return &self.root;
+        }
+        // Walk up to find the top-level ancestor.
+        let mut current = id;
+        while let Some(parent) = self.nodes[current].parent {
+            current = parent;
+        }
+        &self.nodes[current].path
     }
 
     pub fn path(&self, id: usize) -> &Path {
@@ -73,7 +135,6 @@ impl FileTreeData {
 
     /// Rebuild the tree from disk, preserving expanded directories.
     pub fn refresh(&mut self) {
-        // Collect expanded paths before clearing
         let expanded_paths: Vec<PathBuf> = self
             .nodes
             .iter()
@@ -81,11 +142,18 @@ impl FileTreeData {
             .map(|n| n.path.clone())
             .collect();
 
-        let root = self.root.clone();
         self.nodes.clear();
         self.visible.clear();
         self.fully_loaded = false;
-        self.load_children(root, None, 0);
+
+        if self.extra_roots.is_empty() {
+            let root = self.root.clone();
+            self.load_children(root, None, 0);
+        } else {
+            for root_path in &self.extra_roots.clone() {
+                self.nodes.push(Self::root_node(root_path));
+            }
+        }
 
         // Re-expand previously expanded directories
         for path in &expanded_paths {
@@ -197,7 +265,7 @@ impl FileTreeData {
         }
     }
 
-    fn expand_node(&mut self, id: usize) {
+    pub(crate) fn expand_node(&mut self, id: usize) {
         if !self.nodes[id].is_dir || self.nodes[id].expanded {
             return;
         }
@@ -212,82 +280,11 @@ impl FileTreeData {
         self.rebuild_visible();
     }
 
-    fn collapse_node(&mut self, id: usize) {
+    pub(crate) fn collapse_node(&mut self, id: usize) {
         if !self.nodes[id].expanded {
             return;
         }
         self.nodes[id].expanded = false;
         self.rebuild_visible();
-    }
-}
-
-impl TreeData for FileTreeData {
-    fn root_count(&self) -> usize {
-        self.nodes.iter().filter(|n| n.parent.is_none()).count()
-    }
-
-    fn child_count(&self, id: usize) -> usize {
-        self.nodes.iter().filter(|n| n.parent == Some(id)).count()
-    }
-
-    fn label(&self, id: usize) -> &str {
-        &self.nodes[id].label
-    }
-
-    fn is_expandable(&self, id: usize) -> bool {
-        self.nodes[id].is_dir
-    }
-
-    fn is_expanded(&self, id: usize) -> bool {
-        self.nodes[id].expanded
-    }
-
-    fn toggle(&mut self, id: usize) {
-        if self.nodes[id].expanded {
-            self.collapse_node(id);
-        } else {
-            self.expand_node(id);
-        }
-    }
-
-    fn depth(&self, id: usize) -> usize {
-        self.nodes[id].depth
-    }
-
-    fn visible_count(&self) -> usize {
-        self.visible.len()
-    }
-
-    fn visible_id(&self, row: usize) -> usize {
-        self.visible[row]
-    }
-
-    fn style(&self, id: usize) -> Style {
-        let node = &self.nodes[id];
-        if node.is_dir {
-            return palette().style(StyleId::TreeDir);
-        }
-        let rel = node.path.strip_prefix(&self.root).ok().and_then(|p| p.to_str());
-        if let Some(rel_path) = rel {
-            if let Some(&color) = self.colors.get(rel_path) {
-                return Style {
-                    fg: color,
-                    ..Style::default()
-                };
-            }
-        }
-        Style::default()
-    }
-
-    fn highlight_positions(&self, id: usize) -> Option<&[usize]> {
-        self.match_positions.get(&id).map(|v| v.as_slice())
-    }
-
-    fn filter_status(&self) -> Option<&str> {
-        if self.filter.is_empty() {
-            None
-        } else {
-            Some(&self.filter)
-        }
     }
 }

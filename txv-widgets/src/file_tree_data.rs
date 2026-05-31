@@ -1,0 +1,79 @@
+//! TreeData trait implementation for FileTreeData.
+
+use txv_core::cell::Style;
+use txv_core::palette::{palette, StyleId};
+
+use crate::file_tree::FileTreeData;
+use crate::tree_view::TreeData;
+
+impl TreeData for FileTreeData {
+    fn root_count(&self) -> usize {
+        self.nodes.iter().filter(|n| n.parent.is_none()).count()
+    }
+
+    fn child_count(&self, id: usize) -> usize {
+        self.nodes.iter().filter(|n| n.parent == Some(id)).count()
+    }
+
+    fn label(&self, id: usize) -> &str {
+        &self.nodes[id].label
+    }
+
+    fn is_expandable(&self, id: usize) -> bool {
+        self.nodes[id].is_dir
+    }
+
+    fn is_expanded(&self, id: usize) -> bool {
+        self.nodes[id].expanded
+    }
+
+    fn toggle(&mut self, id: usize) {
+        if self.nodes[id].expanded {
+            self.collapse_node(id);
+        } else {
+            self.expand_node(id);
+        }
+    }
+
+    fn depth(&self, id: usize) -> usize {
+        self.nodes[id].depth
+    }
+
+    fn visible_count(&self) -> usize {
+        self.visible.len()
+    }
+
+    fn visible_id(&self, row: usize) -> usize {
+        self.visible[row]
+    }
+
+    fn style(&self, id: usize) -> Style {
+        let node = &self.nodes[id];
+        if node.is_dir {
+            return palette().style(StyleId::TreeDir);
+        }
+        let root = self.root_of(id);
+        let rel = node.path.strip_prefix(root).ok().and_then(|p| p.to_str());
+        if let Some(rel_path) = rel {
+            if let Some(&color) = self.colors.get(rel_path) {
+                return Style {
+                    fg: color,
+                    ..Style::default()
+                };
+            }
+        }
+        Style::default()
+    }
+
+    fn highlight_positions(&self, id: usize) -> Option<&[usize]> {
+        self.match_positions.get(&id).map(|v| v.as_slice())
+    }
+
+    fn filter_status(&self) -> Option<&str> {
+        if self.filter.is_empty() {
+            None
+        } else {
+            Some(&self.filter)
+        }
+    }
+}
