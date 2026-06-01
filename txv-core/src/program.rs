@@ -55,6 +55,7 @@ pub struct Program {
     group: GroupState,
     sink: EventSink,
     quit_requested: bool,
+    repaint_requested: bool,
 }
 
 impl Program {
@@ -80,6 +81,7 @@ impl Program {
             group,
             sink,
             quit_requested: false,
+            repaint_requested: false,
         }
     }
 
@@ -136,6 +138,12 @@ impl Program {
             if self.drain_commands(&mut handler) {
                 break;
             }
+            if self.repaint_requested {
+                self.repaint_requested = false;
+                let (nw, nh) = backend.size();
+                self.layout(nw, nh);
+                backend.invalidate();
+            }
         }
 
         backend.leave();
@@ -183,6 +191,7 @@ impl Program {
                         return true;
                     }
                     if *id == crate::commands::CM_REPAINT {
+                        self.repaint_requested = true;
                         continue;
                     }
                 }
