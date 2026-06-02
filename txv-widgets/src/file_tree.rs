@@ -199,9 +199,18 @@ impl FileTreeData {
             for root_path in &self.extra_roots.clone() {
                 self.nodes.push(Self::root_node(root_path));
             }
+            // Auto-expand root nodes so tree isn't empty
+            for i in 0..self.nodes.len() {
+                if self.nodes[i].parent.is_none() && self.nodes[i].is_dir {
+                    self.nodes[i].expanded = true;
+                    let depth = self.nodes[i].depth;
+                    let path = self.nodes[i].path.clone();
+                    self.load_children(path, Some(i), depth + 1);
+                }
+            }
         }
 
-        // Re-expand previously expanded directories
+        // Re-expand previously expanded subdirectories
         for path in &expanded_paths {
             if let Some(idx) = self.nodes.iter().position(|n| n.path == *path) {
                 if self.nodes[idx].is_dir && !self.nodes[idx].expanded {
