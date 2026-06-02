@@ -88,9 +88,6 @@ impl View for PtyTerminal {
         if !self.state.is_focused() || self.exited || self.scroll_offset > 0 {
             return None;
         }
-        if !self.termbuf.cursor_visible() {
-            return None;
-        }
         let (cx, cy) = self.termbuf.cursor();
         let w = self.state.bounds().w;
         let h = self.state.bounds().h;
@@ -100,7 +97,11 @@ impl View for PtyTerminal {
         Some(txv_core::cursor::CursorRequest {
             x: cx,
             y: cy,
-            shape: txv_core::cursor::CursorShape::Block,
+            shape: if self.termbuf.cursor_visible() {
+                txv_core::cursor::CursorShape::Block
+            } else {
+                txv_core::cursor::CursorShape::Bar
+            },
         })
     }
 
