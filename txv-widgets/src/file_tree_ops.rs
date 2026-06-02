@@ -16,12 +16,14 @@ impl FileTreeData {
 
         let mut dirs = Vec::new();
         let mut files = Vec::new();
+        let mut tracked_paths: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
 
         for entry in walker.flatten() {
             let path = entry.path().to_path_buf();
             if path == dir {
                 continue;
             }
+            tracked_paths.insert(path.clone());
             let label = path
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
@@ -34,6 +36,7 @@ impl FileTreeData {
                 is_dir,
                 expanded: false,
                 parent,
+                ignored: false,
             };
             if is_dir {
                 dirs.push(node);
@@ -42,9 +45,49 @@ impl FileTreeData {
             }
         }
 
-        // Dirs first, then files
+        // Collect ignored entries (present on disk but skipped by ignore walker)
+        let mut ignored_dirs = Vec::new();
+        let mut ignored_files = Vec::new();
+        if self.show_ignored {
+            if let Ok(entries) = std::fs::read_dir(&dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if tracked_paths.contains(&path) {
+                        continue;
+                    }
+                    let label = path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().into_owned())
+                        .unwrap_or_default();
+                    if !self.show_hidden && label.starts_with('.') {
+                        continue;
+                    }
+                    let is_dir = path.is_dir();
+                    let node = TreeNode {
+                        path,
+                        label,
+                        depth,
+                        is_dir,
+                        expanded: false,
+                        parent,
+                        ignored: true,
+                    };
+                    if is_dir {
+                        ignored_dirs.push(node);
+                    } else {
+                        ignored_files.push(node);
+                    }
+                }
+                ignored_dirs.sort_by(|a, b| a.label.cmp(&b.label));
+                ignored_files.sort_by(|a, b| a.label.cmp(&b.label));
+            }
+        }
+
+        // Tracked dirs first, then tracked files, then ignored dirs, then ignored files
         self.nodes.extend(dirs);
         self.nodes.extend(files);
+        self.nodes.extend(ignored_dirs);
+        self.nodes.extend(ignored_files);
     }
 
     pub(crate) fn rebuild_visible(&mut self) {
@@ -66,6 +109,11 @@ impl FileTreeData {
             .map(|(i, _)| i)
             .collect();
         for id in ids {
+            let node = &self.nodes[id];
+            // Skip ignored nodes during filter unless they are expanded
+            if !self.filter.is_empty() && node.ignored && !node.expanded {
+                continue;
+            }
             if !self.filter.is_empty() && !ancestor_matched && !self.node_passes_filter(id) {
                 continue;
             }

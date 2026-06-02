@@ -14,6 +14,7 @@ pub(crate) struct TreeNode {
     pub(crate) is_dir: bool,
     pub(crate) expanded: bool,
     pub(crate) parent: Option<usize>,
+    pub(crate) ignored: bool,
 }
 
 /// Filesystem tree data provider.
@@ -31,6 +32,8 @@ pub struct FileTreeData {
     pub(crate) open_files: std::collections::HashSet<PathBuf>,
     /// Whether to show hidden (dot) files.
     pub show_hidden: bool,
+    /// Whether to show .gitignored files (dim, lazy-loaded).
+    pub show_ignored: bool,
     /// Active filter text (empty = no filter).
     pub(crate) filter: String,
     /// Indices of characters that matched in each node's label (node_id → positions).
@@ -76,6 +79,7 @@ impl FileTreeData {
             root_badge_colors: Vec::new(),
             open_files: std::collections::HashSet::new(),
             show_hidden: true,
+            show_ignored: true,
             filter: String::new(),
             match_positions: HashMap::new(),
             has_match_below: Vec::new(),
@@ -95,6 +99,7 @@ impl FileTreeData {
             is_dir: true,
             expanded: false,
             parent: None,
+            ignored: false,
         }
     }
 

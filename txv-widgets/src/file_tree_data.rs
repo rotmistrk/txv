@@ -49,6 +49,9 @@ impl TreeData for FileTreeData {
 
     fn style(&self, id: usize) -> Style {
         let node = &self.nodes[id];
+        if node.ignored {
+            return palette().style(StyleId::Dim);
+        }
         if node.is_dir {
             return palette().style(StyleId::TreeDir);
         }
