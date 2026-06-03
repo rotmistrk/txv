@@ -104,7 +104,7 @@ impl TreeData for FileTreeData {
         }
         let node = &self.nodes[id];
         if node.is_dir {
-            Some("󰉋 ")
+            Some("📁")
         } else {
             Some(icon_for_extension(&node.label))
         }
@@ -114,30 +114,34 @@ impl TreeData for FileTreeData {
 fn icon_for_extension(filename: &str) -> &'static str {
     let ext = filename.rsplit('.').next().unwrap_or("");
     match ext {
-        "rs" => " ",
-        "py" => " ",
-        "js" => " ",
-        "ts" => " ",
-        "tsx" | "jsx" => " ",
-        "go" => " ",
-        "java" => " ",
-        "c" | "h" => " ",
-        "cpp" | "cxx" | "cc" | "hpp" => " ",
-        "rb" => " ",
-        "lua" => " ",
-        "sh" | "bash" | "zsh" => " ",
-        "json" => " ",
-        "toml" => " ",
-        "yaml" | "yml" => " ",
-        "xml" => " ",
-        "html" | "htm" => " ",
-        "css" | "scss" => " ",
-        "md" | "markdown" => " ",
-        "txt" => " ",
-        "lock" => " ",
-        "git" | "gitignore" => " ",
-        "docker" | "dockerfile" => " ",
-        _ if filename == "Makefile" || filename == "Cargo.toml" => " ",
-        _ => "󰈔 ",
+        "rs" => "🦀",
+        "py" => "🐍",
+        "js" | "mjs" | "cjs" => "JS",
+        "ts" | "mts" => "TS",
+        "tsx" | "jsx" => "⚛ ",
+        "go" => "Go",
+        "java" => "☕",
+        "c" | "h" => "C ",
+        "cpp" | "cxx" | "cc" | "hpp" => "++",
+        "rb" => "💎",
+        "lua" => "🌙",
+        "sh" | "bash" | "zsh" => "$ ",
+        "json" | "jsonc" | "jsonl" => "{}",
+        "toml" | "ini" | "cfg" => "⚙ ",
+        "yaml" | "yml" => "📋",
+        "xml" => "◇ ",
+        "html" | "htm" => "🌐",
+        "css" | "scss" | "less" => "🎨",
+        "md" | "markdown" => "📝",
+        "txt" | "text" => "📄",
+        "lock" => "🔒",
+        "gitignore" | "gitmodules" | "gitattributes" => "⎇ ",
+        "dockerfile" => "🐳",
+        "svg" | "png" | "jpg" | "jpeg" | "gif" | "ico" => "🖼 ",
+        "sql" => "🗃 ",
+        "log" => "📜",
+        _ if filename == "Makefile" || filename == "CMakeLists.txt" => "🔧",
+        _ if filename == "Cargo.toml" => "📦",
+        _ => "· ",
     }
 }
