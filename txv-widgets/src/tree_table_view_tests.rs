@@ -187,3 +187,41 @@ fn extra_column_at_correct_position() {
     let c = buf.cell(34, 0);
     assert_eq!(c.ch, 't', "cell content starts at x=34");
 }
+
+// === Regression: collapse must clear stale rows below visible items (61ee5aa) ===
+
+#[test]
+fn collapse_clears_stale_rows_below_content() {
+    let mut v = TreeTableView::new(TestSource::new(), &[6]);
+    v.state.set_bounds(Rect::new(0, 0, 40, 10));
+    v.select();
+
+    // Expand Beta to show children (5 items total)
+    v.data_mut().expanded = true;
+    v.draw();
+
+    // Verify Child1 is drawn on row 2
+    let r2_before = row_text(&v, 2);
+    assert!(r2_before.contains("Child1"), "Child1 on row 2 before collapse");
+
+    // Collapse Beta (back to 3 items)
+    v.set_cursor(1);
+    let left = Event::Key(KeyEvent {
+        code: KeyCode::Left,
+        modifiers: KeyMod::default(),
+    });
+    v.handle(&left);
+    v.draw();
+
+    // Row 3 and 4 were previously occupied by children — they should now be cleared
+    let r3 = row_text(&v, 3);
+    let r4 = row_text(&v, 4);
+    assert!(
+        !r3.contains("Child"),
+        "stale content should be cleared after collapse: row3='{r3}'"
+    );
+    assert!(
+        !r4.contains("Child"),
+        "stale content should be cleared after collapse: row4='{r4}'"
+    );
+}

@@ -226,3 +226,33 @@ fn dormant_children_use_status_bar_background() {
         "dormant label must have status bar background"
     );
 }
+
+// === Regression: deactivate zeros children bounds to prevent ghost rendering (0a20294) ===
+
+#[test]
+fn deactivate_zeros_children_bounds() {
+    let mut mk = setup_prefix();
+    mk.set_sink(EventSink::new());
+    mk.set_bounds(Rect::new(0, 0, 80, 1));
+
+    // Activate
+    mk.handle(&Event::Key(ctrl_w()));
+
+    // Children should have non-zero bounds when active
+    let child_bounds = mk.group.child(0).map(|c| c.bounds());
+    assert!(
+        child_bounds.is_some_and(|r| r.w > 0),
+        "active children should have non-zero width"
+    );
+
+    // Deactivate via cancel_on_miss
+    mk.handle(&Event::Key(key(KeyCode::Char('z'))));
+
+    // After deactivation, children bounds should be zero
+    let child_bounds = mk.group.child(0).map(|c| c.bounds());
+    assert!(
+        child_bounds.is_some_and(|r| r.w == 0 && r.h == 0),
+        "deactivated children must have zero bounds: {:?}",
+        child_bounds
+    );
+}
