@@ -120,6 +120,7 @@ impl Backend for CrosstermBackend {
 
     fn flush(&mut self, buf: &Buffer) {
         self.flush_buffer(buf);
+        self.cursor_dirty = true;
     }
 
     fn invalidate(&mut self) {
