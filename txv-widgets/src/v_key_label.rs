@@ -19,14 +19,8 @@ impl KeyLabelView {
         let label_text = label.into();
         let mods = key.modifiers;
         let plain_char = !mods.ctrl && !mods.alt && !mods.shift;
-        let char_len = label_text.chars().count();
-        let display_len = if label_text.is_empty() {
-            0
-        } else if matches!(key.code, txv_core::event::KeyCode::Char(_)) && plain_char {
-            char_len + 2 // "k:label"
-        } else {
-            char_len
-        };
+        // Display length excludes ~ markers (style toggles)
+        let display_len = display_width(&label_text, plain_char, key.code);
         let w = if display_len == 0 {
             0
         } else {
@@ -72,9 +66,22 @@ impl KeyLabelView {
         let mods = self.key.modifiers;
         let plain = !mods.ctrl && !mods.alt && !mods.shift;
         match self.key.code {
-            txv_core::event::KeyCode::Char(c) if plain => format!("{c}:{}", self.label_text),
+            txv_core::event::KeyCode::Char(c) if plain => format!("~{c}~:{}", self.label_text),
             _ => self.label_text.clone(),
         }
+    }
+}
+
+/// Compute visible width of label, excluding ~ style markers.
+fn display_width(label: &str, plain_char: bool, code: txv_core::event::KeyCode) -> usize {
+    if label.is_empty() {
+        return 0;
+    }
+    let base = label.chars().filter(|c| *c != '~').count();
+    if matches!(code, txv_core::event::KeyCode::Char(_)) && plain_char {
+        base + 2 // "k:label"
+    } else {
+        base
     }
 }
 
@@ -84,9 +91,6 @@ impl View for KeyLabelView {
     fn draw(&mut self) {
         let style = self.resolve_style(StyleId::StatusBar);
         let text = self.display_text();
-        let mods = self.key.modifiers;
-        let plain = !mods.ctrl && !mods.alt && !mods.shift;
-        let has_key_prefix = matches!(self.key.code, txv_core::event::KeyCode::Char(_)) && plain;
         let buf = self.state.buffer_mut();
         buf.fill(' ', style);
         if !text.is_empty() {
@@ -97,11 +101,41 @@ impl View for KeyLabelView {
                 },
                 ..style
             };
-            if has_key_prefix {
-                buf.print(1, 0, &text[..2], key_style);
-                buf.print(3, 0, &text[2..], style);
-            } else {
-                buf.print(1, 0, &text, style);
+            // Render with ~ as style toggle: ~text~ renders in key_style
+            let mut x: u16 = 1;
+            let mut in_key = false;
+            let mut chars = text.chars().peekable();
+            while let Some(ch) = chars.next() {
+                if ch == '~' {
+                    if chars.peek() == Some(&'~') {
+                        chars.next();
+                        buf.put(
+                            x,
+                            0,
+                            '~',
+                            if in_key {
+                                key_style
+                            } else {
+                                style
+                            },
+                        );
+                        x += 1;
+                    } else {
+                        in_key = !in_key;
+                    }
+                } else {
+                    buf.put(
+                        x,
+                        0,
+                        ch,
+                        if in_key {
+                            key_style
+                        } else {
+                            style
+                        },
+                    );
+                    x += 1;
+                }
             }
         }
         self.state.mark_redrawn();
