@@ -97,11 +97,7 @@ impl View for PtyTerminal {
         Some(txv_core::cursor::CursorRequest {
             x: cx,
             y: cy,
-            shape: if self.termbuf.cursor_visible() {
-                txv_core::cursor::CursorShape::Block
-            } else {
-                txv_core::cursor::CursorShape::Bar
-            },
+            shape: txv_core::cursor::CursorShape::Block,
         })
     }
 
