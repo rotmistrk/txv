@@ -91,9 +91,9 @@ impl View for PtyTerminal {
         let (cx, cy) = self.termbuf.cursor();
         let w = self.state.bounds().w;
         let h = self.state.bounds().h;
-        if cx >= w || cy >= h {
-            return None;
-        }
+        // Clamp to valid range (child may report position at boundary)
+        let cx = cx.min(w.saturating_sub(1));
+        let cy = cy.min(h.saturating_sub(1));
         Some(txv_core::cursor::CursorRequest {
             x: cx,
             y: cy,
