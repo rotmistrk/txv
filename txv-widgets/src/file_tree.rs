@@ -62,6 +62,12 @@ impl FileTreeData {
                 data.nodes.push(Self::root_node(root_path));
             }
             data.extra_roots = roots;
+            // Auto-expand all roots on initial construction
+            for i in 0..data.nodes.len() {
+                data.nodes[i].expanded = true;
+                let path = data.nodes[i].path.clone();
+                data.load_children(path, Some(i), 1);
+            }
         } else if let Some(r) = roots.into_iter().next() {
             data.load_children(r, None, 0);
         }
@@ -204,9 +210,12 @@ impl FileTreeData {
             for root_path in &self.extra_roots.clone() {
                 self.nodes.push(Self::root_node(root_path));
             }
-            // Auto-expand root nodes so tree isn't empty
+            // Expand root nodes that were previously expanded
             for i in 0..self.nodes.len() {
-                if self.nodes[i].parent.is_none() && self.nodes[i].is_dir {
+                if self.nodes[i].parent.is_none()
+                    && self.nodes[i].is_dir
+                    && expanded_paths.contains(&self.nodes[i].path)
+                {
                     self.nodes[i].expanded = true;
                     let depth = self.nodes[i].depth;
                     let path = self.nodes[i].path.clone();
