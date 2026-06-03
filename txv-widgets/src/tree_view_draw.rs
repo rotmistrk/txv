@@ -76,6 +76,21 @@ impl<D: TreeData> TreeView<D> {
                 0
             };
             let label_x = label_x + badge_offset;
+            // Draw icon if present
+            let icon_offset = if let Some(icon) = self.data.icon(id) {
+                let icon_style = Style {
+                    fg: node_style.fg,
+                    bg: style.bg,
+                    ..Style::default()
+                };
+                for (i, ch) in icon.chars().enumerate() {
+                    self.state.buffer_mut().put(label_x + i as u16, y, ch, icon_style);
+                }
+                icon.chars().count() as u16
+            } else {
+                0
+            };
+            let label_x = label_x + icon_offset;
             if let Some(positions) = self.data.highlight_positions(id) {
                 let sm = palette().style(StyleId::SearchMatch);
                 let hl_style = Style {

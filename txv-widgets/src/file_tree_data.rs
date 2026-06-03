@@ -97,4 +97,47 @@ impl TreeData for FileTreeData {
         let node = &self.nodes[id];
         !node.is_dir && self.open_files.contains(&node.path)
     }
+
+    fn icon(&self, id: usize) -> Option<&str> {
+        if !self.show_icons {
+            return None;
+        }
+        let node = &self.nodes[id];
+        if node.is_dir {
+            Some("󰉋 ")
+        } else {
+            Some(icon_for_extension(&node.label))
+        }
+    }
+}
+
+fn icon_for_extension(filename: &str) -> &'static str {
+    let ext = filename.rsplit('.').next().unwrap_or("");
+    match ext {
+        "rs" => " ",
+        "py" => " ",
+        "js" => " ",
+        "ts" => " ",
+        "tsx" | "jsx" => " ",
+        "go" => " ",
+        "java" => " ",
+        "c" | "h" => " ",
+        "cpp" | "cxx" | "cc" | "hpp" => " ",
+        "rb" => " ",
+        "lua" => " ",
+        "sh" | "bash" | "zsh" => " ",
+        "json" => " ",
+        "toml" => " ",
+        "yaml" | "yml" => " ",
+        "xml" => " ",
+        "html" | "htm" => " ",
+        "css" | "scss" => " ",
+        "md" | "markdown" => " ",
+        "txt" => " ",
+        "lock" => " ",
+        "git" | "gitignore" => " ",
+        "docker" | "dockerfile" => " ",
+        _ if filename == "Makefile" || filename == "Cargo.toml" => " ",
+        _ => "󰈔 ",
+    }
 }

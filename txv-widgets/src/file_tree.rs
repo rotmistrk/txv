@@ -34,6 +34,8 @@ pub struct FileTreeData {
     pub show_hidden: bool,
     /// Whether to show .gitignored files (dim, lazy-loaded).
     pub show_ignored: bool,
+    /// Whether to show file/dir icons (Nerd Font).
+    pub show_icons: bool,
     /// Active filter text (empty = no filter).
     pub(crate) filter: String,
     /// Indices of characters that matched in each node's label (node_id → positions).
@@ -86,6 +88,7 @@ impl FileTreeData {
             open_files: std::collections::HashSet::new(),
             show_hidden: true,
             show_ignored: true,
+            show_icons: false,
             filter: String::new(),
             match_positions: HashMap::new(),
             has_match_below: Vec::new(),

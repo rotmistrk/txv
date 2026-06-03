@@ -40,6 +40,10 @@ pub trait TreeData: Send + 'static {
     fn is_open(&self, _id: usize) -> bool {
         false
     }
+    /// Optional icon glyph (Nerd Font) to show before label.
+    fn icon(&self, _id: usize) -> Option<&str> {
+        None
+    }
 }
 
 pub struct TreeView<D: TreeData> {
