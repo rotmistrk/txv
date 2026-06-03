@@ -32,6 +32,14 @@ pub trait TreeData: Send + 'static {
     fn filter_status(&self) -> Option<&str> {
         None
     }
+    /// Optional colored badge for a node (e.g. root color indicator).
+    fn badge_color(&self, _id: usize) -> Option<Color> {
+        None
+    }
+    /// Whether this file node is currently open in an editor tab.
+    fn is_open(&self, _id: usize) -> bool {
+        false
+    }
 }
 
 pub struct TreeView<D: TreeData> {

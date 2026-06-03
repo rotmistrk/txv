@@ -1,5 +1,6 @@
 //! VTE Perform trait implementation — dispatches terminal escape sequences.
 
+use super::row::Row;
 use super::vte_handler::Performer;
 use super::TCell;
 
@@ -105,7 +106,7 @@ impl vte::Perform for Performer<'_> {
                 for _ in 0..n {
                     if y <= bot && bot < self.cells.len() {
                         self.cells.remove(bot);
-                        self.cells.insert(y, vec![TCell::default(); self.cols as usize]);
+                        self.cells.insert(y, Row::new(self.cols as usize));
                     }
                 }
             }
@@ -120,7 +121,7 @@ impl vte::Perform for Performer<'_> {
                 for _ in 0..n {
                     if y <= bot && bot < self.cells.len() {
                         self.cells.remove(y);
-                        self.cells.insert(bot, vec![TCell::default(); self.cols as usize]);
+                        self.cells.insert(bot, Row::new(self.cols as usize));
                     }
                 }
             }
@@ -189,7 +190,7 @@ impl vte::Perform for Performer<'_> {
                 let y = *self.cursor_y as usize;
                 let x = *self.cursor_x as usize;
                 if y < self.rows as usize {
-                    let row = &mut self.cells[y];
+                    let row = &mut self.cells[y].cells;
                     let end = (x + n).min(row.len());
                     row.drain(x..end);
                     row.resize(self.cols as usize, TCell::default());
@@ -204,7 +205,7 @@ impl vte::Perform for Performer<'_> {
                 let y = *self.cursor_y as usize;
                 let x = *self.cursor_x as usize;
                 if y < self.rows as usize {
-                    let row = &mut self.cells[y];
+                    let row = &mut self.cells[y].cells;
                     for _ in 0..n {
                         if x < row.len() {
                             row.insert(x, TCell::default());

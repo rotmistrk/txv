@@ -90,7 +90,7 @@ impl MockBackend {
         self.inject(Event::Resize(width, height));
     }
 
-    pub fn surface(&self) -> Option<&Buffer> {
+    pub fn buffer(&self) -> Option<&Buffer> {
         self.last_buffer.as_ref()
     }
 

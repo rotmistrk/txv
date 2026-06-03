@@ -1,12 +1,45 @@
 //! Three-phase event dispatch and delegate_group_state! macro.
 
 use super::GroupState;
+use crate::commands::{RepositionRequest, CM_REPOSITION};
 use crate::event::Event;
+use crate::geometry::Rect;
 use crate::view::{EventSink, HandleResult};
 
 impl GroupState {
     /// Three-phase event dispatch.
     pub fn dispatch(&mut self, event: &Event) -> HandleResult {
+        // CM_REPOSITION: the group itself handles it (child asks parent to move it).
+        if let Event::Command { id, data, .. } = event {
+            if *id == CM_REPOSITION {
+                if let Some(req) = data.as_ref().and_then(|d| d.downcast_ref::<RepositionRequest>()) {
+                    let base = match req.relative_to {
+                        Some(rel_id) => self.origin_of(rel_id).unwrap_or((0, 0)),
+                        None => (0, 0),
+                    };
+                    let x = (base.0 as i16 + req.offset_x).max(0) as u16;
+                    let y = (base.1 as i16 + req.offset_y).max(0) as u16;
+                    let translated = Rect::new(x, y, req.width, req.height);
+                    for i in 0..self.children.len() {
+                        if self.children[i].view_id() == req.view_id {
+                            self.set_child_bounds(i, translated);
+                            self.mark_dirty();
+                            return HandleResult::Consumed;
+                        }
+                    }
+                }
+                return HandleResult::Ignored;
+            }
+        }
+
+        // Broadcast commands: deliver to ALL children.
+        if matches!(event, Event::Command { broadcast: true, .. }) {
+            for child in &mut self.children {
+                child.handle(event);
+            }
+            return HandleResult::Ignored;
+        }
+
         // Phase 1: preprocess
         for child in &mut self.children {
             if child.options().preprocess && child.handle(event) == HandleResult::Consumed {
@@ -89,6 +122,9 @@ macro_rules! delegate_group_state {
         fn buffer(&self) -> &$crate::buffer::Buffer {
             self.$field.buffer()
         }
+        fn group_state(&self) -> Option<&$crate::group::GroupState> {
+            Some(&self.$field)
+        }
     };
     ($field:ident, override { $($skip:ident),* $(,)? }) => {
         $crate::__dvs_maybe!(bounds, [$($skip),*], { fn bounds(&self) -> $crate::geometry::Rect { self.$field.bounds() } });
@@ -127,5 +163,8 @@ macro_rules! delegate_group_state {
                 self.$field.buffer()
             }
         });
+        fn group_state(&self) -> Option<&$crate::group::GroupState> {
+            Some(&self.$field)
+        }
     };
 }

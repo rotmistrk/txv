@@ -55,6 +55,7 @@ pub struct Program {
     group: GroupState,
     sink: EventSink,
     quit_requested: bool,
+    repaint_requested: bool,
 }
 
 impl Program {
@@ -80,6 +81,7 @@ impl Program {
             group,
             sink,
             quit_requested: false,
+            repaint_requested: false,
         }
     }
 
@@ -128,12 +130,19 @@ impl Program {
                 self.sink.push(Event::Command {
                     id: crate::commands::CM_TICK,
                     data: None,
+                    broadcast: false,
                 });
             }
 
             // Drain and process commands from sink
             if self.drain_commands(&mut handler) {
                 break;
+            }
+            if self.repaint_requested {
+                self.repaint_requested = false;
+                let (nw, nh) = backend.size();
+                self.layout(nw, nh);
+                backend.invalidate();
             }
         }
 
@@ -182,7 +191,7 @@ impl Program {
                         return true;
                     }
                     if *id == crate::commands::CM_REPAINT {
-                        // handled below after drain
+                        self.repaint_requested = true;
                         continue;
                     }
                 }
@@ -191,7 +200,7 @@ impl Program {
                     continue;
                 }
                 // Unhandled command → app handler
-                if let Event::Command { id, ref data } = ev {
+                if let Event::Command { id, ref data, .. } = ev {
                     let desktop = &mut *self.group.children[1];
                     let mut ctx = CommandContext {
                         command: id,
@@ -209,14 +218,13 @@ impl Program {
         for child in &mut self.group.children {
             child.draw();
         }
-        let pb = self.group.bounds();
         self.group.buffer_mut().fill(' ', Style::default());
         // Safety: children (immutable) and buffer (mutable) are disjoint fields of GroupState.
         let buf_ptr = self.group.buffer_mut() as *mut crate::buffer::Buffer;
-        for child in &self.group.children {
-            let cb = child.bounds();
+        for (i, child) in self.group.children.iter().enumerate() {
+            let (ox, oy) = self.group.origins.get(i).copied().unwrap_or((0, 0));
             unsafe {
-                (*buf_ptr).blit(child.buffer(), cb.x.saturating_sub(pb.x), cb.y.saturating_sub(pb.y));
+                (*buf_ptr).blit(child.buffer(), ox, oy);
             }
         }
         self.group.mark_redrawn();
@@ -233,10 +241,16 @@ impl Program {
         self.group.set_bounds(full);
 
         if h >= 2 {
+            // Desktop: origin (0,0), size (w, h-1)
+            self.group.set_child_origin(1, 0, 0);
             self.group.children[1].set_bounds(Rect::new(0, 0, w, h - 1));
-            self.group.children[0].set_bounds(Rect::new(0, h - 1, w, 1));
+            // Status bar: origin (0, h-1), size (w, 1)
+            self.group.set_child_origin(0, 0, h - 1);
+            self.group.children[0].set_bounds(Rect::new(0, 0, w, 1));
         } else {
+            self.group.set_child_origin(1, 0, 0);
             self.group.children[1].set_bounds(full);
+            self.group.set_child_origin(0, 0, 0);
             self.group.children[0].set_bounds(Rect::new(0, 0, 0, 0));
         }
     }
@@ -261,6 +275,16 @@ impl Program {
     /// Access the event sink (for external command injection).
     pub fn sink(&self) -> &EventSink {
         &self.sink
+    }
+
+    /// Insert a named child view (drawn on top in standard cycle).
+    pub fn insert_named(&mut self, name: &str, child: Box<dyn View>) {
+        self.group.insert_named(name, child);
+    }
+
+    /// Remove a named child view.
+    pub fn remove_named(&mut self, name: &str) {
+        self.group.remove_named(name);
     }
 
     /// Returns true if CM_QUIT was received during the last run_cycles.

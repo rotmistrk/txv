@@ -1,7 +1,7 @@
 //! # txv-core
 //!
 //! Pure Rust TUI framework core. Zero external dependencies.
-//! Defines the View trait, Group three-phase dispatch, Surface, EventSink,
+//! Defines the View trait, Group three-phase dispatch, Buffer, EventSink,
 //! Backend trait, and the run loop.
 //!
 //! ## How to create a View
@@ -58,6 +58,7 @@ pub mod commands;
 pub mod complete;
 pub mod cursor;
 pub mod dialog;
+pub mod disambiguate;
 pub mod event;
 pub mod geometry;
 pub mod glyphs;
@@ -68,7 +69,6 @@ pub mod program;
 pub mod run;
 pub mod status;
 pub mod status_bar;
-pub mod surface;
 pub mod text;
 pub mod view;
 pub mod window;
@@ -89,7 +89,6 @@ pub mod prelude {
     pub use crate::palette::{palette, set_palette, DerivedPalette, Palette, PaletteStyle, StyleId, ThemeMode};
     pub use crate::run::{exec_view, run, run_cycles, Backend, MockBackend};
     pub use crate::status::{ActiveItem, Gravity, StatusBarItem, VisibleItem};
-    pub use crate::surface::{SubSurface, Surface};
     pub use crate::text::{display_char_width, display_width, visual_positions};
     pub use crate::view::{CloseResult, EventSink, HandleResult, View, ViewId, ViewOptions, ViewState};
     pub use crate::window::{FrameStyle, WindowState};

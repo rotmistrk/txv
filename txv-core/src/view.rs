@@ -51,7 +51,19 @@ impl EventSink {
     }
 
     pub fn push_command(&self, id: CommandId, data: Option<Box<dyn Any + Send>>) {
-        self.push(Event::Command { id, data });
+        self.push(Event::Command {
+            id,
+            data,
+            broadcast: false,
+        });
+    }
+
+    pub fn push_broadcast(&self, id: CommandId, data: Option<Box<dyn Any + Send>>) {
+        self.push(Event::Command {
+            id,
+            data,
+            broadcast: true,
+        });
     }
 
     pub fn drain(&self) -> Vec<Event> {
@@ -125,6 +137,14 @@ pub trait View: Send {
     fn set_palette(&mut self, _palette: std::sync::Arc<dyn crate::palette::Palette>) {}
     /// Access the view's buffer after draw().
     fn buffer(&self) -> &Buffer;
+    /// If this view owns a GroupState, expose it for coordinate queries.
+    fn group_state(&self) -> Option<&crate::group::GroupState> {
+        None
+    }
+    /// Desired width hint for layout. 0 = no preference (use natural/current).
+    fn desired_width(&self) -> u16 {
+        0
+    }
 }
 
 /// Common view state — embed in every view.
@@ -203,9 +223,9 @@ impl ViewState {
     pub fn set_bounds(&mut self, r: Rect) {
         if self.bounds.w != r.w || self.bounds.h != r.h {
             self.buf.resize(r.w, r.h);
+            self.bounds = Rect::new(0, 0, r.w, r.h);
+            self.dirty = true;
         }
-        self.bounds = r;
-        self.dirty = true;
     }
 
     pub fn buffer(&self) -> &Buffer {
@@ -233,7 +253,19 @@ impl ViewState {
 
     /// Push a command event to the owner's sink.
     pub fn put_command(&self, id: CommandId, data: Option<Box<dyn Any + Send>>) {
-        self.put_event(Event::Command { id, data });
+        self.put_event(Event::Command {
+            id,
+            data,
+            broadcast: false,
+        });
+    }
+
+    pub fn put_broadcast(&self, id: CommandId, data: Option<Box<dyn Any + Send>>) {
+        self.put_event(Event::Command {
+            id,
+            data,
+            broadcast: true,
+        });
     }
 }
 

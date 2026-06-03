@@ -46,7 +46,30 @@ impl View for StatusBar {
         if let Some(idx) = self.exclusive {
             if let Some(label) = self.visible_label(idx) {
                 let label = label.to_string();
-                self.state.buffer_mut().print_line(0, 0, &label, w, bar_style);
+                let style = self.render_style(idx, bar_style);
+                if let Some(pos) = self.item_highlight_offset(idx) {
+                    let hi_style = crate::palette::palette().style(crate::palette::StyleId::StatusHighlight);
+                    let hi_style = Style {
+                        bg: style.bg,
+                        ..hi_style
+                    };
+                    // Render with one highlighted char
+                    let padded = format!(" {} ", label);
+                    for (i, ch) in padded.chars().enumerate() {
+                        let x = i as u16;
+                        if x >= w {
+                            break;
+                        }
+                        let s = if i == pos + 1 {
+                            hi_style
+                        } else {
+                            style
+                        };
+                        self.state.buffer_mut().put(x, 0, ch, s);
+                    }
+                } else {
+                    self.state.buffer_mut().print_line(0, 0, &label, w, style);
+                }
             }
             return;
         }

@@ -6,14 +6,21 @@
 //! 3. Postprocess: children with `options().postprocess` see event last
 
 mod dispatch;
+mod view_fwd;
 
-use crate::view::{View, ViewOptions, ViewState};
+use std::collections::HashMap;
+
+use crate::view::{View, ViewId, ViewOptions, ViewState};
 
 /// Common group state — embed in any view that owns children.
 pub struct GroupState {
     view: ViewState,
     pub(crate) children: Vec<Box<dyn View>>,
+    /// Origin of each child in parent-local coordinates.
+    pub(crate) origins: Vec<(u16, u16)>,
     pub(crate) focused: usize,
+    /// Named children: name → index.
+    named: HashMap<String, usize>,
 }
 
 impl GroupState {
@@ -21,12 +28,15 @@ impl GroupState {
         Self {
             view: ViewState::new(options),
             children: Vec::new(),
+            origins: Vec::new(),
             focused: 0,
+            named: HashMap::new(),
         }
     }
 
     pub fn insert(&mut self, child: Box<dyn View>) {
         self.children.push(child);
+        self.origins.push((0, 0));
         let idx = self.children.len() - 1;
         self.propagate_sink_to(idx);
         self.view.mark_dirty();
@@ -34,17 +44,51 @@ impl GroupState {
 
     pub fn insert_at(&mut self, index: usize, child: Box<dyn View>) {
         self.children.insert(index, child);
+        self.origins.insert(index, (0, 0));
         self.propagate_sink_to(index);
         self.view.mark_dirty();
     }
 
     pub fn remove(&mut self, index: usize) -> Box<dyn View> {
         let child = self.children.remove(index);
+        self.origins.remove(index);
         if self.focused >= self.children.len() && self.focused > 0 {
             self.focused -= 1;
         }
+        // Update named indices that shifted.
+        for val in self.named.values_mut() {
+            if *val > index {
+                *val -= 1;
+            }
+        }
         self.view.mark_dirty();
         child
+    }
+
+    /// Insert a named child. Replaces any existing child with the same name.
+    pub fn insert_named(&mut self, name: &str, child: Box<dyn View>) {
+        if let Some(&old_idx) = self.named.get(name) {
+            self.children[old_idx] = child;
+            self.propagate_sink_to(old_idx);
+        } else {
+            self.children.push(child);
+            self.origins.push((0, 0));
+            let idx = self.children.len() - 1;
+            self.propagate_sink_to(idx);
+            self.named.insert(name.to_string(), idx);
+        }
+        self.view.mark_dirty();
+    }
+
+    /// Remove a named child. Returns it if found.
+    pub fn remove_named(&mut self, name: &str) -> Option<Box<dyn View>> {
+        let idx = self.named.remove(name)?;
+        Some(self.remove(idx))
+    }
+
+    /// Check if a named child exists.
+    pub fn has_named(&self, name: &str) -> bool {
+        self.named.contains_key(name)
     }
 
     pub fn child_count(&self) -> usize {
@@ -81,11 +125,26 @@ impl GroupState {
         self.children.get_mut(self.focused)
     }
 
-    /// Set bounds on a child by index.
+    /// Set origin (position within parent) and size for a child.
     pub fn set_child_bounds(&mut self, index: usize, rect: crate::geometry::Rect) {
-        if let Some(child) = self.children.get_mut(index) {
-            child.set_bounds(rect);
+        if let Some(origin) = self.origins.get_mut(index) {
+            *origin = (rect.x, rect.y);
         }
+        if let Some(child) = self.children.get_mut(index) {
+            child.set_bounds(crate::geometry::Rect::new(0, 0, rect.w, rect.h));
+        }
+    }
+
+    /// Set origin of a child in parent-local coordinates.
+    pub fn set_child_origin(&mut self, index: usize, x: u16, y: u16) {
+        if let Some(origin) = self.origins.get_mut(index) {
+            *origin = (x, y);
+        }
+    }
+
+    /// Get origin of a child in parent-local coordinates.
+    pub fn child_origin(&self, index: usize) -> (u16, u16) {
+        self.origins.get(index).copied().unwrap_or((0, 0))
     }
 
     /// Select the focused child, unselect the previous.
@@ -186,82 +245,21 @@ impl GroupState {
         }
     }
 
-    // --- Forwarding methods (delegate to self.view) ---
-
-    pub fn bounds(&self) -> crate::geometry::Rect {
-        self.view.bounds()
-    }
-
-    pub fn set_bounds(&mut self, r: crate::geometry::Rect) {
-        self.view.set_bounds(r);
-    }
-
-    pub fn mark_dirty(&mut self) {
-        self.view.mark_dirty();
-    }
-
-    pub fn mark_redrawn(&mut self) {
-        self.view.mark_redrawn();
-    }
-
-    pub fn is_dirty(&self) -> bool {
-        self.view.is_dirty()
-    }
-
-    pub fn is_focused(&self) -> bool {
-        self.view.is_focused()
-    }
-
-    pub fn set_focused(&mut self, f: bool) {
-        self.view.set_focused(f);
-    }
-
-    pub fn buffer(&self) -> &crate::buffer::Buffer {
-        self.view.buffer()
-    }
-
-    pub fn buffer_mut(&mut self) -> &mut crate::buffer::Buffer {
-        self.view.buffer_mut()
-    }
-
-    pub fn options(&self) -> ViewOptions {
-        self.view.options()
-    }
-
-    pub fn sink(&self) -> Option<&crate::view::EventSink> {
-        self.view.sink()
-    }
-
-    /// Set the sink on this group only, without propagating to children.
-    pub fn set_own_sink(&mut self, sink: crate::view::EventSink) {
-        self.view.set_sink(sink);
-    }
-
-    pub fn title(&self) -> &str {
-        self.view.title()
-    }
-
-    pub fn set_title(&mut self, t: impl Into<String>) {
-        self.view.set_title(t);
-    }
-
-    pub fn put_event(&self, event: crate::event::Event) {
-        self.view.put_event(event);
-    }
-
-    pub fn put_command(&self, id: crate::event::CommandId, data: Option<Box<dyn std::any::Any + Send>>) {
-        self.view.put_command(id, data);
-    }
-
-    /// Query the focused child's cursor request and translate to group-relative coords.
-    pub fn cursor(&self) -> Option<crate::cursor::CursorRequest> {
-        let child = self.focused_child()?;
-        let mut req = child.cursor()?;
-        let cb = child.bounds();
-        let gb = self.view.bounds();
-        req.x = req.x.saturating_add(cb.x).saturating_sub(gb.x);
-        req.y = req.y.saturating_add(cb.y).saturating_sub(gb.y);
-        Some(req)
+    /// Find a descendant's origin in this group's coordinate space.
+    /// Recursively searches children.
+    pub fn origin_of(&self, target: ViewId) -> Option<(u16, u16)> {
+        for (i, child) in self.children.iter().enumerate() {
+            let (ox, oy) = self.origins.get(i).copied().unwrap_or((0, 0));
+            if child.view_id() == target {
+                return Some((ox, oy));
+            }
+            if let Some(sub) = child.group_state() {
+                if let Some((sx, sy)) = sub.origin_of(target) {
+                    return Some((ox + sx, oy + sy));
+                }
+            }
+        }
+        None
     }
 }
 

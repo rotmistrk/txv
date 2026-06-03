@@ -7,7 +7,11 @@ use txv_core::prelude::*;
 use super::InputLine;
 
 impl View for InputLine {
-    delegate_view_state!(state, override { cursor, select });
+    delegate_view_state!(state, override { cursor, select, as_any_mut, desired_width });
+
+    fn desired_width(&self) -> u16 {
+        self.text.len() as u16 + 1
+    }
 
     fn select(&mut self) {
         self.state.set_focused(true);
@@ -33,11 +37,11 @@ impl View for InputLine {
         if w == 0 || self.state.buffer_mut().height() == 0 {
             return;
         }
-        let style = self.resolve_style(StyleId::StatusBar);
+        let style = self.resolve_style(StyleId::Text);
         let sel_style = self.resolve_style(StyleId::EditSelection);
-        self.state.buffer_mut().hline(0, 0, w, ' ', style);
         let ww = w as usize;
         let start = self.visible_start(ww);
+        self.state.buffer_mut().hline(0, 0, w, ' ', style);
         let sel_range = self.selection_range();
         for (i, ch) in self.text.chars().enumerate().skip(start).take(ww) {
             let x = (i - start) as u16;
@@ -49,12 +53,16 @@ impl View for InputLine {
             };
             self.state.buffer_mut().put(x, 0, ch, s);
         }
-        if self.selection.is_none() {
-            let cx = (self.cursor - start) as u16;
-            if cx < w {
-                let ch = self.text.chars().nth(self.cursor).unwrap_or(' ');
-                let cs = self.resolve_style(StyleId::InputCursor);
-                self.state.buffer_mut().put(cx, 0, ch, cs);
+        // Overflow indicators
+        let total_chars = self.char_count();
+        if ww > 0 && total_chars > ww {
+            let ov_fg = self.resolve_style(StyleId::OverflowIndicator).fg;
+            if start > 0 {
+                self.state.buffer_mut().put(0, 0, '…', Style { fg: ov_fg, ..style });
+            }
+            if start + ww < total_chars {
+                let rx = (ww - 1) as u16;
+                self.state.buffer_mut().put(rx, 0, '…', Style { fg: ov_fg, ..style });
             }
         }
     }
@@ -63,48 +71,17 @@ impl View for InputLine {
         self.palette = Some(palette);
     }
 
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(self)
+    }
+
     fn handle(&mut self, event: &Event) -> HandleResult {
-        if let Event::Command { data, .. } = event {
-            return self.handle_command(data);
-        }
-        let Event::Key(key) = event else {
-            return HandleResult::Ignored;
-        };
-        match &key.code {
-            KeyCode::Char(ch) => self.handle_char(*ch),
-            KeyCode::Backspace => self.handle_backspace(),
-            KeyCode::Delete => self.handle_delete(),
-            KeyCode::Left if self.cursor > 0 => {
-                self.selection = None;
-                self.cursor -= 1;
-                self.state.mark_dirty()
-            }
-            KeyCode::Right if self.cursor < self.text.len() => {
-                self.selection = None;
-                self.cursor += 1;
-                self.state.mark_dirty()
-            }
-            KeyCode::Home => {
-                self.selection = None;
-                self.cursor = 0;
-                self.state.mark_dirty()
-            }
-            KeyCode::End => {
-                self.selection = None;
-                self.cursor = self.text.len();
-                self.state.mark_dirty()
-            }
-            KeyCode::Up => self.handle_history_up(),
-            KeyCode::Down => self.handle_history_down(),
-            KeyCode::Tab => self.try_complete(),
-            KeyCode::Enter => {
-                self.push_history();
-                self.state
-                    .put_command(self.submit_command, Some(Box::new(self.text.clone())));
-            }
-            KeyCode::Esc => self.state.put_command(CM_CANCEL, None),
-            _ => return HandleResult::Ignored,
-        }
-        HandleResult::Consumed
+        self.handle_event(event)
+    }
+}
+
+impl Default for InputLine {
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -45,7 +45,7 @@ fn run_quits_on_cm_quit() {
         modifiers: KeyMod::default(),
     }));
     run(&mut view, &mut backend);
-    let s = backend.surface().expect("surface should be flushed");
+    let s = backend.buffer().expect("buffer should be flushed");
     assert_eq!(s.cell(0, 0).ch, 'Q');
 }
 

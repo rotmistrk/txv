@@ -63,18 +63,17 @@ impl View for TabPanel {
 
         // Draw active content child
         let active_gi = self.bar().active_index() + 1;
+        let (ox, oy) = self.group.child_origin(active_gi);
         if let Some(child) = self.group.child_mut(active_gi) {
             child.draw();
-            let cb = child.bounds();
-            if cb.w > 0 && cb.h > 0 {
-                let dx = cb.x.saturating_sub(b.x);
-                let dy = cb.y.saturating_sub(b.y);
-                unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
+            let cs = child.bounds();
+            if cs.w > 0 && cs.h > 0 {
+                unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
             }
         }
 
         if self.bar().dropdown_open() {
-            self.draw_dropdown_overlay();
+            self.draw_dropdown();
         }
     }
 
@@ -86,7 +85,6 @@ impl View for TabPanel {
                     child.handle(event);
                 }
             }
-            // Sync active view's subtitle into tab title
             self.sync_subtitle();
             return HandleResult::Ignored;
         }

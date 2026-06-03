@@ -107,7 +107,7 @@ impl View for MessageView {
 
     fn handle(&mut self, event: &Event) -> HandleResult {
         match event {
-            Event::Command { id, data } if *id == CM_STATUS_MESSAGE => {
+            Event::Command { id, data, .. } if *id == CM_STATUS_MESSAGE => {
                 if let Some(msg) = data.as_ref().and_then(|b| b.downcast_ref::<Message>()) {
                     self.apply_message(msg);
                 }

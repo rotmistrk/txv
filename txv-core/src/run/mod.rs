@@ -121,15 +121,11 @@ pub fn exec_view(root: &mut dyn View, modal: &mut dyn View, backend: &mut dyn Ba
         let rb = root.bounds();
         let mut combined = Buffer::new(rb.w, rb.h);
         combined.blit(root.buffer(), 0, 0);
-        let mb = modal.bounds();
-        combined.blit(modal.buffer(), mb.x, mb.y);
+        // Modal is composited at (0,0) — caller should size it to desired position
+        combined.blit(modal.buffer(), 0, 0);
         backend.flush(&combined);
-        // Hardware cursor from modal, translated to absolute coords
-        let cursor = modal.cursor().map(|mut c| {
-            c.x = c.x.saturating_add(mb.x);
-            c.y = c.y.saturating_add(mb.y);
-            c
-        });
+        // Hardware cursor from modal
+        let cursor = modal.cursor();
         backend.set_cursor(cursor);
 
         match backend.poll_event(Duration::from_millis(50)) {

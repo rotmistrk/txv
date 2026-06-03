@@ -91,9 +91,9 @@ impl View for PtyTerminal {
         let (cx, cy) = self.termbuf.cursor();
         let w = self.state.bounds().w;
         let h = self.state.bounds().h;
-        if cx >= w || cy >= h {
-            return None;
-        }
+        // Clamp to valid range (child may report position at boundary)
+        let cx = cx.min(w.saturating_sub(1));
+        let cy = cy.min(h.saturating_sub(1));
         Some(txv_core::cursor::CursorRequest {
             x: cx,
             y: cy,
@@ -113,7 +113,13 @@ impl View for PtyTerminal {
         if cols > 0 && rows > 0 && (cols != self.prev_cols || rows != self.prev_rows) {
             self.prev_cols = cols;
             self.prev_rows = rows;
-            self.termbuf.resize(cols, rows);
+            if self.session.is_some() {
+                // Live PTY: simple resize, shell will redraw
+                self.termbuf.resize_simple(cols, rows);
+            } else {
+                // Dead session: reflow for scrollback review
+                self.termbuf.resize(cols, rows);
+            }
             if let Some(session) = &self.session {
                 session.resize(cols, rows);
             }

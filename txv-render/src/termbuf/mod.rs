@@ -1,12 +1,15 @@
-//! TermBuf — VTE-driven virtual terminal emulator that renders to a Surface.
+//! TermBuf — VTE-driven virtual terminal emulator that renders to a Buffer.
 
+mod resize;
+mod row;
 mod scrollback;
 mod vte_actions;
 mod vte_handler;
 
+use txv_core::buffer::Buffer;
 use txv_core::cell::Style;
-use txv_core::surface::Surface;
 
+use row::Row;
 use scrollback::Scrollback;
 use vte_handler::Performer;
 
@@ -14,7 +17,7 @@ use vte_handler::Performer;
 pub struct TermBuf {
     cols: u16,
     rows: u16,
-    cells: Vec<Vec<TCell>>,
+    cells: Vec<Row>,
     cursor_x: u16,
     cursor_y: u16,
     cursor_visible: bool,
@@ -52,17 +55,13 @@ impl Default for TCell {
     }
 }
 
-fn is_blank_row(row: &[TCell]) -> bool {
-    row.iter().all(|c| c.ch == ' ' || c.ch == '\0')
-}
-
 impl TermBuf {
     pub fn new(cols: u16, rows: u16) -> Self {
         Self::with_scrollback(cols, rows, 2000)
     }
 
     pub fn with_scrollback(cols: u16, rows: u16, scrollback_limit: usize) -> Self {
-        let cells = vec![vec![TCell::default(); cols as usize]; rows as usize];
+        let cells = (0..rows).map(|_| Row::new(cols as usize)).collect();
         Self {
             cols,
             rows,
@@ -133,70 +132,27 @@ impl TermBuf {
         self.osc_title.take()
     }
 
-    /// Resize the terminal buffer.
-    pub fn resize(&mut self, cols: u16, rows: u16) {
-        let old_rows = self.rows as usize;
-        let new_rows = rows as usize;
-        let new_cols = cols as usize;
-
-        // When shrinking vertically, push excess lines above cursor into scrollback.
-        if new_rows < old_rows {
-            let cursor_y = self.cursor_y as usize;
-            // Lines needed below cursor (inclusive): old_rows - cursor_y
-            // Lines we can keep: new_rows
-            // Lines to push to scrollback: max(0, cursor_y + 1 - new_rows)
-            let lines_to_push = (cursor_y + 1).saturating_sub(new_rows);
-            for i in 0..lines_to_push {
-                if !is_blank_row(&self.cells[i]) {
-                    self.scrollback.push(self.cells[i].clone());
-                }
-            }
-            // Shift remaining content up
-            let start = lines_to_push;
-            let mut new_cells = vec![vec![TCell::default(); new_cols]; new_rows];
-            let copy_cols = (self.cols as usize).min(new_cols);
-            for (dst_y, src_y) in (start..old_rows).enumerate().take(new_rows) {
-                new_cells[dst_y][..copy_cols].clone_from_slice(&self.cells[src_y][..copy_cols]);
-            }
-            self.cells = new_cells;
-            self.cursor_y = (cursor_y - lines_to_push).min(new_rows - 1) as u16;
-        } else {
-            // Growing or same height: just expand the grid
-            let mut new_cells = vec![vec![TCell::default(); new_cols]; new_rows];
-            let copy_rows = old_rows.min(new_rows);
-            let copy_cols = (self.cols as usize).min(new_cols);
-            for (y, new_row) in new_cells.iter_mut().enumerate().take(copy_rows) {
-                new_row[..copy_cols].clone_from_slice(&self.cells[y][..copy_cols]);
-            }
-            self.cells = new_cells;
-        }
-        self.cols = cols;
-        self.rows = rows;
-        self.scroll_bottom = rows.saturating_sub(1);
-        self.cursor_x = self.cursor_x.min(cols.saturating_sub(1));
-    }
-
-    /// Render terminal content to a Surface.
-    pub fn render_to(&self, surface: &mut Surface) {
-        let h = self.rows.min(surface.height());
-        let w = self.cols.min(surface.width());
+    /// Render terminal content to a Buffer.
+    pub fn render_to(&self, buf: &mut Buffer) {
+        let h = self.rows.min(buf.height());
+        let w = self.cols.min(buf.width());
         for y in 0..h {
             for x in 0..w {
-                let tc = &self.cells[y as usize][x as usize];
-                surface.put(x, y, tc.ch, tc.style);
+                let tc = &self.cells[y as usize].cells[x as usize];
+                buf.put(x, y, tc.ch, tc.style);
             }
         }
     }
 
-    /// Render terminal content to a Surface at a given offset.
-    pub fn render_at(&self, surface: &mut Surface, ox: u16, oy: u16, w: u16, h: u16) {
+    /// Render terminal content to a Buffer at a given offset.
+    pub fn render_at(&self, buf: &mut Buffer, ox: u16, oy: u16, w: u16, h: u16) {
         let rh = self.rows.min(h);
         let rw = self.cols.min(w);
         for y in 0..rh {
             for x in 0..rw {
-                if ox + x < surface.width() && oy + y < surface.height() {
-                    let tc = &self.cells[y as usize][x as usize];
-                    surface.put(ox + x, oy + y, tc.ch, tc.style);
+                if ox + x < buf.width() && oy + y < buf.height() {
+                    let tc = &self.cells[y as usize].cells[x as usize];
+                    buf.put(ox + x, oy + y, tc.ch, tc.style);
                 }
             }
         }
@@ -215,13 +171,13 @@ impl TermBuf {
     }
 
     /// Get a scrollback line by offset from bottom (0 = most recent).
-    pub fn scrollback_line(&self, offset: usize) -> Option<&Vec<TCell>> {
-        self.scrollback.line_from_bottom(offset)
+    pub fn scrollback_line(&self, offset: usize) -> Option<&[TCell]> {
+        self.scrollback.line_from_bottom(offset).map(|r| r.cells.as_slice())
     }
 
     /// Get a visible grid line by row index.
-    pub fn grid_line(&self, row: usize) -> Option<&Vec<TCell>> {
-        self.cells.get(row)
+    pub fn grid_line(&self, row: usize) -> Option<&[TCell]> {
+        self.cells.get(row).map(|r| r.cells.as_slice())
     }
 
     /// Number of visible rows.

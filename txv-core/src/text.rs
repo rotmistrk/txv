@@ -36,12 +36,12 @@ pub fn display_char_width(ch: char) -> u16 {
 /// ```
 /// use txv_core::text::{visual_positions, display_width};
 /// # use txv_core::prelude::*;
-/// # let mut surface = Surface::new(40, 1);
+/// # let mut buf = Buffer::new(40, 1);
 /// # let x = 0u16;
 /// # let y = 0u16;
 /// # let style = Style::default();
 /// for (col, ch, _width) in visual_positions("hello ✅ world", 4) {
-///     surface.put(x + col, y, ch, style);
+///     buf.put(x + col, y, ch, style);
 /// }
 /// // Padding starts at x + display_width("hello ✅ world", 4)
 /// ```

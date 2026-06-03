@@ -24,7 +24,7 @@ impl View for SplitPanel {
         };
         self.group.buffer_mut().fill(' ', transparent);
 
-        // Draw dividers BEFORE children so tab bars overlay via transparency
+        // Draw dividers BEFORE children so tab bars render on top
         if self.group.child_count() > 1 {
             let dim = txv_core::palette::palette().style(StyleId::Dim);
             let g = txv_core::glyphs::glyphs();
@@ -32,10 +32,11 @@ impl View for SplitPanel {
                 let Some(child) = self.group.child(i) else {
                     continue;
                 };
-                let cb = child.bounds();
+                let (ox, oy) = self.group.child_origin(i);
+                let cs = child.bounds();
                 match self.direction {
                     SplitDir::Horizontal => {
-                        let x = (cb.x + cb.w).saturating_sub(b.x);
+                        let x = ox + cs.w;
                         let y0 = if self.chrome_row {
                             1
                         } else {
@@ -46,7 +47,7 @@ impl View for SplitPanel {
                             .vline(x, y0, b.h.saturating_sub(y0), g.ui.separator_v, dim);
                     }
                     SplitDir::Vertical => {
-                        let y = (cb.y + cb.h).saturating_sub(b.y);
+                        let y = oy + cs.h;
                         self.group.buffer_mut().hline(0, y, b.w, g.ui.separator_h, dim);
                     }
                 }
@@ -55,13 +56,12 @@ impl View for SplitPanel {
 
         let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         for i in 0..self.group.child_count() {
+            let (ox, oy) = self.group.child_origin(i);
             if let Some(child) = self.group.child_mut(i) {
                 child.draw();
-                let cb = child.bounds();
-                if cb.w > 0 && cb.h > 0 {
-                    let dx = cb.x.saturating_sub(b.x);
-                    let dy = cb.y.saturating_sub(b.y);
-                    unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
+                let cs = child.bounds();
+                if cs.w > 0 && cs.h > 0 {
+                    unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
                 }
             }
         }

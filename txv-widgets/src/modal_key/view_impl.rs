@@ -6,7 +6,20 @@ use txv_core::prelude::*;
 use super::ModalKey;
 
 impl View for ModalKey {
-    delegate_group_state!(group, override { options, draw, handle, set_sink });
+    delegate_group_state!(group, override { options, draw, handle, set_sink, desired_width });
+
+    fn desired_width(&self) -> u16 {
+        if !self.active {
+            return 0;
+        }
+        // prompt + left cap + right cap + child desired widths
+        let prompt_w = self.prompt.len() as u16 + 2;
+        let child_w: u16 = (0..self.group.child_count())
+            .filter_map(|i| self.group.child(i))
+            .map(|c| c.desired_width().max(c.bounds().w))
+            .sum();
+        prompt_w + child_w
+    }
 
     fn set_sink(&mut self, sink: EventSink) {
         self.group.set_own_sink(sink);
@@ -22,9 +35,6 @@ impl View for ModalKey {
     }
 
     fn draw(&mut self) {
-        if self.active {
-            self.update_bounds();
-        }
         let bounds = self.group.bounds();
         if bounds.w == 0 || bounds.h == 0 {
             self.group.mark_redrawn();
@@ -101,30 +111,44 @@ impl ModalKey {
 
     fn drain_child_commands(&mut self) -> bool {
         let events = self.child_sink.drain();
-        let mut had_command = false;
+        let mut had_terminal = false;
         for ev in events {
-            if matches!(&ev, Event::Command { .. }) {
-                had_command = true;
+            if let Event::Command { id, .. } = &ev {
+                if !Self::is_passthrough_command(*id) {
+                    had_terminal = true;
+                }
             }
             self.group.put_event(ev);
         }
-        had_command
+        had_terminal
+    }
+
+    /// Commands that should pass through without deactivating the modal.
+    fn is_passthrough_command(id: CommandId) -> bool {
+        use crate::sidekick::{CM_SIDEKICK_HIDE, CM_SIDEKICK_SHOW};
+        matches!(id, CM_SIDEKICK_SHOW | CM_SIDEKICK_HIDE)
     }
 
     fn layout_children_modal(&mut self) {
         let prompt_w = self.prompt.len() as u16;
-        let y = self.group.bounds().y;
-        // +1 for left power cap
-        let base_x = self.group.bounds().x + prompt_w + 1;
+        // +1 for left power cap, +1 for right power cap
+        let base_x = prompt_w + 1;
+        let total_w = self.group.bounds().w.saturating_sub(base_x + 1);
+        let n = self.group.child_count();
         let mut x = base_x;
-        for i in 0..self.group.child_count() {
-            let cw = self.group.child(i).map_or(0, |c| c.bounds().w);
-            self.group.set_child_bounds(i, Rect::new(x, y, cw, 1));
+        for i in 0..n {
+            let cw = if i == n - 1 {
+                // Last child gets all remaining space
+                total_w.saturating_sub(x - base_x)
+            } else {
+                self.group.child(i).map_or(0, |c| c.bounds().w)
+            };
+            self.group.set_child_bounds(i, Rect::new(x, 0, cw, 1));
             x += cw;
         }
     }
 
-    fn draw_children(&mut self, bounds: Rect) {
+    fn draw_children(&mut self, _bounds: Rect) {
         let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
@@ -133,11 +157,9 @@ impl ModalKey {
                 }
             }
             if let Some(child) = self.group.child(i) {
-                let cb = child.bounds();
-                if cb.w > 0 {
-                    let dx = cb.x.saturating_sub(bounds.x);
-                    let dy = cb.y.saturating_sub(bounds.y);
-                    unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
+                if child.bounds().w > 0 {
+                    let (ox, oy) = self.group.child_origin(i);
+                    unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
                 }
             }
         }
@@ -150,7 +172,7 @@ impl ModalKey {
                 return HandleResult::Consumed;
             }
         }
-        if let Event::Command { id, data } = event {
+        if let Event::Command { id, data, .. } = event {
             if Some(*id) == self.trigger_command {
                 if let Some(text) = data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
                     self.prompt = text.clone();
@@ -176,15 +198,16 @@ impl ModalKey {
             return HandleResult::Consumed;
         }
 
-        // Update bounds after children may have resized
-        self.update_bounds();
-
         if self.cancel_on_miss && result == HandleResult::Ignored {
             if let Event::Key(_) = event {
                 self.deactivate();
             }
         }
 
-        HandleResult::Consumed
+        // Only consume key events — let commands pass through to postprocess.
+        match event {
+            Event::Key(_) => HandleResult::Consumed,
+            _ => result,
+        }
     }
 }

@@ -77,17 +77,17 @@ impl StatusBar {
         self.hint_iter()
             .enumerate()
             .map(
-                |(idx, (priority, min_width, max_width, stretch, gravity, natural_width))| {
+                |(idx, (priority, min_width, max_width, stretch, gravity, natural_width, last_alloc))| {
+                    let desired = self.child_desired_width(idx);
                     let min_w = if min_width > 0 {
                         min_width
-                    } else if stretch > 0 {
-                        1
+                    } else if desired > 0 {
+                        desired
                     } else {
-                        // Use current child width if non-zero, otherwise fall back to
-                        // the width captured at insertion time. This prevents items from
-                        // being permanently dropped after layout sets their bounds to 0.
                         let current = self.child_buffer_width(idx);
-                        if current > 0 {
+                        if stretch > 0 && current == last_alloc {
+                            natural_width
+                        } else if current > 0 {
                             current
                         } else {
                             natural_width
@@ -134,11 +134,13 @@ impl StatusBar {
                     rx += item.alloc;
                 }
             }
+            self.set_last_alloc(item.idx, item.alloc);
         }
 
         for (idx, is_assigned) in assigned.iter().enumerate() {
             if !is_assigned {
                 self.set_child_rect(idx, Rect::new(0, 0, 0, bounds.h));
+                self.set_last_alloc(idx, 0);
             }
         }
     }

@@ -3,6 +3,7 @@
 use txv_core::cell::{Color, Style};
 use unicode_width::UnicodeWidthChar;
 
+use super::row::Row;
 use super::scrollback::Scrollback;
 use super::TCell;
 
@@ -10,7 +11,7 @@ use super::TCell;
 pub(super) struct Performer<'a> {
     pub cols: u16,
     pub rows: u16,
-    pub cells: &'a mut Vec<Vec<TCell>>,
+    pub cells: &'a mut Vec<Row>,
     pub cursor_x: &'a mut u16,
     pub cursor_y: &'a mut u16,
     pub cursor_visible: &'a mut bool,
@@ -32,20 +33,25 @@ impl Performer<'_> {
             return;
         }
         if *self.cursor_x + (w as u16) > self.cols {
+            // Mark current row as soft-wrapped
+            let y = *self.cursor_y as usize;
+            if y < self.rows as usize {
+                self.cells[y].wrapped = true;
+            }
             self.newline();
             *self.cursor_x = 0;
         }
         let x = *self.cursor_x as usize;
         let y = *self.cursor_y as usize;
         if y < self.rows as usize && x < self.cols as usize {
-            self.cells[y][x] = TCell {
+            self.cells[y].cells[x] = TCell {
                 ch: c,
                 style: *self.style,
                 width: w as u8,
             };
             for i in 1..w {
                 if x + i < self.cols as usize {
-                    self.cells[y][x + i] = TCell {
+                    self.cells[y].cells[x + i] = TCell {
                         ch: ' ',
                         style: *self.style,
                         width: 0,
@@ -73,7 +79,7 @@ impl Performer<'_> {
                 self.scrollback.push(self.cells[0].clone());
             }
             self.cells[top..=bot].rotate_left(1);
-            self.cells[bot] = vec![TCell::default(); self.cols as usize];
+            self.cells[bot] = Row::new(self.cols as usize);
         }
     }
 
@@ -82,7 +88,7 @@ impl Performer<'_> {
         let bot = *self.scroll_bottom as usize;
         if top < bot && bot < self.cells.len() {
             self.cells[top..=bot].rotate_right(1);
-            self.cells[top] = vec![TCell::default(); self.cols as usize];
+            self.cells[top] = Row::new(self.cols as usize);
         }
     }
 
@@ -98,7 +104,11 @@ impl Performer<'_> {
             _ => return,
         };
         for x in start..end.min(self.cols as usize) {
-            self.cells[y][x] = TCell::default();
+            self.cells[y].cells[x] = TCell::default();
+        }
+        // Erasing breaks the wrap continuation
+        if mode == 0 || mode == 2 {
+            self.cells[y].wrapped = false;
         }
     }
 
@@ -107,24 +117,27 @@ impl Performer<'_> {
             0 => {
                 self.erase_line(0);
                 for y in (*self.cursor_y as usize + 1)..self.rows as usize {
-                    for x in 0..self.cols as usize {
-                        self.cells[y][x] = TCell::default();
+                    for cell in self.cells[y].cells.iter_mut() {
+                        *cell = TCell::default();
                     }
+                    self.cells[y].wrapped = false;
                 }
             }
             1 => {
                 self.erase_line(1);
                 for y in 0..*self.cursor_y as usize {
-                    for x in 0..self.cols as usize {
-                        self.cells[y][x] = TCell::default();
+                    for cell in self.cells[y].cells.iter_mut() {
+                        *cell = TCell::default();
                     }
+                    self.cells[y].wrapped = false;
                 }
             }
             2 | 3 => {
                 for row in self.cells.iter_mut() {
-                    for cell in row.iter_mut() {
+                    for cell in row.cells.iter_mut() {
                         *cell = TCell::default();
                     }
+                    row.wrapped = false;
                 }
             }
             _ => {}

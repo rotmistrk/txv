@@ -219,7 +219,7 @@ impl TiledWorkspace {
         self.group.focused_index()
     }
 
-    /// Mutable access to the workspace buffer (for chrome overlay drawing).
+    /// Mutable access to the workspace buffer (for chrome drawing).
     pub fn buffer_mut(&mut self) -> &mut Buffer {
         self.group.buffer_mut()
     }

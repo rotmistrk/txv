@@ -11,4 +11,6 @@ pub(super) struct Hints {
     pub(super) gravity: Gravity,
     /// Width captured at insertion time — used as fallback min when min_width is 0.
     pub(super) natural_width: u16,
+    /// Width assigned by the last layout pass (to detect stretch inflation).
+    pub(super) last_alloc: u16,
 }

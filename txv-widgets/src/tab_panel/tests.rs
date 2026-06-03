@@ -71,8 +71,9 @@ fn layout_gives_child_content_rect() {
 
     let child = panel.active_child().unwrap();
     let cb = child.bounds();
-    assert_eq!(cb.x, 0);
-    assert_eq!(cb.y, 1); // below tab bar
+    let (ox, oy) = panel.active_child_origin();
+    assert_eq!(ox, 0);
+    assert_eq!(oy, 1); // below tab bar
     assert_eq!(cb.w, 80);
     assert_eq!(cb.h, 23); // 24 - 1 for tab bar
 }
@@ -142,7 +143,7 @@ fn needs_redraw_propagates_from_active_child() {
     assert!(!panel.needs_redraw());
 
     // Mark child dirty — panel should report needs_redraw
-    panel.active_child_mut().unwrap().set_bounds(Rect::new(0, 1, 80, 23));
+    panel.active_child_mut().unwrap().set_bounds(Rect::new(0, 0, 79, 22));
     assert!(panel.needs_redraw());
 }
 

@@ -63,20 +63,32 @@ impl<D: TreeData> TreeView<D> {
             self.state.buffer_mut().print(x, y, marker, style);
             let label = self.data.label(id);
             let label_x = x + 2;
+            // Draw badge before label if present
+            let badge_offset = if let Some(color) = self.data.badge_color(id) {
+                let badge_style = Style {
+                    fg: color,
+                    bg: style.bg,
+                    ..Style::default()
+                };
+                self.state.buffer_mut().put(label_x, y, '●', badge_style);
+                2
+            } else {
+                0
+            };
+            let label_x = label_x + badge_offset;
             if let Some(positions) = self.data.highlight_positions(id) {
                 let sm = palette().style(StyleId::SearchMatch);
                 let hl_style = Style {
-                    fg: if sm.fg != Color::Reset {
-                        sm.fg
-                    } else {
-                        style.fg
-                    },
-                    bg: if sm.bg != Color::Reset {
+                    fg: if sm.bg != Color::Reset {
                         sm.bg
                     } else {
-                        style.bg
+                        sm.fg
                     },
-                    attrs: style.attrs,
+                    bg: style.bg,
+                    attrs: Attrs {
+                        bold: true,
+                        ..style.attrs
+                    },
                 };
                 for (ci, ch) in label.chars().enumerate() {
                     let cx = label_x + ci as u16;
@@ -92,6 +104,22 @@ impl<D: TreeData> TreeView<D> {
                 }
             } else {
                 self.state.buffer_mut().print(label_x, y, label, style);
+            }
+            // Open-file indicator (right-aligned)
+            if self.data.is_open(id) {
+                let g = glyphs();
+                let ind = g.tree.open_indicator;
+                let ind_w = ind.chars().count() as u16;
+                let ix = w.saturating_sub(ind_w + 1);
+                if ix > label_x {
+                    let dim = palette().style(StyleId::Dim);
+                    let ind_style = Style {
+                        fg: dim.fg,
+                        bg: style.bg,
+                        ..Style::default()
+                    };
+                    self.state.buffer_mut().print(ix, y, ind, ind_style);
+                }
             }
         }
         let drawn = self

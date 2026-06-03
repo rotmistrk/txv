@@ -1,26 +1,54 @@
 //! InputLine — single-line text input with history, completion, and selection.
 
+mod completion;
+mod completion_frame;
+mod completion_list;
+mod handle_key;
+mod history;
+mod readline;
+#[cfg(test)]
+mod tests;
 mod view_impl;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use txv_core::prelude::*;
+
+use crate::list_view::ListView;
+pub use completion_list::CompletionList;
+
+/// Emitted by InputLine on Ctrl-C when selection exists. Data: `Box<String>`.
+pub const CM_COPY_TO_CLIPBOARD: CommandId = 150;
+/// Emitted by InputLine on Ctrl-V. App should respond with CM_CLIPBOARD_PASTE.
+pub const CM_PASTE_REQUEST: CommandId = 151;
+/// Sent to InputLine with text to insert. Data: `Box<String>`.
+pub const CM_CLIPBOARD_PASTE: CommandId = 152;
 
 pub struct InputLine {
     pub(crate) state: ViewState,
     pub(crate) text: String,
+    /// Cursor position as char index.
     pub(crate) cursor: usize,
-    /// Selection anchor. When Some, text between anchor and cursor is selected.
+    /// Selection anchor (char index). Selection spans anchor..cursor.
     pub(crate) selection: Option<usize>,
     pub(crate) history: Vec<String>,
     pub(crate) history_pos: Option<usize>,
     pub(crate) completer: Option<Box<dyn Completer>>,
     pub(crate) submit_command: CommandId,
     pub(crate) palette: Option<Arc<dyn Palette>>,
+    /// Shared completion popup (ListView held by SidekickManager).
+    pub(crate) popup: Arc<Mutex<ListView<CompletionList>>>,
+    /// Framed wrapper sent to SidekickManager.
+    pub(crate) popup_frame: Arc<Mutex<completion_frame::CompletionFrame>>,
+    /// Whether popup is currently visible.
+    pub(crate) sidekick_visible: bool,
 }
 
 impl InputLine {
     pub fn new() -> Self {
+        let list = ListView::new(CompletionList::new(Vec::new()));
+        let popup = Arc::new(Mutex::new(list));
+        let frame = completion_frame::CompletionFrame::new(Arc::clone(&popup));
         Self {
             state: ViewState::default(),
             text: String::new(),
@@ -31,6 +59,9 @@ impl InputLine {
             completer: None,
             submit_command: CM_OK,
             palette: None,
+            popup,
+            popup_frame: Arc::new(Mutex::new(frame)),
+            sidekick_visible: false,
         }
     }
 
@@ -58,7 +89,7 @@ impl InputLine {
 
     pub fn set_text(&mut self, text: &str) {
         self.text = text.to_string();
-        self.cursor = self.text.len();
+        self.cursor = self.text.chars().count();
         self.selection = None;
         self.update_width();
     }
@@ -70,16 +101,18 @@ impl InputLine {
         self.update_width();
     }
 
-    /// Select all text. Typing replaces selection; nav deselects.
     pub fn select_all(&mut self) {
         if !self.text.is_empty() {
             self.selection = Some(0);
-            self.cursor = self.text.len();
+            self.cursor = self.text.chars().count();
         }
         self.state.mark_dirty();
     }
 
-    /// Returns (start, end) of selection range, or None.
+    pub(crate) fn char_count(&self) -> usize {
+        self.text.chars().count()
+    }
+
     pub(crate) fn selection_range(&self) -> Option<(usize, usize)> {
         self.selection.map(|anchor| {
             let lo = anchor.min(self.cursor);
@@ -88,35 +121,60 @@ impl InputLine {
         })
     }
 
-    /// Delete selected text, place cursor at start of selection.
+    /// Get the currently selected text, if any.
+    pub fn selected_text(&self) -> Option<String> {
+        let (lo, hi) = self.selection_range()?;
+        let byte_lo = self.char_to_byte(lo);
+        let byte_hi = self.char_to_byte(hi);
+        Some(self.text[byte_lo..byte_hi].to_string())
+    }
+
+    /// Insert text at cursor, replacing selection if active.
+    pub fn insert_text(&mut self, text: &str) {
+        if self.selection.is_some() {
+            self.delete_selection();
+        }
+        let byte_pos = self.char_to_byte(self.cursor);
+        self.text.insert_str(byte_pos, text);
+        self.cursor += text.chars().count();
+        self.update_width();
+        self.state.mark_dirty();
+    }
+
     pub(crate) fn delete_selection(&mut self) {
         if let Some((lo, hi)) = self.selection_range() {
-            self.text.drain(lo..hi);
+            let byte_lo = self.char_to_byte(lo);
+            let byte_hi = self.char_to_byte(hi);
+            self.text.drain(byte_lo..byte_hi);
             self.cursor = lo;
             self.selection = None;
             self.update_width();
         }
     }
 
-    pub(crate) fn update_width(&mut self) {
-        let w = (self.text.len() as u16).saturating_add(2).max(10);
+    /// Convert char index to byte offset.
+    fn char_to_byte(&self, char_idx: usize) -> usize {
+        self.text
+            .char_indices()
+            .nth(char_idx)
+            .map(|(b, _)| b)
+            .unwrap_or(self.text.len())
+    }
+
+    /// Auto-resize bounds to fit text (standalone mode).
+    fn update_width(&mut self) {
+        self.state.mark_dirty();
+        let w = (self.char_count() as u16).saturating_add(2).max(10);
         let b = self.state.bounds();
         if b.w != w {
             self.state.set_bounds(Rect::new(b.x, b.y, w, 1));
         }
-        self.state.mark_dirty();
-    }
-
-    pub(crate) fn push_history(&mut self) {
-        if !self.text.is_empty() {
-            self.history.push(self.text.clone());
-        }
-        self.history_pos = None;
     }
 
     pub(crate) fn handle_char(&mut self, ch: char) {
         self.delete_selection();
-        self.text.insert(self.cursor, ch);
+        let byte_pos = self.char_to_byte(self.cursor);
+        self.text.insert(byte_pos, ch);
         self.cursor += 1;
         self.update_width();
     }
@@ -126,7 +184,9 @@ impl InputLine {
             self.delete_selection();
         } else if self.cursor > 0 {
             self.cursor -= 1;
-            self.text.remove(self.cursor);
+            let byte_pos = self.char_to_byte(self.cursor);
+            let next_byte = self.char_to_byte(self.cursor + 1);
+            self.text.drain(byte_pos..next_byte);
             self.update_width();
         }
     }
@@ -134,41 +194,24 @@ impl InputLine {
     pub(crate) fn handle_delete(&mut self) {
         if self.selection.is_some() {
             self.delete_selection();
-        } else if self.cursor < self.text.len() {
-            self.text.remove(self.cursor);
+        } else if self.cursor < self.char_count() {
+            let byte_pos = self.char_to_byte(self.cursor);
+            let next_byte = self.char_to_byte(self.cursor + 1);
+            self.text.drain(byte_pos..next_byte);
             self.update_width();
         }
     }
 
-    pub(crate) fn handle_history_up(&mut self) {
-        if self.history.is_empty() {
-            return;
-        }
-        let pos = match self.history_pos {
-            Some(p) => p.saturating_sub(1),
-            None => self.history.len() - 1,
-        };
-        self.history_pos = Some(pos);
-        self.text = self.history[pos].clone();
-        self.cursor = self.text.len();
-        self.selection = None;
-        self.update_width();
-    }
-
-    pub(crate) fn handle_history_down(&mut self) {
-        let Some(pos) = self.history_pos else {
-            return;
-        };
-        if pos + 1 < self.history.len() {
-            self.history_pos = Some(pos + 1);
-            self.text = self.history[pos + 1].clone();
+    pub(crate) fn handle_nav(&mut self, shift: bool, new_cursor: usize) {
+        if shift {
+            if self.selection.is_none() {
+                self.selection = Some(self.cursor);
+            }
         } else {
-            self.history_pos = None;
-            self.text.clear();
+            self.selection = None;
         }
-        self.cursor = self.text.len();
-        self.selection = None;
-        self.update_width();
+        self.cursor = new_cursor;
+        self.state.mark_dirty();
     }
 
     pub(crate) fn handle_command(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
@@ -179,28 +222,6 @@ impl InputLine {
         HandleResult::Ignored
     }
 
-    pub(crate) fn try_complete(&mut self) {
-        let Some(ref completer) = self.completer else {
-            return;
-        };
-        let mut first: Option<String> = None;
-        let mut count = 0u32;
-        let _ = completer.complete(&self.text, self.cursor, &mut |c| {
-            count += 1;
-            if count == 1 {
-                first = Some(c.text().to_string());
-            }
-            Ok(count < 2)
-        });
-        if count == 1 {
-            if let Some(text) = first {
-                self.text = text;
-                self.cursor = self.text.len();
-                self.update_width();
-            }
-        }
-    }
-
     pub(crate) fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
@@ -209,16 +230,26 @@ impl InputLine {
     }
 
     pub(crate) fn visible_start(&self, width: usize) -> usize {
-        if self.cursor >= width {
+        if width == 0 {
+            return 0;
+        }
+        let total = self.char_count();
+        let mut start = if self.cursor >= width {
             self.cursor - width + 1
         } else {
             0
+        };
+        // If cursor lands on the last cell and there's text to the right,
+        // scroll one more so the cursor isn't on the right-overflow '…' position.
+        let cursor_pos = self.cursor - start;
+        if cursor_pos == width - 1 && start + width < total {
+            start += 1;
         }
-    }
-}
-
-impl Default for InputLine {
-    fn default() -> Self {
-        Self::new()
+        // If cursor lands on position 0 and there's left overflow,
+        // scroll one less so the cursor isn't on the left-overflow '…' position.
+        if start > 0 && self.cursor == start {
+            start -= 1;
+        }
+        start
     }
 }

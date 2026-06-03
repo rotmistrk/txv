@@ -22,10 +22,10 @@ impl Palette for DarkPalette {
             StyleId::CursorFocused => PaletteStyle::bg(ansi(4)).underline().to_style(),
             StyleId::CursorUnfocused => PaletteStyle::bg(ansi(8)).to_style(),
             StyleId::InputCursor => PaletteStyle::colors(ansi(0), ansi(7)).to_style(),
-            StyleId::EditOverlay => PaletteStyle::colors(ansi(0), ansi(3)).to_style(),
             StyleId::EditSelection => PaletteStyle::bg(ansi(2)).to_style(),
+            StyleId::OverflowIndicator => PaletteStyle::fg(ansi(1)).to_style(),
             StyleId::SearchMatch => PaletteStyle::bg(ansi(3)).to_style(),
-            StyleId::VisualSelection => PaletteStyle::colors(ansi(3), ansi(0)).to_style(),
+            StyleId::VisualSelection => PaletteStyle::colors(ansi(15), ansi(4)).to_style(),
             StyleId::Disabled => PaletteStyle::fg(ansi(8)).to_style(),
             StyleId::ChromeBar => PaletteStyle::colors(ansi(7), ansi(0)).to_style(),
             StyleId::TabFocused => PaletteStyle::colors(ansi(14), ansi(4)).bold().to_style(),
@@ -51,6 +51,8 @@ impl Palette for DarkPalette {
             StyleId::StateSuccess => PaletteStyle::fg(ansi(2)).to_style(),
             StyleId::StateHint => PaletteStyle::fg(ansi(8)).to_style(),
             StyleId::EditorGutter => PaletteStyle::fg(ansi(8)).to_style(),
+            StyleId::StatusQuestion => PaletteStyle::fg(ansi(11)).bold().to_style(),
+            StyleId::StatusHighlight => PaletteStyle::fg(ansi(15)).bold().to_style(),
         }
     }
 }

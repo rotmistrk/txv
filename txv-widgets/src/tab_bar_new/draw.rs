@@ -105,7 +105,7 @@ impl TabBar {
         let tab_end = label_len.min(w.saturating_sub(x + badge_len + tab_right_len + 2));
         if x + tab_end <= w {
             self.state.buffer_mut().print(x, 0, &label, style);
-            // Overlay badge with custom style if set
+            // Apply badge with custom style if set
             if !badge_text.is_empty() {
                 if let Some(Some(bs)) = self.badge_styles.get(self.active) {
                     let bt_len = badge_text.chars().count() as u16;

@@ -104,12 +104,25 @@ impl ModalKey {
                 child.select();
             }
         }
-        self.update_bounds();
+        // Request minimum active width so parent layout can drop lower-priority items
+        let b = self.group.bounds();
+        let min_active = self.active_min_width();
+        if b.w < min_active {
+            self.group.set_bounds(Rect::new(b.x, b.y, min_active, b.h));
+        }
+        self.group.mark_dirty();
     }
 
     pub(crate) fn deactivate(&mut self) {
         self.active = false;
         self.activated_at = None;
+        for i in 0..self.group.child_count() {
+            if let Some(child) = self.group.child_mut(i) {
+                child.unselect();
+            }
+            // Children must not participate in layout when dormant
+            self.group.set_child_bounds(i, Rect::new(0, 0, 0, 0));
+        }
         self.propagate_default_palette();
         self.update_bounds();
     }
@@ -119,8 +132,11 @@ impl ModalKey {
         use txv_core::palette::{DerivedPalette, Palette, StyleId};
         let base = txv_core::palette::palette();
         let modal_style = base.style(StyleId::StatusBarModal);
-        let derived: Arc<dyn Palette> =
-            Arc::new(DerivedPalette::new(base).with_override(StyleId::StatusBar, modal_style));
+        let derived: Arc<dyn Palette> = Arc::new(
+            DerivedPalette::new(base)
+                .with_override(StyleId::Text, modal_style)
+                .with_override(StyleId::StatusBar, modal_style),
+        );
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
                 child.set_palette(derived.clone());
@@ -139,7 +155,8 @@ impl ModalKey {
 
     pub(crate) fn update_bounds(&mut self) {
         let w = if self.active {
-            self.active_width()
+            // Report min width; StatusBar stretch fills the rest
+            self.active_min_width()
         } else {
             self.dormant_width()
         };
@@ -158,12 +175,10 @@ impl ModalKey {
         }
     }
 
-    pub(crate) fn active_width(&self) -> u16 {
+    /// Minimum width when active (prompt + caps + reasonable input space).
+    fn active_min_width(&self) -> u16 {
         let prompt_w = self.prompt.len() as u16;
-        let children_w: u16 = (0..self.group.child_count())
-            .map(|i| self.group.child(i).map_or(0, |c| c.bounds().w))
-            .sum();
-        // +2 for power caps (left + right)
-        prompt_w + children_w + 3
+        // prompt + 2 caps + at least 20 chars for input
+        prompt_w + 2 + 20
     }
 }
