@@ -60,36 +60,29 @@ impl<D: TreeTableSource> TreeTableView<D> {
     }
 
     /// Style for a specific column on a row. If focused_col is set, only that column
-    /// gets cursor background; others use normal style even on the cursor row.
+    /// gets cursor background; others use row highlight.
     fn col_style(&self, idx: usize, col: Option<usize>) -> Style {
         let node_style = self.data.style(idx);
-        if idx == self.cursor {
-            let pal = palette();
-            let use_cursor = match self.focused_col {
-                Some(fc) => col == Some(fc),
-                None => true,
-            };
-            if use_cursor {
-                if self.state.is_focused() {
-                    let cs = pal.style(StyleId::CursorFocused);
-                    Style {
-                        fg: node_style.fg,
-                        bg: cs.bg,
-                        attrs: cs.attrs,
-                    }
-                } else {
-                    let cs = pal.style(StyleId::CursorUnfocused);
-                    Style {
-                        fg: node_style.fg,
-                        bg: cs.bg,
-                        attrs: node_style.attrs,
-                    }
-                }
-            } else {
-                node_style
+        if idx != self.cursor {
+            return node_style;
+        }
+        let pal = palette();
+        let is_cursor_col = match self.focused_col {
+            Some(fc) => col == Some(fc),
+            None => true,
+        };
+        if is_cursor_col && self.state.is_focused() {
+            Style {
+                fg: node_style.fg,
+                bg: pal.style(StyleId::CursorFocused).bg,
+                ..Style::default()
             }
         } else {
-            node_style
+            Style {
+                fg: node_style.fg,
+                bg: pal.style(StyleId::CursorUnfocused).bg,
+                ..Style::default()
+            }
         }
     }
 
