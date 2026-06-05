@@ -119,6 +119,9 @@ impl FileTreeData {
 
     /// Replace the set of roots and rebuild the tree.
     pub fn set_roots(&mut self, roots: Vec<PathBuf>) {
+        if roots.is_empty() {
+            return;
+        }
         self.nodes.clear();
         self.visible.clear();
         self.fully_loaded = false;
