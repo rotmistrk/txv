@@ -18,6 +18,7 @@ pub struct TreeTableView<D: TreeTableSource> {
     pub scroll: ScrollView,
     col_widths: Vec<u16>,
     focused_col: Option<usize>,
+    pub(crate) h_scroll: u16,
 }
 
 impl<D: TreeTableSource> TreeTableView<D> {
@@ -29,6 +30,7 @@ impl<D: TreeTableSource> TreeTableView<D> {
             scroll: ScrollView::new(),
             col_widths: col_widths.to_vec(),
             focused_col: None,
+            h_scroll: 0,
         }
     }
 

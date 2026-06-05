@@ -73,15 +73,13 @@ impl<D: TreeTableSource> TreeTableView<D> {
         };
         if is_cursor_col && self.state.is_focused() {
             Style {
-                fg: node_style.fg,
                 bg: pal.style(StyleId::CursorFocused).bg,
-                ..Style::default()
+                ..node_style
             }
         } else {
             Style {
-                fg: node_style.fg,
                 bg: pal.style(StyleId::CursorUnfocused).bg,
-                ..Style::default()
+                ..node_style
             }
         }
     }
@@ -185,15 +183,25 @@ impl<D: TreeTableSource> TreeTableView<D> {
     }
 
     fn draw_extra_cols(&mut self, idx: usize, y: u16, tree_w: u16, total_w: u16) {
-        let mut x = tree_w;
         let col_count = self.data.column_count().min(self.col_widths.len());
         let sep_style = palette().style(StyleId::Dim);
+        // Compute absolute x for each column, then apply h_scroll offset
+        let mut abs_x: u16 = 0;
         for col in 0..col_count {
-            if x >= total_w {
+            let col_total = 1 + self.col_widths[col]; // separator + content
+            if abs_x + col_total <= self.h_scroll {
+                abs_x += col_total;
+                continue;
+            }
+            let screen_x = tree_w + abs_x.saturating_sub(self.h_scroll);
+            if screen_x >= total_w {
                 break;
             }
-            self.state.buffer_mut().put(x, y, '\u{2502}', sep_style);
-            x += 1;
+            self.state.buffer_mut().put(screen_x, y, '\u{2502}', sep_style);
+            let content_x = screen_x + 1;
+            if content_x >= total_w {
+                break;
+            }
             let cw = self.col_widths[col] as usize;
             let cell = self.data.cell(idx, col);
             let cell_style = self.col_style(idx, Some(col + 1));
@@ -211,8 +219,12 @@ impl<D: TreeTableSource> TreeTableView<D> {
                     }
                 }
             };
-            self.state.buffer_mut().print(x + offset as u16, y, cell, cell_style);
-            x += cw as u16;
+            let avail = (total_w - content_x) as usize;
+            let print_text: String = cell.chars().take(avail).collect();
+            self.state
+                .buffer_mut()
+                .print(content_x + offset as u16, y, &print_text, cell_style);
+            abs_x += col_total;
         }
     }
 }

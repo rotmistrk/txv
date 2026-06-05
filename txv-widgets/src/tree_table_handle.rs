@@ -64,6 +64,18 @@ impl<D: TreeTableSource> TreeTableView<D> {
                 self.cycle_focused_col();
                 HandleResult::Consumed
             }
+            KeyCode::Left => {
+                if self.h_scroll > 0 {
+                    self.h_scroll = self.h_scroll.saturating_sub(4);
+                    self.state.mark_dirty();
+                }
+                HandleResult::Consumed
+            }
+            KeyCode::Right => {
+                self.h_scroll += 4;
+                self.state.mark_dirty();
+                HandleResult::Consumed
+            }
             KeyCode::Char('r') if key.modifiers.ctrl => {
                 if self.data.redo() {
                     self.clamp_cursor();
