@@ -1,6 +1,7 @@
 //! ModalKey — View implementation and event handling.
 
 use txv_core::cell::Attrs;
+use txv_core::commands::{CM_CANCEL, CM_OK};
 use txv_core::prelude::*;
 
 use super::ModalKey;
@@ -22,7 +23,8 @@ impl View for ModalKey {
     }
 
     fn set_sink(&mut self, sink: EventSink) {
-        self.group.set_own_sink(sink);
+        self.group.set_own_sink(sink.clone());
+        self.parent_sink = Some(sink);
     }
 
     fn options(&self) -> ViewOptions {
@@ -113,20 +115,22 @@ impl ModalKey {
         let events = self.child_sink.drain();
         let mut had_terminal = false;
         for ev in events {
-            if let Event::Command { id, .. } = &ev {
-                if !Self::is_passthrough_command(*id) {
-                    had_terminal = true;
+            match ev {
+                Event::Command { id, data, .. } => {
+                    let is_terminal = match self.terminal_command {
+                        Some(tc) => id == tc || id == CM_CANCEL,
+                        None => id == CM_OK || id == CM_CANCEL,
+                    };
+                    if is_terminal {
+                        had_terminal = true;
+                    }
+                    // ALL commands go to parent sink (normal flow)
+                    self.group.put_command(id, data);
                 }
+                other => self.group.put_event(other),
             }
-            self.group.put_event(ev);
         }
         had_terminal
-    }
-
-    /// Commands that should pass through without deactivating the modal.
-    fn is_passthrough_command(id: CommandId) -> bool {
-        use crate::sidekick::{CM_SIDEKICK_HIDE, CM_SIDEKICK_SHOW};
-        matches!(id, CM_SIDEKICK_SHOW | CM_SIDEKICK_HIDE)
     }
 
     fn layout_children_modal(&mut self) {

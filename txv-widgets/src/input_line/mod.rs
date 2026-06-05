@@ -214,7 +214,15 @@ impl InputLine {
         self.state.mark_dirty();
     }
 
-    pub(crate) fn handle_command(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+    pub(crate) fn handle_command(
+        &mut self,
+        id: CommandId,
+        data: &Option<Box<dyn std::any::Any + Send>>,
+    ) -> HandleResult {
+        // Only accept text-setting from known prefill commands
+        if id == CM_COPY_TO_CLIPBOARD || id == CM_PASTE_REQUEST {
+            return HandleResult::Ignored;
+        }
         if let Some(text) = data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
             self.set_text(text);
             return HandleResult::Consumed;

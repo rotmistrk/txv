@@ -21,11 +21,13 @@ pub struct ModalKey {
     pub(crate) trigger_keys: Vec<KeyEvent>,
     pub(crate) trigger_command: Option<CommandId>,
     pub(crate) prefill_command: Option<CommandId>,
+    pub(crate) terminal_command: Option<CommandId>,
     pub(crate) active: bool,
     pub(crate) timeout_secs: Option<u16>,
     pub(crate) cancel_on_miss: bool,
     pub(crate) activated_at: Option<Instant>,
     pub(crate) child_sink: EventSink,
+    pub(crate) parent_sink: Option<EventSink>,
 }
 
 impl ModalKey {
@@ -49,11 +51,13 @@ impl ModalKey {
             trigger_keys: Vec::new(),
             trigger_command: None,
             prefill_command: None,
+            terminal_command: None,
             active: false,
             timeout_secs: None,
             cancel_on_miss: false,
             activated_at: None,
             child_sink: EventSink::new(),
+            parent_sink: None,
         }
     }
 
@@ -69,6 +73,12 @@ impl ModalKey {
 
     pub fn prefill_command(mut self, cmd: CommandId) -> Self {
         self.prefill_command = Some(cmd);
+        self
+    }
+
+    /// Set the command that signals "done" — ModalKey deactivates only on this + CM_CANCEL.
+    pub fn terminal_command(mut self, cmd: CommandId) -> Self {
+        self.terminal_command = Some(cmd);
         self
     }
 

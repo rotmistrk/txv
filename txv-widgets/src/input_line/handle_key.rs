@@ -23,7 +23,7 @@ impl InputLine {
                     return HandleResult::Consumed;
                 }
             }
-            return self.handle_command(data);
+            return self.handle_command(*id, data);
         }
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
