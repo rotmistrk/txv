@@ -124,7 +124,7 @@ impl ModalKey {
                     if is_terminal {
                         had_terminal = true;
                     }
-                    // ALL commands go to parent sink (normal flow)
+                    // ALL commands go to parent sink
                     self.group.put_command(id, data);
                 }
                 other => self.group.put_event(other),
