@@ -154,9 +154,11 @@ fn write_via_command(cmd: &str, args: &[&str], text: &str) -> Result<(), String>
         .stderr(Stdio::null())
         .spawn()
         .map_err(|e| format!("{cmd}: {e}"))?;
-    if let Some(stdin) = child.stdin.as_mut() {
-        stdin.write_all(text.as_bytes()).map_err(|e| format!("{cmd}: {e}"))?;
-    }
+    {
+        let stdin = child.stdin.take().ok_or("no stdin")?;
+        let mut w = std::io::BufWriter::new(stdin);
+        w.write_all(text.as_bytes()).map_err(|e| format!("{cmd}: {e}"))?;
+    } // stdin dropped here → EOF sent to child
     child.wait().map_err(|e| format!("{cmd}: {e}"))?;
     Ok(())
 }
