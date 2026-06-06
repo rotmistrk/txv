@@ -2,7 +2,7 @@
 
 use txv_core::prelude::*;
 
-use super::{InputLine, CM_CLIPBOARD_PASTE, CM_COPY_TO_CLIPBOARD, CM_PASTE_REQUEST};
+use super::{InputLine, CM_CLIPBOARD_PASTE, CM_PASTE_REQUEST};
 use txv_core::commands::CM_CANCEL;
 
 impl InputLine {
@@ -35,7 +35,7 @@ impl InputLine {
                 if key.modifiers.alt {
                     let killed = self.kill_word_back();
                     if !killed.is_empty() {
-                        self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(killed)));
+                        self.clipboard_copy(&killed);
                     }
                 } else {
                     self.handle_backspace();
@@ -124,7 +124,7 @@ impl InputLine {
                 'd' => {
                     let killed = self.kill_word_forward();
                     if !killed.is_empty() {
-                        self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(killed)));
+                        self.clipboard_copy(&killed);
                     }
                     self.update_completions();
                 }
@@ -151,32 +151,42 @@ impl InputLine {
                 'k' => {
                     let killed = self.kill_to_end();
                     if !killed.is_empty() {
-                        self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(killed)));
+                        self.clipboard_copy(&killed);
                     }
                     self.update_completions();
                 }
                 'u' => {
                     let killed = self.kill_to_start();
                     if !killed.is_empty() {
-                        self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(killed)));
+                        self.clipboard_copy(&killed);
                     }
                     self.update_completions();
                 }
                 'w' => {
                     let killed = self.kill_word_back();
                     if !killed.is_empty() {
-                        self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(killed)));
+                        self.clipboard_copy(&killed);
                     }
                     self.update_completions();
                 }
                 't' => self.transpose_chars(),
                 'y' | 'v' => {
-                    self.state.put_command(CM_PASTE_REQUEST, None);
+                    let text = self
+                        .clipboard
+                        .as_ref()
+                        .and_then(|c| c.lock().ok())
+                        .and_then(|mut r| r.paste());
+                    if let Some(text) = text {
+                        let first_line = text.lines().next().unwrap_or("").to_string();
+                        self.insert_text(&first_line);
+                    } else {
+                        self.state.put_command(CM_PASTE_REQUEST, None);
+                    }
                     return HandleResult::Consumed;
                 }
                 'c' => {
                     if let Some(text) = self.selected_text() {
-                        self.state.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(text)));
+                        self.clipboard_copy(&text);
                     }
                     return HandleResult::Consumed;
                 }

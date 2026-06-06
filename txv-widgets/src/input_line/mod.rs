@@ -42,6 +42,8 @@ pub struct InputLine {
     pub(crate) popup_frame: Arc<Mutex<completion_frame::CompletionFrame>>,
     /// Whether popup is currently visible.
     pub(crate) sidekick_visible: bool,
+    /// Shared clipboard ring (direct access, no events needed).
+    pub(crate) clipboard: Option<txv_core::clipboard_ring::ClipboardHandle>,
 }
 
 impl InputLine {
@@ -62,6 +64,7 @@ impl InputLine {
             popup,
             popup_frame: Arc::new(Mutex::new(frame)),
             sidekick_visible: false,
+            clipboard: None,
         }
     }
 
@@ -75,6 +78,11 @@ impl InputLine {
         self
     }
 
+    pub fn with_clipboard(mut self, handle: txv_core::clipboard_ring::ClipboardHandle) -> Self {
+        self.clipboard = Some(handle);
+        self
+    }
+
     pub fn set_completer(&mut self, c: Box<dyn Completer>) {
         self.completer = Some(c);
     }
@@ -85,6 +93,18 @@ impl InputLine {
 
     pub fn cursor_pos(&self) -> usize {
         self.cursor
+    }
+
+    /// Push text to clipboard ring (or emit event as fallback).
+    pub(crate) fn clipboard_copy(&mut self, text: &str) {
+        if let Some(ref clip) = self.clipboard {
+            if let Ok(mut ring) = clip.lock() {
+                ring.push(text, "input");
+                return;
+            }
+        }
+        self.state
+            .put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(text.to_string())));
     }
 
     pub fn set_text(&mut self, text: &str) {

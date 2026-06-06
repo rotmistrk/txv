@@ -54,6 +54,8 @@
 
 pub mod buffer;
 pub mod cell;
+pub mod clip_entry;
+pub mod clipboard_ring;
 pub mod commands;
 pub mod complete;
 pub mod cursor;
