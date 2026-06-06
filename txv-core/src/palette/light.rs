@@ -51,6 +51,8 @@ impl Palette for LightPalette {
             StyleId::EditorGutter => PaletteStyle::fg(ansi(7)).to_style(),
             StyleId::StatusQuestion => PaletteStyle::fg(ansi(3)).bold().to_style(),
             StyleId::StatusHighlight => PaletteStyle::fg(ansi(0)).bold().to_style(),
+            StyleId::TableRowActive => PaletteStyle::new().underline().to_style(),
+            StyleId::TableRowInactive => PaletteStyle::fg(ansi(8)).underline().to_style(),
         }
     }
 }

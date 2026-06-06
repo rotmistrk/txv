@@ -49,8 +49,11 @@ pub enum StyleId {
     // Status bar prompts
     StatusQuestion,
     StatusHighlight,
+    // Table (CSV viewer)
+    TableRowActive,
+    TableRowInactive,
 }
 
 impl StyleId {
-    pub const COUNT: usize = 41;
+    pub const COUNT: usize = 43;
 }

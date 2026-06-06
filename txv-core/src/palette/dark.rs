@@ -53,6 +53,8 @@ impl Palette for DarkPalette {
             StyleId::EditorGutter => PaletteStyle::fg(ansi(8)).to_style(),
             StyleId::StatusQuestion => PaletteStyle::fg(ansi(11)).bold().to_style(),
             StyleId::StatusHighlight => PaletteStyle::fg(ansi(15)).bold().to_style(),
+            StyleId::TableRowActive => PaletteStyle::new().underline().to_style(),
+            StyleId::TableRowInactive => PaletteStyle::fg(ansi(7)).underline().to_style(),
         }
     }
 }
