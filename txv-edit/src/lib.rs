@@ -14,6 +14,7 @@ pub mod buffer;
 pub mod editor;
 pub mod editor_core;
 pub mod editor_host;
+pub mod highlight;
 pub mod keymap;
 pub mod settings;
 pub mod shared_register;
