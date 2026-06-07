@@ -17,7 +17,7 @@ pub struct EditorCore {
 impl EditorCore {
     pub fn new() -> Self {
         Self {
-            buf: PieceTable::new(""),
+            buf: PieceTable::new(),
             cursor_line: 0,
             cursor_col: 0,
             desired_col: 0,
@@ -26,7 +26,7 @@ impl EditorCore {
 
     pub fn from_text(text: &str) -> Self {
         Self {
-            buf: PieceTable::new(text),
+            buf: PieceTable::from_text(text),
             cursor_line: 0,
             cursor_col: 0,
             desired_col: 0,
