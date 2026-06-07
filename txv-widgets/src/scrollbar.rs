@@ -6,7 +6,7 @@ use crate::scroll_view::ScrollView;
 
 pub struct Scrollbar {
     state: ViewState,
-    pub scroll: ScrollView,
+    pub(crate) scroll: ScrollView,
 }
 
 impl Scrollbar {

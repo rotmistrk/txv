@@ -4,15 +4,15 @@
 use txv_core::prelude::*;
 
 pub struct StatusItem {
-    pub key: KeyEvent,
-    pub command: CommandId,
-    pub label: String,
+    pub(crate) key: KeyEvent,
+    pub(crate) command: CommandId,
+    pub(crate) label: String,
 }
 
 pub struct StatusBar {
     state: ViewState,
-    pub items: Vec<StatusItem>,
-    pub context: String,
+    pub(crate) items: Vec<StatusItem>,
+    pub(crate) context: String,
 }
 
 impl StatusBar {

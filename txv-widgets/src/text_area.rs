@@ -6,14 +6,14 @@ use crate::scroll_view::ScrollView;
 
 pub struct TextArea {
     state: ViewState,
-    pub lines: Vec<String>,
-    pub scroll: ScrollView,
+    pub(crate) lines: Vec<String>,
+    pub(crate) scroll: ScrollView,
     pub line_numbers: bool,
-    pub search_query: String,
-    pub search_matches: Vec<usize>,
-    pub current_match: usize,
+    pub(crate) search_query: String,
+    pub(crate) search_matches: Vec<usize>,
+    pub(crate) current_match: usize,
     /// Per-line foreground colors (optional, indexed by line number).
-    pub line_colors: Vec<Color>,
+    pub(crate) line_colors: Vec<Color>,
     searching: bool,
     search_input: String,
 }

@@ -3,9 +3,9 @@
 use txv_core::prelude::*;
 
 pub struct MenuItem {
-    pub label: String,
-    pub command: CommandId,
-    pub enabled: bool,
+    pub(crate) label: String,
+    pub(crate) command: CommandId,
+    pub(crate) enabled: bool,
 }
 
 impl MenuItem {
@@ -20,8 +20,8 @@ impl MenuItem {
 
 pub struct Menu {
     state: ViewState,
-    pub items: Vec<MenuItem>,
-    pub cursor: usize,
+    pub(crate) items: Vec<MenuItem>,
+    pub(crate) cursor: usize,
 }
 
 impl Menu {

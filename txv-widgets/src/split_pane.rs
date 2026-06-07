@@ -11,8 +11,8 @@ pub enum SplitDirection {
 
 pub struct SplitPane {
     group: GroupState,
-    pub direction: SplitDirection,
-    pub ratio: f32, // 0.0..=1.0, position of divider
+    pub(crate) direction: SplitDirection,
+    pub(crate) ratio: f32, // 0.0..=1.0, position of divider
 }
 
 impl SplitPane {

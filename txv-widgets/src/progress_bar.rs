@@ -13,9 +13,9 @@ pub enum ProgressMode {
 pub struct ProgressBar {
     state: ViewState,
     palette: Option<Arc<dyn Palette>>,
-    pub mode: ProgressMode,
-    pub progress: f32, // 0.0..=1.0
-    pub tick: u16,     // for indeterminate animation
+    pub(crate) mode: ProgressMode,
+    pub(crate) progress: f32, // 0.0..=1.0
+    pub(crate) tick: u16,     // for indeterminate animation
 }
 
 impl ProgressBar {

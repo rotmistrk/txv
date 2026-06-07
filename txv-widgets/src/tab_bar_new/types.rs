@@ -16,8 +16,8 @@ pub enum TabBarMode {
 /// Style for a single tab position in the palette.
 #[derive(Clone, Copy, Debug)]
 pub struct TabStyle {
-    pub fg: Color,
-    pub bg: Color,
+    pub(crate) fg: Color,
+    pub(crate) bg: Color,
 }
 
 impl Default for TabStyle {
@@ -33,19 +33,19 @@ impl Default for TabStyle {
 #[derive(Clone, Debug)]
 pub struct TabBarPalette {
     /// Active tab when panel is focused.
-    pub active_focused: TabStyle,
+    pub(crate) active_focused: TabStyle,
     /// Active tab when panel is not focused.
-    pub active_unfocused: TabStyle,
+    pub(crate) active_unfocused: TabStyle,
     /// Positional styles for inactive tabs (index 0 = nearest to active).
-    pub inactive: [TabStyle; 10],
+    pub(crate) inactive: [TabStyle; 10],
     /// Dim foreground for thin separators and fill.
-    pub dim_fg: Color,
+    pub(crate) dim_fg: Color,
     /// Badge bg when panel is focused.
-    pub badge_focused_bg: Color,
+    pub(crate) badge_focused_bg: Color,
     /// Badge fg.
-    pub badge_fg: Color,
+    pub(crate) badge_fg: Color,
     /// Separator fg between inactive tabs.
-    pub separator_fg: Color,
+    pub(crate) separator_fg: Color,
 }
 
 impl TabBarPalette {
@@ -93,8 +93,8 @@ impl Default for TabBarPalette {
 /// Fill style for the bar area not covered by tabs.
 #[derive(Clone, Copy, Debug)]
 pub struct TabBarFill {
-    pub ch: char,
-    pub style: Style,
+    pub(crate) ch: char,
+    pub(crate) style: Style,
 }
 
 impl TabBarFill {

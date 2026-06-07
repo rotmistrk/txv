@@ -5,16 +5,16 @@ use txv_core::prelude::*;
 use crate::scroll_view::ScrollView;
 
 pub struct Column {
-    pub title: String,
-    pub width: u16,
+    pub(crate) title: String,
+    pub(crate) width: u16,
 }
 
 pub struct Table {
     state: ViewState,
-    pub columns: Vec<Column>,
-    pub rows: Vec<Vec<String>>,
-    pub cursor: usize,
-    pub scroll: ScrollView,
+    pub(crate) columns: Vec<Column>,
+    pub(crate) rows: Vec<Vec<String>>,
+    pub(crate) cursor: usize,
+    pub(crate) scroll: ScrollView,
 }
 
 impl Table {

@@ -6,12 +6,12 @@ use crate::scroll_view::ScrollView;
 
 pub struct FuzzySelect {
     state: ViewState,
-    pub query: String,
-    pub cursor_pos: usize,
-    pub items: Vec<String>,
-    pub filtered: Vec<usize>,
-    pub selected: usize,
-    pub scroll: ScrollView,
+    pub(crate) query: String,
+    pub(crate) cursor_pos: usize,
+    pub(crate) items: Vec<String>,
+    pub(crate) filtered: Vec<usize>,
+    pub(crate) selected: usize,
+    pub(crate) scroll: ScrollView,
 }
 
 impl FuzzySelect {

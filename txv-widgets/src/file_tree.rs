@@ -31,9 +31,9 @@ pub struct FileTreeData {
     /// Set of absolute paths currently open in editor tabs.
     pub(crate) open_files: std::collections::HashSet<PathBuf>,
     /// Whether to show hidden (dot) files.
-    pub show_hidden: bool,
+    pub(crate) show_hidden: bool,
     /// Whether to show .gitignored files (dim, lazy-loaded).
-    pub show_ignored: bool,
+    pub(crate) show_ignored: bool,
     /// Whether to show file/dir icons (Nerd Font).
     pub show_icons: bool,
     /// Active filter text (empty = no filter).
