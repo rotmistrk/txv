@@ -1,7 +1,7 @@
 //! EditorView — a reusable View wrapping txv_edit::editor::Editor.
 
 pub mod delegate;
-mod draw;
+pub mod draw;
 mod handle;
 
 use std::path::{Path, PathBuf};
@@ -13,6 +13,7 @@ pub use delegate::{EditorViewDelegate, NullDelegate};
 use crate::editor::keymap::EditorMode;
 use crate::editor::Editor;
 use crate::highlight::{extension_from_path, HighlightCache, Highlighter};
+use crate::settings::CursorStyle;
 
 /// Command IDs emitted by EditorView.
 pub const CM_EDITOR_SAVE: u16 = 180;
@@ -122,6 +123,26 @@ impl<D: EditorViewDelegate> EditorView<D> {
         self.hl_cache = HighlightCache::new(&ext);
         self.state.set_title(file_title(path));
     }
+
+    pub fn state(&self) -> &ViewState {
+        &self.state
+    }
+
+    pub fn state_mut(&mut self) -> &mut ViewState {
+        &mut self.state
+    }
+
+    pub fn highlighter(&self) -> &Highlighter {
+        &self.highlighter
+    }
+
+    pub fn highlighter_mut(&mut self) -> &mut Highlighter {
+        &mut self.highlighter
+    }
+
+    pub fn hl_cache_mut(&mut self) -> &mut HighlightCache {
+        &mut self.hl_cache
+    }
 }
 
 impl<D: EditorViewDelegate + 'static> View for EditorView<D> {
@@ -158,10 +179,20 @@ impl<D: EditorViewDelegate + 'static> View for EditorView<D> {
         let y = (line - scroll) as u16;
         let x = gw + (col.saturating_sub(h_scroll)) as u16;
 
-        let shape = match self.editor.mode() {
-            EditorMode::Insert => CursorShape::Bar,
-            EditorMode::Command | EditorMode::Search => CursorShape::Block,
-            _ => CursorShape::Block,
+        let opts = self.editor.options();
+        let cursor_style = match self.editor.mode() {
+            EditorMode::Insert => opts.cursor_insert(),
+            EditorMode::Command | EditorMode::Search => opts.cursor_command(),
+            _ => opts.cursor_normal(),
+        };
+        if cursor_style == CursorStyle::Software {
+            return None;
+        }
+        let shape = match cursor_style {
+            CursorStyle::Bar => CursorShape::Bar,
+            CursorStyle::Block => CursorShape::Block,
+            CursorStyle::Underline => CursorShape::Underline,
+            CursorStyle::Software => return None,
         };
         Some(CursorRequest::new(x, y, shape))
     }

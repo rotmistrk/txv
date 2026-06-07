@@ -2,7 +2,7 @@
 
 use txv_core::prelude::{Buffer, Style};
 
-use crate::editor::EditorAction;
+use crate::editor::{Editor, EditorAction};
 
 /// Delegate trait for app-specific extensions. All methods have default no-ops.
 pub trait EditorViewDelegate: Send {
@@ -13,6 +13,9 @@ pub trait EditorViewDelegate: Send {
 
     /// Draw extra content in the gutter (blame annotations, git signs, etc.)
     fn draw_gutter_sign(&self, _buf: &mut Buffer, _line: usize, _x: u16, _y: u16) {}
+
+    /// Called after the main draw pass. Use for overlays (diagnostics, popups).
+    fn post_draw(&self, _buf: &mut Buffer, _editor: &Editor) {}
 
     /// Called when the editor produces an action. Return true if handled.
     fn on_action(&mut self, _action: &EditorAction) -> bool {
