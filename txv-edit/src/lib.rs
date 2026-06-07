@@ -18,3 +18,4 @@ pub mod highlight;
 pub mod keymap;
 pub mod settings;
 pub mod shared_register;
+pub mod view;
