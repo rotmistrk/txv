@@ -39,12 +39,11 @@ impl View for TabPanel {
             return;
         }
         self.fill_background(b);
-        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         if let Some(bar) = self.group.child_mut(0) {
             bar.draw();
-            unsafe { (*buf_ptr).blit(bar.buffer(), 0, 0) };
         }
-        self.draw_active_content(buf_ptr);
+        self.group.blit_child(0);
+        self.draw_active_content();
         if self.bar().dropdown_open() {
             self.draw_dropdown();
         }
@@ -90,15 +89,11 @@ impl TabPanel {
         }
     }
 
-    fn draw_active_content(&mut self, buf_ptr: *mut Buffer) {
+    fn draw_active_content(&mut self) {
         let active_gi = self.bar().active_index() + 1;
-        let (ox, oy) = self.group.child_origin(active_gi);
         if let Some(child) = self.group.child_mut(active_gi) {
             child.draw();
-            let cs = child.bounds();
-            if cs.w() > 0 && cs.h() > 0 {
-                unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
-            }
         }
+        self.group.blit_child(active_gi);
     }
 }

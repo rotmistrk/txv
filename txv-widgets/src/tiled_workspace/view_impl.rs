@@ -70,7 +70,6 @@ impl TiledWorkspace {
     }
 
     fn blit_visible_children(&mut self) {
-        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         for i in 0..self.configs.len() {
             if !self.is_panel_visible(i) {
                 continue;
@@ -80,9 +79,8 @@ impl TiledWorkspace {
                 if cs.w() == 0 || cs.h() == 0 {
                     continue;
                 }
-                let (ox, oy) = self.group.child_origin(i);
-                unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
             }
+            self.group.blit_child(i);
         }
     }
 

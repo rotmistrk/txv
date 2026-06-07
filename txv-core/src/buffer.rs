@@ -146,6 +146,38 @@ impl Buffer {
         }
     }
 
+    /// Draw a box-drawing rectangle.
+    pub fn draw_box(&mut self, x: u16, y: u16, w: u16, h: u16, heavy: bool, style: Style) {
+        use crate::glyphs::glyphs;
+        if w < 2 || h < 2 {
+            return;
+        }
+        let g = glyphs();
+        let bx = g.box_drawing();
+        let (h_ch, v_ch, tl, tr, bl, br) = if heavy {
+            (
+                bx.h_heavy(),
+                bx.v_heavy(),
+                bx.tl_heavy(),
+                bx.tr_heavy(),
+                bx.bl_heavy(),
+                bx.br_heavy(),
+            )
+        } else {
+            (bx.h(), bx.v(), bx.tl(), bx.tr(), bx.bl(), bx.br())
+        };
+        self.hline(x, y, w, h_ch, style);
+        self.hline(x, y + h - 1, w, h_ch, style);
+        for row in (y + 1)..(y + h - 1) {
+            self.put(x, row, v_ch, style);
+            self.put(x + w - 1, row, v_ch, style);
+        }
+        self.put(x, y, tl, style);
+        self.put(x + w - 1, y, tr, style);
+        self.put(x, y + h - 1, bl, style);
+        self.put(x + w - 1, y + h - 1, br, style);
+    }
+
     /// Blit another buffer onto this one at (dx, dy) with clipping.
     pub fn blit(&mut self, src: &Buffer, dx: u16, dy: u16) {
         use crate::cell::Color;

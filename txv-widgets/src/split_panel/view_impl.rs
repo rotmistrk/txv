@@ -24,16 +24,11 @@ impl View for SplitPanel {
         self.group.buffer_mut().fill(' ', transparent);
         self.draw_dividers(b);
 
-        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         for i in 0..self.group.child_count() {
-            let (ox, oy) = self.group.child_origin(i);
             if let Some(child) = self.group.child_mut(i) {
                 child.draw();
-                let cs = child.bounds();
-                if cs.w() > 0 && cs.h() > 0 {
-                    unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
-                }
             }
+            self.group.blit_child(i);
         }
     }
 

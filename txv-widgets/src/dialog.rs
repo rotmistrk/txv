@@ -91,28 +91,7 @@ impl View for Dialog {
 
 impl Dialog {
     fn draw_dialog_border(&mut self, w: u16, h: u16, style: Style) {
-        let g = glyphs();
-        let bx = &g.box_drawing();
-        self.state.buffer_mut().hline(0, 0, w, bx.h_heavy(), style);
-        self.state
-            .buffer_mut()
-            .hline(0, h.saturating_sub(1), w, bx.h_heavy(), style);
-        for row in 1..h.saturating_sub(1) {
-            self.state.buffer_mut().put(0, row, bx.v_heavy(), style);
-            self.state
-                .buffer_mut()
-                .put(w.saturating_sub(1), row, bx.v_heavy(), style);
-        }
-        self.state.buffer_mut().put(0, 0, bx.tl_heavy(), style);
-        self.state
-            .buffer_mut()
-            .put(w.saturating_sub(1), 0, bx.tr_heavy(), style);
-        self.state
-            .buffer_mut()
-            .put(0, h.saturating_sub(1), bx.bl_heavy(), style);
-        self.state
-            .buffer_mut()
-            .put(w.saturating_sub(1), h.saturating_sub(1), bx.br_heavy(), style);
+        self.state.buffer_mut().draw_box(0, 0, w, h, true, style);
     }
 
     fn draw_dialog_title(&mut self, w: u16, style: Style) {

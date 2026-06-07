@@ -7,6 +7,8 @@ use std::time::Instant;
 
 use txv_core::prelude::*;
 
+use crate::resize_helpers::resize_width_to;
+
 /// A View-based status bar item that displays the current git branch.
 pub struct BranchView {
     state: ViewState,
@@ -44,18 +46,10 @@ impl BranchView {
         } else {
             self.label_text.len() as u16 + 2
         };
-        let bounds = self.state.bounds();
-        if bounds.w() != w {
-            self.state.set_bounds(Rect::new(bounds.x(), bounds.y(), w, 1));
-        }
+        resize_width_to(&mut self.state, w);
     }
 
-    fn resolve_style(&self, id: StyleId) -> Style {
-        match &self.palette {
-            Some(p) => p.style(id),
-            None => palette().style(id),
-        }
-    }
+    delegate_palette!(palette);
 
     fn read_branch(root: &Path) -> Option<String> {
         let head = fs::read_to_string(root.join(".git/HEAD")).ok()?;

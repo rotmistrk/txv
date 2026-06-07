@@ -3,6 +3,7 @@
 use txv_core::prelude::*;
 
 use super::{TreeData, TreeView};
+use crate::tree_draw_helpers::{draw_empty_rows, draw_filter_status, draw_highlighted_text};
 
 impl<D: TreeData> TreeView<D> {
     pub(super) fn draw_tree(&mut self) {
@@ -103,25 +104,7 @@ impl<D: TreeData> TreeView<D> {
     }
 
     fn draw_highlighted_label(&mut self, label: &str, positions: &[usize], label_x: u16, y: u16, w: u16, style: Style) {
-        let sm = palette().style(StyleId::SearchMatch);
-        let hl_fg = if sm.bg() != Color::Reset {
-            sm.bg()
-        } else {
-            sm.fg()
-        };
-        let hl_style = Style::new(hl_fg, style.bg()).with_attrs(style.attrs().bold());
-        for (ci, ch) in label.chars().enumerate() {
-            let cx = label_x + ci as u16;
-            if cx >= w {
-                break;
-            }
-            let s = if positions.contains(&ci) {
-                hl_style
-            } else {
-                style
-            };
-            self.state.buffer_mut().put(cx, y, ch, s);
-        }
+        draw_highlighted_text(self.state.buffer_mut(), label, positions, label_x, y, w, style);
     }
 
     fn draw_open_indicator(&mut self, id: usize, label_x: u16, y: u16, w: u16, style: Style) {
@@ -146,20 +129,14 @@ impl<D: TreeData> TreeView<D> {
             .visible_count()
             .saturating_sub(self.scroll.offset)
             .min(tree_h as usize);
-        for row in drawn..tree_h as usize {
-            self.state.buffer_mut().hline(0, row as u16, w, ' ', Style::default());
-        }
+        draw_empty_rows(self.state.buffer_mut(), drawn, tree_h, w);
     }
 
     fn draw_filter_line(&mut self, h: u16, w: u16, filter_text: Option<&str>) {
         let Some(text) = filter_text else {
             return;
         };
-        let y = h - 1;
-        let status_style = palette().style(StyleId::Dim);
-        self.state.buffer_mut().hline(0, y, w, ' ', status_style);
-        let display = format!("/{}", text);
-        self.state.buffer_mut().print(0, y, &display, status_style);
+        draw_filter_status(self.state.buffer_mut(), h, w, text);
     }
 
     fn draw_connectors(&mut self, row: usize, depth: usize, y: u16, base: Style) {

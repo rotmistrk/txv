@@ -55,20 +55,7 @@ impl Frame {
             return;
         }
         let style = palette().style(StyleId::Border);
-        let g = glyphs();
-        let bx = &g.box_drawing();
-
-        self.group.buffer_mut().hline(0, 0, w, bx.h(), style);
-        self.group.buffer_mut().hline(0, h - 1, w, bx.h(), style);
-        for row in 1..h - 1 {
-            self.group.buffer_mut().put(0, row, bx.v(), style);
-            self.group.buffer_mut().put(w - 1, row, bx.v(), style);
-        }
-        self.group.buffer_mut().put(0, 0, bx.tl(), style);
-        self.group.buffer_mut().put(w - 1, 0, bx.tr(), style);
-        self.group.buffer_mut().put(0, h - 1, bx.bl(), style);
-        self.group.buffer_mut().put(w - 1, h - 1, bx.br(), style);
-
+        self.group.buffer_mut().draw_box(0, 0, w, h, false, style);
         self.draw_border_labels(w, h, style);
     }
 
@@ -124,13 +111,7 @@ impl View for Frame {
                 child.draw();
             }
         }
-        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
-        if let Some(child) = self.group.child(0) {
-            if child.bounds().w() > 0 {
-                let (ox, oy) = self.group.child_origin(0);
-                unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
-            }
-        }
+        self.group.blit_child(0);
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

@@ -4,6 +4,8 @@ use std::sync::Arc;
 
 use txv_core::prelude::*;
 
+use crate::resize_helpers::resize_width_to;
+
 /// A View-based command input line for the status bar.
 pub struct CommandLineView {
     state: ViewState,
@@ -36,12 +38,7 @@ impl CommandLineView {
         }
     }
 
-    fn resolve_style(&self, id: StyleId) -> Style {
-        match &self.palette {
-            Some(p) => p.style(id),
-            None => palette().style(id),
-        }
-    }
+    delegate_palette!(palette);
 
     pub fn with_label(mut self, label: impl Into<String>) -> Self {
         self.dormant_label = label.into();
@@ -94,10 +91,7 @@ impl CommandLineView {
         } else {
             label.len() as u16 + 2
         };
-        let bounds = self.state.bounds();
-        if bounds.w() != w {
-            self.state.set_bounds(Rect::new(bounds.x(), bounds.y(), w, 1));
-        }
+        resize_width_to(&mut self.state, w);
     }
 
     fn try_complete(&mut self) {

@@ -4,6 +4,8 @@ use std::sync::Arc;
 
 use txv_core::prelude::*;
 
+use crate::resize_helpers::resize_width_to;
+
 /// A View-based confirmation prompt for the status bar.
 pub struct ConfirmView {
     state: ViewState,
@@ -32,12 +34,7 @@ impl ConfirmView {
         }
     }
 
-    fn resolve_style(&self, id: StyleId) -> Style {
-        match &self.palette {
-            Some(p) => p.style(id),
-            None => palette().style(id),
-        }
-    }
+    delegate_palette!(palette);
 
     fn display_text(&self) -> String {
         if self.active {
@@ -54,10 +51,7 @@ impl ConfirmView {
         } else {
             label.len() as u16 + 2
         };
-        let bounds = self.state.bounds();
-        if bounds.w() != w {
-            self.state.set_bounds(Rect::new(bounds.x(), bounds.y(), w, 1));
-        }
+        resize_width_to(&mut self.state, w);
     }
 
     fn respond(&mut self, ch: char) {

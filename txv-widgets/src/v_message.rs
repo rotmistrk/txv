@@ -3,6 +3,7 @@
 use std::time::Instant;
 use txv_core::prelude::*;
 
+use crate::resize_helpers::resize_width_to;
 use crate::status_items::CM_STATUS_MESSAGE;
 
 /// A View-based status bar item that displays transient messages.
@@ -33,10 +34,7 @@ impl MessageView {
         } else {
             self.display.len() as u16 + 2
         };
-        let bounds = self.state.bounds();
-        if bounds.w() != w {
-            self.state.set_bounds(Rect::new(bounds.x(), bounds.y(), w, 1));
-        }
+        resize_width_to(&mut self.state, w);
     }
 
     fn apply_message(&mut self, msg: &Message) {

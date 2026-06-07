@@ -7,6 +7,7 @@ use std::sync::Arc;
 use txv_core::prelude::*;
 
 use crate::prefix_binding::PrefixBinding;
+use crate::resize_helpers::resize_width_to;
 
 /// Two-key prefix View for status bar.
 pub struct PrefixView {
@@ -36,12 +37,7 @@ impl PrefixView {
         }
     }
 
-    fn resolve_style(&self, id: StyleId) -> Style {
-        match &self.palette {
-            Some(p) => p.style(id),
-            None => palette().style(id),
-        }
-    }
+    delegate_palette!(palette);
 
     pub fn bind(mut self, key: char, command: CommandId, label: &'static str) -> Self {
         self.bindings.push(PrefixBinding { key, command, label });
@@ -76,10 +72,7 @@ impl PrefixView {
             &self.idle_label
         };
         let w = label.len() as u16 + 2;
-        let bounds = self.state.bounds();
-        if bounds.w() != w {
-            self.state.set_bounds(Rect::new(bounds.x(), bounds.y(), w, 1));
-        }
+        resize_width_to(&mut self.state, w);
     }
 }
 

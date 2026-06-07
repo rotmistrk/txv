@@ -76,20 +76,7 @@ impl View for Menu {
 
 impl Menu {
     fn draw_menu_border(&mut self, w: u16, h: u16, normal: Style) {
-        let g = glyphs();
-        let bx = &g.box_drawing();
-        self.state.buffer_mut().hline(0, 0, w, bx.h(), normal);
-        self.state.buffer_mut().hline(0, h.saturating_sub(1), w, bx.h(), normal);
-        for row in 1..h.saturating_sub(1) {
-            self.state.buffer_mut().put(0, row, bx.v(), normal);
-            self.state.buffer_mut().put(w.saturating_sub(1), row, bx.v(), normal);
-        }
-        self.state.buffer_mut().put(0, 0, bx.tl(), normal);
-        self.state.buffer_mut().put(w.saturating_sub(1), 0, bx.tr(), normal);
-        self.state.buffer_mut().put(0, h.saturating_sub(1), bx.bl(), normal);
-        self.state
-            .buffer_mut()
-            .put(w.saturating_sub(1), h.saturating_sub(1), bx.br(), normal);
+        self.state.buffer_mut().draw_box(0, 0, w, h, false, normal);
     }
 
     fn draw_menu_items(&mut self, w: u16, h: u16, normal: Style, selected: Style, disabled: Style) {

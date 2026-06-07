@@ -47,12 +47,7 @@ impl KeyLabelView {
         &self.label_text
     }
 
-    fn resolve_style(&self, id: StyleId) -> Style {
-        match &self.palette {
-            Some(p) => p.style(id),
-            None => palette().style(id),
-        }
-    }
+    delegate_palette!(palette);
 
     fn display_text(&self) -> String {
         if self.label_text.is_empty() {

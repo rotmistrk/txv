@@ -245,6 +245,23 @@ impl GroupState {
         }
     }
 
+    /// Blit a single child's buffer onto this group's buffer.
+    pub fn blit_child(&mut self, idx: usize) {
+        let (ox, oy) = self.child_origin(idx);
+        let buf_ptr = self.buffer_mut() as *mut crate::buffer::Buffer;
+        if let Some(child) = self.child(idx) {
+            let cb = child.buffer();
+            unsafe { (*buf_ptr).blit(cb, ox, oy) };
+        }
+    }
+
+    /// Blit all children's buffers onto this group's buffer.
+    pub fn blit_all_children(&mut self) {
+        for i in 0..self.children.len() {
+            self.blit_child(i);
+        }
+    }
+
     /// Find a descendant's origin in this group's coordinate space.
     /// Recursively searches children.
     pub fn origin_of(&self, target: ViewId) -> Option<(u16, u16)> {

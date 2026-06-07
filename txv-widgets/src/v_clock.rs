@@ -30,12 +30,7 @@ impl ClockView {
         view
     }
 
-    fn resolve_style(&self, id: StyleId) -> Style {
-        match &self.palette {
-            Some(p) => p.style(id),
-            None => palette().style(id),
-        }
-    }
+    delegate_palette!(palette);
 
     fn refresh_time(&mut self) {
         let (h, m) = local_hm();

@@ -84,39 +84,13 @@ impl View for InputDialog {
 
 impl InputDialog {
     fn draw_input_border(&mut self, w: u16, h: u16, border: Style) {
-        let g = glyphs();
-        let bx = &g.box_drawing();
-        self.group.buffer_mut().hline(0, 0, w, bx.h_heavy(), border);
-        self.group
-            .buffer_mut()
-            .hline(0, h.saturating_sub(1), w, bx.h_heavy(), border);
-        for row in 1..h.saturating_sub(1) {
-            self.group.buffer_mut().put(0, row, bx.v_heavy(), border);
-            self.group
-                .buffer_mut()
-                .put(w.saturating_sub(1), row, bx.v_heavy(), border);
-        }
-        self.group.buffer_mut().put(0, 0, bx.tl_heavy(), border);
-        self.group
-            .buffer_mut()
-            .put(w.saturating_sub(1), 0, bx.tr_heavy(), border);
-        self.group
-            .buffer_mut()
-            .put(0, h.saturating_sub(1), bx.bl_heavy(), border);
-        self.group
-            .buffer_mut()
-            .put(w.saturating_sub(1), h.saturating_sub(1), bx.br_heavy(), border);
+        self.group.buffer_mut().draw_box(0, 0, w, h, true, border);
     }
 
     fn draw_and_blit_child(&mut self) {
         if let Some(child) = self.group.child_mut(0) {
             child.draw();
         }
-        let (ox, oy) = self.group.child_origin(0);
-        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
-        let child_buf = self.group.child(0).map(|c| c.buffer() as *const Buffer);
-        if let Some(cbuf) = child_buf {
-            unsafe { (*buf_ptr).blit(&*cbuf, ox, oy) };
-        }
+        self.group.blit_child(0);
     }
 }

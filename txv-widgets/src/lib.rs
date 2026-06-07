@@ -3,6 +3,9 @@
 //! Concrete View implementations — ready-to-use interactive TUI components.
 //! Depends only on txv-core (plus `ignore` for filesystem widgets).
 
+#[macro_use]
+pub mod palette_macros;
+
 pub mod branch_item;
 pub mod clock_item;
 pub mod command_item;
@@ -35,6 +38,7 @@ pub mod pty_session;
 pub mod pty_terminal;
 mod pty_terminal_scroll;
 mod pty_terminal_spawn;
+pub mod resize_helpers;
 pub mod scroll_view;
 pub mod scrollbar;
 pub mod sidekick;
@@ -51,6 +55,7 @@ pub mod table_column;
 pub mod text_area;
 mod text_area_search;
 pub mod tiled_workspace;
+pub mod tree_draw_helpers;
 mod tree_node;
 pub mod tree_table_source;
 pub mod tree_table_view;

@@ -3,6 +3,7 @@
 use txv_core::prelude::*;
 
 use super::TreeTableView;
+use crate::tree_draw_helpers::{draw_empty_rows, draw_filter_status, draw_highlighted_text};
 use crate::tree_table_source::{ColAlign, TreeTableSource};
 
 impl<D: TreeTableSource> TreeTableView<D> {
@@ -46,20 +47,14 @@ impl<D: TreeTableSource> TreeTableView<D> {
             .visible_count()
             .saturating_sub(self.scroll.offset)
             .min(tree_h as usize);
-        for row in drawn..tree_h as usize {
-            self.state.buffer_mut().hline(0, row as u16, w, ' ', Style::default());
-        }
+        draw_empty_rows(self.state.buffer_mut(), drawn, tree_h, w);
     }
 
     fn draw_filter_status(&mut self, h: u16, w: u16, text: Option<&str>) {
         let Some(text) = text else {
             return;
         };
-        let y = h - 1;
-        let status_style = palette().style(StyleId::Dim);
-        self.state.buffer_mut().hline(0, y, w, ' ', status_style);
-        let display = format!("/{}", text);
-        self.state.buffer_mut().print(0, y, &display, status_style);
+        draw_filter_status(self.state.buffer_mut(), h, w, text);
     }
 
     fn row_style(&self, idx: usize) -> Style {
@@ -146,25 +141,7 @@ impl<D: TreeTableSource> TreeTableView<D> {
     }
 
     fn draw_hl_chars(&mut self, label: &str, positions: &[usize], start_x: u16, y: u16, max_x: u16, col_style: Style) {
-        let sm = palette().style(StyleId::SearchMatch);
-        let hl_fg = if sm.bg() != Color::Reset {
-            sm.bg()
-        } else {
-            sm.fg()
-        };
-        let hl_style = Style::new(hl_fg, col_style.bg()).with_attrs(col_style.attrs().bold());
-        for (ci, ch) in label.chars().enumerate() {
-            let cx = start_x + ci as u16;
-            if cx >= max_x {
-                break;
-            }
-            let s = if positions.contains(&ci) {
-                hl_style
-            } else {
-                col_style
-            };
-            self.state.buffer_mut().put(cx, y, ch, s);
-        }
+        draw_highlighted_text(self.state.buffer_mut(), label, positions, start_x, y, max_x, col_style);
     }
 
     fn draw_extra_cols(&mut self, idx: usize, y: u16, tree_w: u16, total_w: u16) {

@@ -29,12 +29,7 @@ impl ProgressBar {
         }
     }
 
-    fn resolve_style(&self, id: StyleId) -> Style {
-        match &self.palette {
-            Some(p) => p.style(id),
-            None => palette().style(id),
-        }
-    }
+    delegate_palette!(palette);
 
     pub fn set_progress(&mut self, p: f32) {
         self.progress = p.clamp(0.0, 1.0);

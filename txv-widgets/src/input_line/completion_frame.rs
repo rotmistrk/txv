@@ -67,18 +67,7 @@ impl View for CompletionFrame {
 
 impl CompletionFrame {
     fn draw_border(&mut self, w: u16, h: u16, style: Style) {
-        let g = glyphs();
-        let bx = &g.box_drawing();
-        self.state.buffer_mut().hline(0, 0, w, bx.h(), style);
-        self.state.buffer_mut().hline(0, h - 1, w, bx.h(), style);
-        for row in 1..h - 1 {
-            self.state.buffer_mut().put(0, row, bx.v(), style);
-            self.state.buffer_mut().put(w - 1, row, bx.v(), style);
-        }
-        self.state.buffer_mut().put(0, 0, bx.tl(), style);
-        self.state.buffer_mut().put(w - 1, 0, bx.tr(), style);
-        self.state.buffer_mut().put(0, h - 1, bx.bl(), style);
-        self.state.buffer_mut().put(w - 1, h - 1, bx.br(), style);
+        self.state.buffer_mut().draw_box(0, 0, w, h, false, style);
     }
 
     fn blit_inner_list(&mut self, w: u16, h: u16) {
