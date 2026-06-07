@@ -113,7 +113,7 @@ impl CommandItem {
     }
 
     fn handle_active_key(&mut self, key: &KeyEvent, sink: &EventSink) {
-        match &key.code {
+        match key.code() {
             KeyCode::Esc => self.deactivate(),
             KeyCode::Enter => {
                 let cmd = self.text.clone();
@@ -127,7 +127,7 @@ impl CommandItem {
             KeyCode::Left => self.move_cursor_left(),
             KeyCode::Right => self.move_cursor_right(),
             KeyCode::Char(ch) => {
-                self.text.insert(self.cursor, *ch);
+                self.text.insert(self.cursor, ch);
                 self.cursor += ch.len_utf8();
                 self.update_label();
             }

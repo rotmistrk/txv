@@ -1,54 +1,17 @@
-//! Program — the correct way to build a TXV application.
-//!
-//! Program handles the event loop, three-phase dispatch, draw cycle,
-//! resize, and quit. The application only provides:
-//! - A desktop view (the main content)
-//! - A status bar view (preprocess, key→command translation)
-//! - A command handler (what to do when commands arrive)
-//!
-//! # Example
-//!
-//! ```ignore
-//! use txv_core::prelude::*;
-//! use txv_core::program::Program;
-//!
-//! let desktop = MyDesktop::new();
-//! let status = MyStatusBar::new();
-//!
-//! Program::new(desktop, status)
-//!     .run(&mut backend, |ctx| {
-//!         match ctx.command {
-//!             CM_OPEN_FILE => { /* handle */ }
-//!             _ => {}
-//!         }
-//!     });
-//! ```
-//!
-//! You NEVER manually dispatch events.
-//! You NEVER call child.handle() yourself.
-//! Program does it all correctly.
+//! Program — the TXV application runner.
 
 use std::time::Duration;
 
+use crate::buffer::Buffer;
 use crate::cell::Style;
-use crate::commands::CM_QUIT;
+use crate::commands::{CM_QUIT, CM_REPAINT, CM_TICK};
 use crate::event::Event;
 use crate::geometry::Rect;
 use crate::group::GroupState;
 use crate::run::Backend;
 use crate::view::{EventSink, HandleResult, View, ViewOptions};
 
-/// Context passed to the command handler.
-pub struct CommandContext<'a> {
-    /// The command ID.
-    pub command: u16,
-    /// The command data payload.
-    pub data: &'a Option<Box<dyn std::any::Any + Send>>,
-    /// Event sink to emit new commands.
-    pub sink: &'a EventSink,
-    /// Access to the desktop (child 1 of the group).
-    pub desktop: &'a mut dyn View,
-}
+use super::CommandContext;
 
 /// The TXV application runner. Handles event loop, dispatch, draw.
 pub struct Program {
@@ -75,7 +38,9 @@ impl Program {
         // Child 1: desktop (focused — gets normal events)
         group.insert(desktop);
         group.set_focused_index(1);
-        group.child_mut(1).unwrap().select();
+        if let Some(child) = group.child_mut(1) {
+            child.select();
+        }
 
         Self {
             group,
@@ -92,49 +57,15 @@ impl Program {
     {
         backend.enter();
         let (w, h) = backend.size();
-
-        // Initial layout
         self.layout(w, h);
 
         loop {
-            // Draw (only if dirty)
             if self.group.any_dirty() {
                 self.draw_and_flush(backend);
             }
 
-            // Poll event
-            if let Some(event) = backend.poll_event(Duration::from_millis(50)) {
-                if let Event::Resize(mut nw, mut nh) = event {
-                    while let Some(next) = backend.poll_event(Duration::from_millis(0)) {
-                        if let Event::Resize(w2, h2) = next {
-                            nw = w2;
-                            nh = h2;
-                        } else {
-                            self.layout(nw, nh);
-                            backend.invalidate();
-                            self.group.dispatch(&next);
-                            nw = 0;
-                            break;
-                        }
-                    }
-                    if nw > 0 {
-                        self.layout(nw, nh);
-                        backend.invalidate();
-                    }
-                } else {
-                    self.group.dispatch(&event);
-                }
-            } else {
-                // Tick
-                self.group.dispatch(&Event::Tick);
-                self.sink.push(Event::Command {
-                    id: crate::commands::CM_TICK,
-                    data: None,
-                    broadcast: false,
-                });
-            }
+            self.poll_and_dispatch(backend);
 
-            // Drain and process commands from sink
             if self.drain_commands(&mut handler) {
                 break;
             }
@@ -147,6 +78,39 @@ impl Program {
         }
 
         backend.leave();
+    }
+
+    fn poll_and_dispatch(&mut self, backend: &mut dyn Backend) {
+        let Some(event) = backend.poll_event(Duration::from_millis(50)) else {
+            self.group.dispatch(&Event::Tick);
+            self.sink.push(Event::Command {
+                id: CM_TICK,
+                data: None,
+                broadcast: false,
+            });
+            return;
+        };
+        if let Event::Resize(nw, nh) = event {
+            self.coalesce_resize(backend, nw, nh);
+        } else {
+            self.group.dispatch(&event);
+        }
+    }
+
+    fn coalesce_resize(&mut self, backend: &mut dyn Backend, mut nw: u16, mut nh: u16) {
+        while let Some(next) = backend.poll_event(Duration::from_millis(0)) {
+            if let Event::Resize(w2, h2) = next {
+                nw = w2;
+                nh = h2;
+                continue;
+            }
+            self.layout(nw, nh);
+            backend.invalidate();
+            self.group.dispatch(&next);
+            return;
+        }
+        self.layout(nw, nh);
+        backend.invalidate();
     }
 
     /// Run exactly N iterations of the event loop (for testing).
@@ -185,33 +149,38 @@ impl Program {
                 return false;
             }
             for ev in events {
-                if let Event::Command { id, .. } = &ev {
-                    if *id == CM_QUIT {
-                        self.quit_requested = true;
-                        return true;
-                    }
-                    if *id == crate::commands::CM_REPAINT {
-                        self.repaint_requested = true;
-                        continue;
-                    }
-                }
-                // Re-dispatch through the group
-                if self.group.dispatch(&ev) == HandleResult::Consumed {
-                    continue;
-                }
-                // Unhandled command → app handler
-                if let Event::Command { id, ref data, .. } = ev {
-                    let desktop = &mut *self.group.children[1];
-                    let mut ctx = CommandContext {
-                        command: id,
-                        data,
-                        sink: &self.sink,
-                        desktop,
-                    };
-                    handler(&mut ctx);
+                if self.process_single_event(ev, handler) {
+                    return true;
                 }
             }
         }
+    }
+
+    fn process_single_event(&mut self, ev: Event, handler: &mut dyn FnMut(&mut CommandContext)) -> bool {
+        if let Event::Command { id, .. } = &ev {
+            if *id == CM_QUIT {
+                self.quit_requested = true;
+                return true;
+            }
+            if *id == CM_REPAINT {
+                self.repaint_requested = true;
+                return false;
+            }
+        }
+        if self.group.dispatch(&ev) == HandleResult::Consumed {
+            return false;
+        }
+        if let Event::Command { id, ref data, .. } = ev {
+            let desktop = &mut *self.group.children[1];
+            let mut ctx = CommandContext {
+                command: id,
+                data,
+                sink: &self.sink,
+                desktop,
+            };
+            handler(&mut ctx);
+        }
+        false
     }
 
     fn draw_and_flush(&mut self, backend: &mut dyn Backend) {
@@ -220,7 +189,7 @@ impl Program {
         }
         self.group.buffer_mut().fill(' ', Style::default());
         // Safety: children (immutable) and buffer (mutable) are disjoint fields of GroupState.
-        let buf_ptr = self.group.buffer_mut() as *mut crate::buffer::Buffer;
+        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         for (i, child) in self.group.children.iter().enumerate() {
             let (ox, oy) = self.group.origins.get(i).copied().unwrap_or((0, 0));
             unsafe {

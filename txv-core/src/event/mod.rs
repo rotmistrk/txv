@@ -1,6 +1,14 @@
 //! Events flowing through the view tree.
 
+mod key_event;
+mod key_mod;
+mod mouse_event;
+
 use std::any::Any;
+
+pub use key_event::KeyEvent;
+pub use key_mod::KeyMod;
+pub use mouse_event::MouseEvent;
 
 /// Command identifier type.
 pub type CommandId = u16;
@@ -27,21 +35,6 @@ pub enum KeyCode {
     Insert,
 }
 
-/// Key modifiers.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub struct KeyMod {
-    pub ctrl: bool,
-    pub alt: bool,
-    pub shift: bool,
-}
-
-/// A key event.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct KeyEvent {
-    pub code: KeyCode,
-    pub modifiers: KeyMod,
-}
-
 /// Mouse button.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum MouseButton {
@@ -58,15 +51,6 @@ pub enum MouseAction {
     Move,
     ScrollUp,
     ScrollDown,
-}
-
-/// A mouse event.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct MouseEvent {
-    pub x: u16,
-    pub y: u16,
-    pub action: MouseAction,
-    pub modifiers: KeyMod,
 }
 
 /// An event flowing through the view tree.

@@ -1,7 +1,7 @@
 //! ModalKey — View implementation and event handling.
 
-use txv_core::cell::Attrs;
 use txv_core::commands::{CM_CANCEL, CM_OK};
+use txv_core::palette::palette;
 use txv_core::prelude::*;
 
 use super::ModalKey;
@@ -17,7 +17,7 @@ impl View for ModalKey {
         let prompt_w = self.prompt.len() as u16 + 2;
         let child_w: u16 = (0..self.group.child_count())
             .filter_map(|i| self.group.child(i))
-            .map(|c| c.desired_width().max(c.bounds().w))
+            .map(|c| c.desired_width().max(c.bounds().w()))
             .sum();
         prompt_w + child_w
     }
@@ -28,53 +28,19 @@ impl View for ModalKey {
     }
 
     fn options(&self) -> ViewOptions {
-        ViewOptions {
-            preprocess: true,
-            focusable: false,
-            modal: self.active,
-            ..ViewOptions::default()
-        }
+        ViewOptions::default().with_preprocess().with_modal_cond(self.active)
     }
 
     fn draw(&mut self) {
         let bounds = self.group.bounds();
-        if bounds.w == 0 || bounds.h == 0 {
+        if bounds.w() == 0 || bounds.h() == 0 {
             self.group.mark_redrawn();
             return;
         }
-        let style = txv_core::palette::palette().style(StyleId::StatusBar);
+        let style = palette().style(StyleId::StatusBar);
 
         if self.active {
-            // Active modal: distinct background from status bar
-            let modal_style = txv_core::palette::palette().style(StyleId::StatusBarModal);
-            self.group.buffer_mut().fill(' ', modal_style);
-            // Left power cap: modal bg fg on status_bar bg
-            let modal_bg = modal_style.bg;
-            let cap_style = Style {
-                fg: modal_bg,
-                bg: style.bg,
-                attrs: Attrs::default(),
-            };
-            self.group.buffer_mut().print(0, 0, "\u{e0b6}", cap_style);
-            // Prompt in bold
-            let prompt_style = Style {
-                attrs: Attrs {
-                    bold: true,
-                    ..modal_style.attrs
-                },
-                ..modal_style
-            };
-            self.group.buffer_mut().print(1, 0, &self.prompt, prompt_style);
-            self.layout_children_modal();
-            self.draw_children(bounds);
-            // Right power cap: modal bg fg on status_bar bg
-            let rw = bounds.w.saturating_sub(1);
-            let rcap_style = Style {
-                fg: modal_bg,
-                bg: style.bg,
-                attrs: Attrs::default(),
-            };
-            self.group.buffer_mut().print(rw, 0, "\u{e0b4}", rcap_style);
+            self.draw_active(style);
         } else {
             self.group.buffer_mut().fill(' ', style);
             if !self.idle_label.is_empty() {
@@ -99,6 +65,22 @@ impl View for ModalKey {
 }
 
 impl ModalKey {
+    fn draw_active(&mut self, bar_style: Style) {
+        let modal_style = palette().style(StyleId::StatusBarModal);
+        self.group.buffer_mut().fill(' ', modal_style);
+        let modal_bg = modal_style.bg();
+        let cap_style = Style::new(modal_bg, bar_style.bg());
+        self.group.buffer_mut().print(0, 0, "\u{e0b6}", cap_style);
+        let prompt_style = modal_style.with_attrs(modal_style.attrs().bold());
+        self.group.buffer_mut().print(1, 0, &self.prompt, prompt_style);
+        self.layout_children_modal();
+        let bounds = self.group.bounds();
+        self.draw_children(bounds);
+        let rw = bounds.w().saturating_sub(1);
+        let rcap_style = Style::new(modal_bg, bar_style.bg());
+        self.group.buffer_mut().print(rw, 0, "\u{e0b4}", rcap_style);
+    }
+
     fn check_timeout(&mut self) {
         let Some(secs) = self.timeout_secs else {
             return;
@@ -137,7 +119,7 @@ impl ModalKey {
         let prompt_w = self.prompt.len() as u16;
         // +1 for left power cap, +1 for right power cap
         let base_x = prompt_w + 1;
-        let total_w = self.group.bounds().w.saturating_sub(base_x + 1);
+        let total_w = self.group.bounds().w().saturating_sub(base_x + 1);
         let n = self.group.child_count();
         let mut x = base_x;
         for i in 0..n {
@@ -145,7 +127,7 @@ impl ModalKey {
                 // Last child gets all remaining space
                 total_w.saturating_sub(x - base_x)
             } else {
-                self.group.child(i).map_or(0, |c| c.bounds().w)
+                self.group.child(i).map_or(0, |c| c.bounds().w())
             };
             self.group.set_child_bounds(i, Rect::new(x, 0, cw, 1));
             x += cw;
@@ -156,12 +138,12 @@ impl ModalKey {
         let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
-                if child.bounds().w > 0 {
+                if child.bounds().w() > 0 {
                     child.draw();
                 }
             }
             if let Some(child) = self.group.child(i) {
-                if child.bounds().w > 0 {
+                if child.bounds().w() > 0 {
                     let (ox, oy) = self.group.child_origin(i);
                     unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
                 }

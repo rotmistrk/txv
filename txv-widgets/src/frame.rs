@@ -4,6 +4,7 @@
 //! lt (left-top), t (center-top), rt (right-top),
 //! lb (left-bottom), b (center-bottom), rb (right-bottom).
 
+use txv_core::palette::palette;
 use txv_core::prelude::*;
 
 /// Border label position.
@@ -40,8 +41,8 @@ impl Frame {
 
     fn layout(&mut self) {
         let b = self.group.bounds();
-        if b.w > 2 && b.h > 2 {
-            self.group.set_child_bounds(0, Rect::new(1, 1, b.w - 2, b.h - 2));
+        if b.w() > 2 && b.h() > 2 {
+            self.group.set_child_bounds(0, Rect::new(1, 1, b.w() - 2, b.h() - 2));
         } else {
             self.group.set_child_bounds(0, Rect::new(0, 0, 0, 0));
         }
@@ -53,25 +54,25 @@ impl Frame {
         if w < 2 || h < 2 {
             return;
         }
-        let style = txv_core::palette::palette().style(StyleId::Border);
+        let style = palette().style(StyleId::Border);
         let g = glyphs();
-        let bx = &g.box_drawing;
+        let bx = &g.box_drawing();
 
-        // Horizontal lines
-        self.group.buffer_mut().hline(0, 0, w, bx.h, style);
-        self.group.buffer_mut().hline(0, h - 1, w, bx.h, style);
-        // Vertical lines
+        self.group.buffer_mut().hline(0, 0, w, bx.h(), style);
+        self.group.buffer_mut().hline(0, h - 1, w, bx.h(), style);
         for row in 1..h - 1 {
-            self.group.buffer_mut().put(0, row, bx.v, style);
-            self.group.buffer_mut().put(w - 1, row, bx.v, style);
+            self.group.buffer_mut().put(0, row, bx.v(), style);
+            self.group.buffer_mut().put(w - 1, row, bx.v(), style);
         }
-        // Corners
-        self.group.buffer_mut().put(0, 0, bx.tl, style);
-        self.group.buffer_mut().put(w - 1, 0, bx.tr, style);
-        self.group.buffer_mut().put(0, h - 1, bx.bl, style);
-        self.group.buffer_mut().put(w - 1, h - 1, bx.br, style);
+        self.group.buffer_mut().put(0, 0, bx.tl(), style);
+        self.group.buffer_mut().put(w - 1, 0, bx.tr(), style);
+        self.group.buffer_mut().put(0, h - 1, bx.bl(), style);
+        self.group.buffer_mut().put(w - 1, h - 1, bx.br(), style);
 
-        // Labels
+        self.draw_border_labels(w, h, style);
+    }
+
+    fn draw_border_labels(&mut self, w: u16, h: u16, style: Style) {
         for (i, text) in self.labels.iter().enumerate() {
             if text.is_empty() {
                 continue;
@@ -90,9 +91,9 @@ impl Frame {
                 _ => h - 1,
             };
             let x = match i {
-                0 | 3 => 2,                                          // left
-                2 | 5 => w.saturating_sub(display.len() as u16 + 2), // right
-                _ => (w.saturating_sub(display.len() as u16)) / 2,   // center
+                0 | 3 => 2,
+                2 | 5 => w.saturating_sub(display.len() as u16 + 2),
+                _ => (w.saturating_sub(display.len() as u16)) / 2,
             };
             self.group.buffer_mut().print(x, y, display, style);
         }
@@ -113,19 +114,19 @@ impl View for Frame {
         if w == 0 || h == 0 {
             return;
         }
-        let bg = txv_core::palette::palette().style(StyleId::StatusBar);
+        let bg = palette().style(StyleId::StatusBar);
         self.group.buffer_mut().fill(' ', bg);
         self.draw_border();
 
         // Draw and blit child
         if let Some(child) = self.group.child_mut(0) {
-            if child.bounds().w > 0 && child.bounds().h > 0 {
+            if child.bounds().w() > 0 && child.bounds().h() > 0 {
                 child.draw();
             }
         }
         let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         if let Some(child) = self.group.child(0) {
-            if child.bounds().w > 0 {
+            if child.bounds().w() > 0 {
                 let (ox, oy) = self.group.child_origin(0);
                 unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
             }

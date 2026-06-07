@@ -1,5 +1,6 @@
 //! ListView — generic list widget parameterized by ListData.
 
+use txv_core::palette::palette;
 use txv_core::prelude::*;
 
 use crate::scroll_view::ScrollView;
@@ -74,7 +75,7 @@ impl<D: ListData> ListView<D> {
     }
 
     fn sync_scroll(&mut self) {
-        let h = self.state.bounds().h as usize;
+        let h = self.state.bounds().h() as usize;
         self.scroll.set_viewport(h);
         self.scroll.set_total(self.data.len());
         self.scroll.ensure_visible(self.cursor);
@@ -92,9 +93,9 @@ impl<D: ListData> View for ListView<D> {
         }
         self.sync_scroll();
         let selected = if self.state.is_focused() {
-            txv_core::palette::palette().style(StyleId::CursorFocused)
+            palette().style(StyleId::CursorFocused)
         } else {
-            txv_core::palette::palette().style(StyleId::PopupSelected)
+            palette().style(StyleId::PopupSelected)
         };
         for row in 0..h as usize {
             let idx = self.scroll.offset + row;
@@ -116,7 +117,7 @@ impl<D: ListData> View for ListView<D> {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
-        match key.code {
+        match key.code() {
             KeyCode::Up => {
                 self.select_prev();
                 HandleResult::Consumed
@@ -135,13 +136,13 @@ impl<D: ListData> View for ListView<D> {
                 HandleResult::Consumed
             }
             KeyCode::PageDown => {
-                let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
+                let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
                 let max = self.data.len().saturating_sub(1);
                 self.set_cursor((self.cursor + page).min(max));
                 HandleResult::Consumed
             }
             KeyCode::PageUp => {
-                let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
+                let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
                 self.set_cursor(self.cursor.saturating_sub(page));
                 HandleResult::Consumed
             }

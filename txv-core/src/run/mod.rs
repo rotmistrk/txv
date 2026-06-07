@@ -1,6 +1,8 @@
 //! Backend trait, run loop, exec_view (modal), and MockBackend for tests.
 
 pub mod mock;
+mod wake_fd;
+mod waker;
 
 use std::time::Duration;
 
@@ -10,6 +12,7 @@ use crate::event::{CommandId, Event};
 use crate::view::{EventSink, View};
 
 pub use mock::{run_cycles, MockBackend};
+pub use waker::Waker;
 
 /// Backend trait — implemented by terminal renderers.
 pub trait Backend: Send {
@@ -28,50 +31,6 @@ pub trait Backend: Send {
     fn set_cursor(&mut self, _cursor: Option<crate::cursor::CursorRequest>) {}
 }
 
-/// A handle that wakes the event loop from any thread.
-/// Clone + Send — safe to pass to background threads.
-#[derive(Clone)]
-pub struct Waker {
-    fd: Option<std::sync::Arc<WakeFd>>,
-}
-
-struct WakeFd(std::os::unix::io::RawFd);
-
-impl Drop for WakeFd {
-    fn drop(&mut self) {
-        unsafe {
-            libc::close(self.0);
-        }
-    }
-}
-
-// SAFETY: the fd is only written to (single byte), which is atomic on pipes.
-unsafe impl Send for WakeFd {}
-unsafe impl Sync for WakeFd {}
-
-impl Waker {
-    /// Create a waker from the write end of a pipe.
-    pub fn from_fd(write_fd: std::os::unix::io::RawFd) -> Self {
-        Self {
-            fd: Some(std::sync::Arc::new(WakeFd(write_fd))),
-        }
-    }
-
-    /// No-op waker (for tests/mock backends).
-    pub fn noop() -> Self {
-        Self { fd: None }
-    }
-
-    /// Wake the event loop. Safe to call from any thread.
-    pub fn wake(&self) {
-        if let Some(fd) = &self.fd {
-            unsafe {
-                libc::write(fd.0, b"W".as_ptr() as *const libc::c_void, 1);
-            }
-        }
-    }
-}
-
 /// Run the main event loop. Returns when CM_QUIT is received.
 pub fn run(root: &mut dyn View, backend: &mut dyn Backend) {
     backend.enter();
@@ -87,26 +46,38 @@ pub fn run(root: &mut dyn View, backend: &mut dyn Backend) {
         }
 
         if let Some(event) = backend.poll_event(Duration::from_millis(50)) {
-            if let Event::Resize(nw, nh) = &event {
-                root.set_bounds(crate::geometry::Rect::new(0, 0, *nw, *nh));
-                backend.invalidate();
-            }
-            root.handle(&event);
+            dispatch_event(root, &event, backend);
         } else {
             root.handle(&Event::Tick);
         }
 
-        let events = sink.drain();
-        for ev in events {
-            if let Event::Command { id, .. } = &ev {
-                if *id == CM_QUIT {
-                    backend.leave();
-                    return;
-                }
-            }
-            root.handle(&ev);
+        if drain_quit(root, &sink) {
+            break;
         }
     }
+
+    backend.leave();
+}
+
+fn dispatch_event(root: &mut dyn View, event: &Event, backend: &mut dyn Backend) {
+    if let Event::Resize(nw, nh) = event {
+        root.set_bounds(crate::geometry::Rect::new(0, 0, *nw, *nh));
+        backend.invalidate();
+    }
+    root.handle(event);
+}
+
+fn drain_quit(root: &mut dyn View, sink: &EventSink) -> bool {
+    let events = sink.drain();
+    for ev in events {
+        if let Event::Command { id, .. } = &ev {
+            if *id == CM_QUIT {
+                return true;
+            }
+        }
+        root.handle(&ev);
+    }
+    false
 }
 
 /// Modal nested event loop. Returns the closing command (CM_CLOSE, CM_OK, or CM_CANCEL).
@@ -115,53 +86,65 @@ pub fn exec_view(root: &mut dyn View, modal: &mut dyn View, backend: &mut dyn Ba
     modal.set_sink(sink.clone());
 
     loop {
-        // Draw root, then composite modal on top
-        root.draw();
-        modal.draw();
-        let rb = root.bounds();
-        let mut combined = Buffer::new(rb.w, rb.h);
-        combined.blit(root.buffer(), 0, 0);
-        // Modal is composited at (0,0) — caller should size it to desired position
-        combined.blit(modal.buffer(), 0, 0);
-        backend.flush(&combined);
-        // Hardware cursor from modal
-        let cursor = modal.cursor();
-        backend.set_cursor(cursor);
+        exec_draw(root, modal, backend);
 
-        match backend.poll_event(Duration::from_millis(50)) {
-            Some(Event::Key(ref k)) => {
-                modal.handle(&Event::Key(*k));
-            }
-            Some(Event::Mouse(m)) => {
-                modal.handle(&Event::Mouse(m));
-            }
-            Some(Event::Resize(nw, nh)) => {
-                let ev = Event::Resize(nw, nh);
-                root.handle(&ev);
-                modal.handle(&ev);
-            }
-            Some(Event::Tick) | None => {
-                root.handle(&Event::Tick);
-                modal.handle(&Event::Tick);
-            }
-            Some(ev @ Event::Command { .. }) => {
-                root.handle(&ev);
-            }
-            Some(ev @ Event::Paste(_)) => {
-                modal.handle(&ev);
-            }
-        }
+        let event = backend.poll_event(Duration::from_millis(50));
+        exec_dispatch_event(root, modal, event);
 
-        let events = sink.drain();
-        for ev in events {
-            if let Event::Command { id, .. } = &ev {
-                if matches!(*id, CM_CLOSE | CM_OK | CM_CANCEL) {
-                    return *id;
-                }
-            }
-            root.handle(&ev);
+        if let Some(id) = exec_drain_commands(root, &sink) {
+            return id;
         }
     }
+}
+
+fn exec_draw(root: &mut dyn View, modal: &mut dyn View, backend: &mut dyn Backend) {
+    root.draw();
+    modal.draw();
+    let rb = root.bounds();
+    let mut combined = Buffer::new(rb.w, rb.h);
+    combined.blit(root.buffer(), 0, 0);
+    combined.blit(modal.buffer(), 0, 0);
+    backend.flush(&combined);
+    backend.set_cursor(modal.cursor());
+}
+
+fn exec_dispatch_event(root: &mut dyn View, modal: &mut dyn View, event: Option<Event>) {
+    match event {
+        Some(Event::Key(ref k)) => {
+            modal.handle(&Event::Key(*k));
+        }
+        Some(Event::Mouse(m)) => {
+            modal.handle(&Event::Mouse(m));
+        }
+        Some(Event::Resize(nw, nh)) => {
+            let ev = Event::Resize(nw, nh);
+            root.handle(&ev);
+            modal.handle(&ev);
+        }
+        Some(Event::Tick) | None => {
+            root.handle(&Event::Tick);
+            modal.handle(&Event::Tick);
+        }
+        Some(ev @ Event::Command { .. }) => {
+            root.handle(&ev);
+        }
+        Some(ev @ Event::Paste(_)) => {
+            modal.handle(&ev);
+        }
+    }
+}
+
+fn exec_drain_commands(root: &mut dyn View, sink: &EventSink) -> Option<CommandId> {
+    let events = sink.drain();
+    for ev in events {
+        if let Event::Command { id, .. } = &ev {
+            if matches!(*id, CM_CLOSE | CM_OK | CM_CANCEL) {
+                return Some(*id);
+            }
+        }
+        root.handle(&ev);
+    }
+    None
 }
 
 #[cfg(test)]

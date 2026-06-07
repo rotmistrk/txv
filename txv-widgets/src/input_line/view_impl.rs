@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use txv_core::cursor::{CursorRequest, CursorShape};
 use txv_core::prelude::*;
 
 use super::InputLine;
@@ -19,17 +20,13 @@ impl View for InputLine {
         self.select_all();
     }
 
-    fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
+    fn cursor(&self) -> Option<CursorRequest> {
         if !self.state.is_focused() {
             return None;
         }
-        let w = self.state.bounds().w as usize;
+        let w = self.state.bounds().w() as usize;
         let start = self.visible_start(w);
-        Some(txv_core::cursor::CursorRequest {
-            x: (self.cursor - start) as u16,
-            y: 0,
-            shape: txv_core::cursor::CursorShape::Bar,
-        })
+        Some(CursorRequest::new((self.cursor - start) as u16, 0, CursorShape::Bar))
     }
 
     fn draw(&mut self) {
@@ -56,13 +53,13 @@ impl View for InputLine {
         // Overflow indicators
         let total_chars = self.char_count();
         if ww > 0 && total_chars > ww {
-            let ov_fg = self.resolve_style(StyleId::OverflowIndicator).fg;
+            let ov_fg = self.resolve_style(StyleId::OverflowIndicator).fg();
             if start > 0 {
-                self.state.buffer_mut().put(0, 0, '…', Style { fg: ov_fg, ..style });
+                self.state.buffer_mut().put(0, 0, '…', style.with_fg(ov_fg));
             }
             if start + ww < total_chars {
                 let rx = (ww - 1) as u16;
-                self.state.buffer_mut().put(rx, 0, '…', Style { fg: ov_fg, ..style });
+                self.state.buffer_mut().put(rx, 0, '…', style.with_fg(ov_fg));
             }
         }
     }

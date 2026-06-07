@@ -6,13 +6,24 @@
 
 use txv_core::prelude::*;
 
+mod badge_render_ctx;
 mod draw;
 mod draw_multi;
+mod draw_multi_badge;
+mod draw_multi_ctx;
+mod draw_multi_emit;
+mod draw_multi_seg_ctx;
 mod dropdown;
+mod tab_bar_fill;
+mod tab_bar_palette;
+mod tab_style;
 pub mod types;
 
+pub use tab_bar_fill::TabBarFill;
+pub use tab_bar_palette::TabBarPalette;
+pub use tab_style::TabStyle;
+pub use types::TabBarMode;
 use types::SUBSCRIPTS;
-pub use types::{TabBarFill, TabBarMode, TabBarPalette, TabStyle};
 
 /// The tab bar widget.
 pub struct TabBar {
@@ -40,10 +51,7 @@ pub struct TabBar {
 impl TabBar {
     pub fn new(mode: TabBarMode) -> Self {
         Self {
-            state: ViewState::new(ViewOptions {
-                focusable: false,
-                ..ViewOptions::default()
-            }),
+            state: ViewState::new(ViewOptions::default()),
             titles: Vec::new(),
             dirty: Vec::new(),
             badges: Vec::new(),
@@ -142,7 +150,7 @@ impl TabBar {
     }
 
     /// Set a badge string for a tab (e.g. activity indicator).
-    /// Use `glyphs().chrome.badge_busy` etc. for standard glyphs.
+    /// Use `glyphs().chrome.badge_busy()` etc. for standard glyphs.
     /// Pass `None` to clear.
     pub fn set_badge(&mut self, idx: usize, badge: Option<String>) {
         if let Some(b) = self.badges.get_mut(idx) {

@@ -1,5 +1,6 @@
 //! ClockView — shows current time, updates on tick.
 
+use std::mem;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -17,11 +18,7 @@ pub struct ClockView {
 impl ClockView {
     pub fn new(interval_secs: u16) -> Self {
         let mut view = Self {
-            state: ViewState::new(ViewOptions {
-                preprocess: true,
-                focusable: false,
-                ..ViewOptions::default()
-            }),
+            state: ViewState::new(ViewOptions::default().with_preprocess()),
             palette: None,
             interval_secs,
             last_update: Instant::now(),
@@ -29,14 +26,14 @@ impl ClockView {
         };
         view.refresh_time();
         let w = view.label_text.len() as u16 + 2;
-        view.state.set_bounds(Rect { x: 0, y: 0, w, h: 1 });
+        view.state.set_bounds(Rect::new(0, 0, w, 1));
         view
     }
 
     fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
-            None => txv_core::palette::palette().style(id),
+            None => palette().style(id),
         }
     }
 
@@ -79,7 +76,7 @@ fn local_hm() -> (u32, u32) {
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs() as libc::time_t;
-    let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+    let mut tm: libc::tm = unsafe { mem::zeroed() };
     unsafe { libc::localtime_r(&secs, &mut tm) };
     (tm.tm_hour as u32, tm.tm_min as u32)
 }

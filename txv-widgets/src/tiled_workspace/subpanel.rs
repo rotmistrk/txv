@@ -1,7 +1,9 @@
 //! Subpanel management and state persistence.
 
 use super::types::SplitNode;
-use super::{TiledWorkspace, WorkspaceState};
+use super::workspace_state::WorkspaceState;
+use super::TiledWorkspace;
+use crate::split_panel::SplitPanel;
 use crate::tab_panel::TabPanel;
 
 impl TiledWorkspace {
@@ -87,48 +89,43 @@ impl TiledWorkspace {
         let Some(child) = self.group.child_mut(idx) else {
             return;
         };
-        let Some(sp) = child
-            .as_any_mut()
-            .and_then(|a| a.downcast_mut::<crate::split_panel::SplitPanel>())
-        else {
+        let Some(sp) = child.as_any_mut().and_then(|a| a.downcast_mut::<SplitPanel>()) else {
             return;
         };
+        let mode = self.configs[idx].tab_mode;
+        Self::do_move_tab(sp, mode);
+        self.recompute_layout();
+    }
 
-        // Take the active tab from the focused TabPanel
+    fn do_move_tab(sp: &mut SplitPanel, mode: crate::tab_bar::TabBarMode) {
         let focused = sp.focused_index();
         let tab_data = {
             let Some(tp) = sp.focused_child_as_mut::<TabPanel>() else {
                 return;
             };
             if tp.tab_count() <= 1 {
-                return; // don't leave a panel empty
+                return;
             }
             tp.take_active()
         };
         let Some((title, view)) = tab_data else {
             return;
         };
-
-        // If only one child, add a second TabPanel
         if sp.child_count() == 1 {
-            let mode = self.configs[idx].tab_mode;
             sp.add_child(Box::new(TabPanel::new(mode)), 0.5);
             sp.equalize();
         }
-
-        // Insert into the other TabPanel
         let other = if focused == 0 {
             1
         } else {
             0
         };
         if let Some(other_child) = sp.child_mut(other) {
-            if let Some(other_tp) = other_child.as_any_mut().and_then(|a| a.downcast_mut::<TabPanel>()) {
-                other_tp.insert_tab(title, view);
+            if let Some(tp) = other_child.as_any_mut().and_then(|a| a.downcast_mut::<TabPanel>()) {
+                tp.insert_tab(title, view);
             }
         }
         sp.set_focused(other);
-        self.recompute_layout();
     }
 
     /// Export state for persistence.

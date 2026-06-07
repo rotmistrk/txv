@@ -50,32 +50,33 @@ fn remove_tab_adjusts_active() {
 }
 
 #[test]
-fn take_active_returns_view() {
+fn take_active_returns_view() -> Result<(), Box<dyn std::error::Error>> {
     let mut panel = TabPanel::new(TabBarMode::Static);
     panel.insert_tab("X", Box::new(Dummy::new()));
     panel.insert_tab("Y", Box::new(Dummy::new()));
     panel.set_active(0);
 
     let taken = panel.take_active();
-    assert!(taken.is_some());
-    let (title, _) = taken.unwrap();
+    let (title, _) = taken.ok_or("take_active returned None")?;
     assert_eq!(title, "X");
     assert_eq!(panel.tab_count(), 1);
+    Ok(())
 }
 
 #[test]
-fn layout_gives_child_content_rect() {
+fn layout_gives_child_content_rect() -> Result<(), Box<dyn std::error::Error>> {
     let mut panel = TabPanel::new(TabBarMode::Static);
     panel.insert_tab("A", Box::new(Dummy::new()));
     panel.set_bounds(Rect::new(0, 0, 80, 24));
 
-    let child = panel.active_child().unwrap();
+    let child = panel.active_child().ok_or("no active child")?;
     let cb = child.bounds();
     let (ox, oy) = panel.active_child_origin();
     assert_eq!(ox, 0);
     assert_eq!(oy, 1); // below tab bar
-    assert_eq!(cb.w, 80);
-    assert_eq!(cb.h, 23); // 24 - 1 for tab bar
+    assert_eq!(cb.w(), 80);
+    assert_eq!(cb.h(), 23); // 24 - 1 for tab bar
+    Ok(())
 }
 
 #[test]
@@ -95,14 +96,7 @@ fn m_digit_switches_tab() {
     panel.insert_tab("C", Box::new(Dummy::new()));
     panel.set_bounds(Rect::new(0, 0, 60, 20));
 
-    let key = Event::Key(KeyEvent {
-        code: KeyCode::Char('2'),
-        modifiers: KeyMod {
-            alt: true,
-            ctrl: false,
-            shift: false,
-        },
-    });
+    let key = Event::Key(KeyEvent::new(KeyCode::Char('2'), KeyMod::ALT));
     panel.handle(&key);
     assert_eq!(panel.active_index(), 1);
 }
@@ -118,21 +112,21 @@ fn row_0_non_tab_cells_are_transparent() {
     // Check a position well past the tab content (should be transparent)
     let cell = buf.cell(30, 0);
     assert_eq!(
-        cell.style.fg,
+        cell.style().fg(),
         Color::Transparent,
         "non-tab cell at x=30 should have transparent fg, got {:?} ch={:?}",
-        cell.style.fg,
-        cell.ch
+        cell.style().fg(),
+        cell.ch()
     );
     assert_eq!(
-        cell.style.bg,
+        cell.style().bg(),
         Color::Transparent,
         "non-tab cell at x=30 should have transparent bg"
     );
 }
 
 #[test]
-fn needs_redraw_propagates_from_active_child() {
+fn needs_redraw_propagates_from_active_child() -> Result<(), Box<dyn std::error::Error>> {
     let mut panel = TabPanel::new(TabBarMode::Static);
     panel.insert_tab("A", Box::new(Dummy::new()));
     panel.set_bounds(Rect::new(0, 0, 80, 24));
@@ -143,8 +137,12 @@ fn needs_redraw_propagates_from_active_child() {
     assert!(!panel.needs_redraw());
 
     // Mark child dirty — panel should report needs_redraw
-    panel.active_child_mut().unwrap().set_bounds(Rect::new(0, 0, 79, 22));
+    panel
+        .active_child_mut()
+        .ok_or("no active child")?
+        .set_bounds(Rect::new(0, 0, 79, 22));
     assert!(panel.needs_redraw());
+    Ok(())
 }
 
 #[test]

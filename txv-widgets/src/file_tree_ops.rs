@@ -1,5 +1,7 @@
 //! FileTreeData operations — load, expand, collapse, visibility.
 
+use std::collections::HashSet;
+use std::fs;
 use std::path::PathBuf;
 
 use ignore::WalkBuilder;
@@ -16,7 +18,7 @@ impl FileTreeData {
 
         let mut dirs = Vec::new();
         let mut files = Vec::new();
-        let mut tracked_paths: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
+        let mut tracked_paths: HashSet<PathBuf> = HashSet::new();
 
         for entry in walker.flatten() {
             let path = entry.path().to_path_buf();
@@ -24,70 +26,77 @@ impl FileTreeData {
                 continue;
             }
             tracked_paths.insert(path.clone());
-            let label = path
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            let is_dir = path.is_dir();
-            let node = TreeNode {
-                path,
-                label,
-                depth,
-                is_dir,
-                expanded: false,
-                parent,
-                ignored: false,
-            };
-            if is_dir {
+            let node = Self::make_node(path, parent, depth, false);
+            if node.is_dir {
                 dirs.push(node);
             } else {
                 files.push(node);
             }
         }
 
-        // Collect ignored entries (present on disk but skipped by ignore walker)
-        let mut ignored_dirs = Vec::new();
-        let mut ignored_files = Vec::new();
-        if self.show_ignored {
-            if let Ok(entries) = std::fs::read_dir(&dir) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if tracked_paths.contains(&path) {
-                        continue;
-                    }
-                    let label = path
-                        .file_name()
-                        .map(|n| n.to_string_lossy().into_owned())
-                        .unwrap_or_default();
-                    if !self.show_hidden && label.starts_with('.') {
-                        continue;
-                    }
-                    let is_dir = path.is_dir();
-                    let node = TreeNode {
-                        path,
-                        label,
-                        depth,
-                        is_dir,
-                        expanded: false,
-                        parent,
-                        ignored: true,
-                    };
-                    if is_dir {
-                        ignored_dirs.push(node);
-                    } else {
-                        ignored_files.push(node);
-                    }
-                }
-                ignored_dirs.sort_by(|a, b| a.label.cmp(&b.label));
-                ignored_files.sort_by(|a, b| a.label.cmp(&b.label));
-            }
-        }
+        let (ignored_dirs, ignored_files) = self.collect_ignored(&dir, &tracked_paths, parent, depth);
 
-        // Tracked dirs first, then tracked files, then ignored dirs, then ignored files
         self.nodes.extend(dirs);
         self.nodes.extend(files);
         self.nodes.extend(ignored_dirs);
         self.nodes.extend(ignored_files);
+    }
+
+    fn make_node(path: PathBuf, parent: Option<usize>, depth: usize, ignored: bool) -> TreeNode {
+        let label = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let is_dir = path.is_dir();
+        TreeNode {
+            path,
+            label,
+            depth,
+            is_dir,
+            expanded: false,
+            parent,
+            ignored,
+        }
+    }
+
+    fn collect_ignored(
+        &self,
+        dir: &PathBuf,
+        tracked_paths: &HashSet<PathBuf>,
+        parent: Option<usize>,
+        depth: usize,
+    ) -> (Vec<TreeNode>, Vec<TreeNode>) {
+        if !self.show_ignored {
+            return (Vec::new(), Vec::new());
+        }
+        let mut ignored_dirs = Vec::new();
+        let mut ignored_files = Vec::new();
+        let entries = match fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => return (ignored_dirs, ignored_files),
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if tracked_paths.contains(&path) {
+                continue;
+            }
+            let label = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            if !self.show_hidden && label.starts_with('.') {
+                continue;
+            }
+            let node = Self::make_node(path, parent, depth, true);
+            if node.is_dir {
+                ignored_dirs.push(node);
+            } else {
+                ignored_files.push(node);
+            }
+        }
+        ignored_dirs.sort_by(|a, b| a.label.cmp(&b.label));
+        ignored_files.sort_by(|a, b| a.label.cmp(&b.label));
+        (ignored_dirs, ignored_files)
     }
 
     pub(crate) fn rebuild_visible(&mut self) {

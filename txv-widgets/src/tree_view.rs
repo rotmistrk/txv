@@ -56,11 +56,11 @@ pub trait TreeData: Send + 'static {
 }
 
 pub struct TreeView<D: TreeData> {
-    pub state: ViewState,
-    pub data: D,
-    pub cursor: usize,
-    pub scroll: ScrollView,
-    pub show_connectors: bool,
+    pub(crate) state: ViewState,
+    pub(crate) data: D,
+    pub(crate) cursor: usize,
+    pub(crate) scroll: ScrollView,
+    pub(crate) show_connectors: bool,
 }
 
 impl<D: TreeData> TreeView<D> {
@@ -72,6 +72,37 @@ impl<D: TreeData> TreeView<D> {
             scroll: ScrollView::new(),
             show_connectors: false,
         }
+    }
+
+    pub fn data(&self) -> &D {
+        &self.data
+    }
+
+    pub fn data_mut(&mut self) -> &mut D {
+        &mut self.data
+    }
+
+    pub fn cursor(&self) -> usize {
+        self.cursor
+    }
+
+    pub fn set_cursor(&mut self, idx: usize) {
+        self.cursor = idx.min(self.data.visible_count().saturating_sub(1));
+        self.sync_scroll();
+        self.state.mark_dirty();
+    }
+
+    pub fn scroll_offset(&self) -> usize {
+        self.scroll.offset
+    }
+
+    pub fn set_show_connectors(&mut self, show: bool) {
+        self.show_connectors = show;
+        self.state.mark_dirty();
+    }
+
+    pub fn state_mut(&mut self) -> &mut ViewState {
+        &mut self.state
     }
 
     pub fn buffer_mut(&mut self) -> &mut Buffer {
@@ -87,7 +118,7 @@ impl<D: TreeData> TreeView<D> {
     }
 
     fn sync_scroll(&mut self) {
-        let h = self.state.bounds().h as usize;
+        let h = self.state.bounds().h() as usize;
         self.scroll.set_viewport(h);
         self.scroll.set_total(self.data.visible_count());
         self.scroll.ensure_visible(self.cursor);
@@ -102,92 +133,93 @@ impl<D: TreeData> View for TreeView<D> {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        match event {
-            Event::Key(key) => match key.code {
-                KeyCode::Up => {
-                    if self.cursor > 0 {
-                        self.cursor -= 1;
-                        self.sync_scroll();
-                        self.state.mark_dirty();
-                    }
-                    HandleResult::Consumed
-                }
-                KeyCode::Down => {
-                    let max = self.data.visible_count().saturating_sub(1);
-                    if self.cursor < max {
-                        self.cursor += 1;
-                        self.sync_scroll();
-                        self.state.mark_dirty();
-                    }
-                    HandleResult::Consumed
-                }
-                KeyCode::Enter | KeyCode::Right => {
-                    if self.cursor < self.data.visible_count() {
-                        let id = self.data.visible_id(self.cursor);
-                        if self.data.is_expandable(id) && !self.data.is_expanded(id) {
-                            self.data.toggle(id);
-                            self.sync_scroll();
-                            self.state.mark_dirty();
-                        } else {
-                            self.state.put_command(CM_OK, Some(Box::new(id)));
-                        }
-                    }
-                    HandleResult::Consumed
-                }
-                KeyCode::Left => {
-                    if self.cursor < self.data.visible_count() {
-                        let id = self.data.visible_id(self.cursor);
-                        if self.data.is_expandable(id) && self.data.is_expanded(id) {
-                            // Collapse expanded directory
-                            self.data.toggle(id);
-                        } else {
-                            // Go to parent: find nearest visible row above with depth-1
-                            let my_depth = self.data.depth(id);
-                            if my_depth > 0 {
-                                for row in (0..self.cursor).rev() {
-                                    let pid = self.data.visible_id(row);
-                                    if self.data.depth(pid) < my_depth {
-                                        self.cursor = row;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        self.sync_scroll();
-                        self.state.mark_dirty();
-                    }
-                    HandleResult::Consumed
-                }
-                KeyCode::Home => {
-                    self.cursor = 0;
+        let Event::Key(key) = event else {
+            return HandleResult::Ignored;
+        };
+        match key.code() {
+            KeyCode::Up => {
+                if self.cursor > 0 {
+                    self.cursor -= 1;
                     self.sync_scroll();
                     self.state.mark_dirty();
-                    HandleResult::Consumed
                 }
-                KeyCode::End => {
-                    self.cursor = self.data.visible_count().saturating_sub(1);
+                HandleResult::Consumed
+            }
+            KeyCode::Down => {
+                let max = self.data.visible_count().saturating_sub(1);
+                if self.cursor < max {
+                    self.cursor += 1;
                     self.sync_scroll();
                     self.state.mark_dirty();
-                    HandleResult::Consumed
                 }
-                KeyCode::PageDown => {
-                    let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
-                    let max = self.data.visible_count().saturating_sub(1);
-                    self.cursor = (self.cursor + page).min(max);
-                    self.sync_scroll();
-                    self.state.mark_dirty();
-                    HandleResult::Consumed
-                }
-                KeyCode::PageUp => {
-                    let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
-                    self.cursor = self.cursor.saturating_sub(page);
-                    self.sync_scroll();
-                    self.state.mark_dirty();
-                    HandleResult::Consumed
-                }
-                _ => HandleResult::Ignored,
-            },
+                HandleResult::Consumed
+            }
+            KeyCode::Enter | KeyCode::Right => {
+                self.handle_enter_right();
+                HandleResult::Consumed
+            }
+            KeyCode::Left => {
+                self.handle_left();
+                HandleResult::Consumed
+            }
+            KeyCode::Home | KeyCode::End | KeyCode::PageDown | KeyCode::PageUp => {
+                self.handle_jump(key.code());
+                HandleResult::Consumed
+            }
             _ => HandleResult::Ignored,
         }
+    }
+}
+
+impl<D: TreeData> TreeView<D> {
+    fn handle_enter_right(&mut self) {
+        if self.cursor >= self.data.visible_count() {
+            return;
+        }
+        let id = self.data.visible_id(self.cursor);
+        if self.data.is_expandable(id) && !self.data.is_expanded(id) {
+            self.data.toggle(id);
+            self.sync_scroll();
+            self.state.mark_dirty();
+        } else {
+            self.state.put_command(CM_OK, Some(Box::new(id)));
+        }
+    }
+
+    fn handle_left(&mut self) {
+        if self.cursor >= self.data.visible_count() {
+            return;
+        }
+        let id = self.data.visible_id(self.cursor);
+        if self.data.is_expandable(id) && self.data.is_expanded(id) {
+            self.data.toggle(id);
+        } else {
+            let my_depth = self.data.depth(id);
+            if my_depth > 0 {
+                for row in (0..self.cursor).rev() {
+                    let pid = self.data.visible_id(row);
+                    if self.data.depth(pid) < my_depth {
+                        self.cursor = row;
+                        break;
+                    }
+                }
+            }
+        }
+        self.sync_scroll();
+        self.state.mark_dirty();
+    }
+
+    fn handle_jump(&mut self, code: KeyCode) {
+        let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
+        let max = self.data.visible_count().saturating_sub(1);
+        match code {
+            KeyCode::Home => self.cursor = 0,
+            KeyCode::End => self.cursor = max,
+            KeyCode::PageDown => self.cursor = (self.cursor + page).min(max),
+            KeyCode::PageUp => self.cursor = self.cursor.saturating_sub(page),
+            _ => {}
+        }
+        self.sync_scroll();
+        self.state.mark_dirty();
     }
 }

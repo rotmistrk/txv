@@ -4,7 +4,8 @@ use std::time::Duration;
 
 use crate::buffer::Buffer;
 use crate::commands::CM_QUIT;
-use crate::event::{Event, KeyCode, KeyMod};
+use crate::event::{Event, KeyCode, KeyEvent, KeyMod};
+use crate::geometry::Rect;
 use crate::view::{EventSink, View};
 
 use super::Backend;
@@ -15,29 +16,39 @@ pub fn run_cycles(root: &mut dyn View, backend: &mut MockBackend, n: usize) {
     root.set_sink(sink.clone());
 
     for _ in 0..n {
-        while let Some(event) = backend.poll_event(Duration::ZERO) {
-            if let Event::Resize(nw, nh) = &event {
-                root.set_bounds(crate::geometry::Rect::new(0, 0, *nw, *nh));
-            }
-            root.handle(&event);
-
-            let events = sink.drain();
-            for ev in events {
-                if let Event::Command { id, .. } = &ev {
-                    if *id == CM_QUIT {
-                        root.draw();
-                        backend.flush(root.buffer());
-                        return;
-                    }
-                }
-                root.handle(&ev);
-            }
+        if pump_events(root, backend, &sink) {
+            return;
         }
-
         root.draw();
         root.mark_redrawn();
         backend.flush(root.buffer());
     }
+}
+
+fn pump_events(root: &mut dyn View, backend: &mut MockBackend, sink: &EventSink) -> bool {
+    while let Some(event) = backend.poll_event(Duration::ZERO) {
+        if let Event::Resize(nw, nh) = &event {
+            root.set_bounds(Rect::new(0, 0, *nw, *nh));
+        }
+        root.handle(&event);
+        if drain_sink_quit(root, backend, sink) {
+            return true;
+        }
+    }
+    false
+}
+
+fn drain_sink_quit(root: &mut dyn View, backend: &mut MockBackend, sink: &EventSink) -> bool {
+    let events = sink.drain();
+    for ev in events {
+        if let Event::Command { id: CM_QUIT, .. } = &ev {
+            root.draw();
+            backend.flush(root.buffer());
+            return true;
+        }
+        root.handle(&ev);
+    }
+    false
 }
 
 /// Mock backend for testing without a terminal.
@@ -65,7 +76,7 @@ impl MockBackend {
     }
 
     pub fn inject_key(&mut self, code: KeyCode, modifiers: KeyMod) {
-        self.inject(Event::Key(crate::event::KeyEvent { code, modifiers }));
+        self.inject(Event::Key(KeyEvent { code, modifiers }));
     }
 
     pub fn inject_str(&mut self, s: &str) {

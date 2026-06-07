@@ -4,16 +4,11 @@
 //! On second key: emits command, releases exclusive.
 //! On Esc/unknown: cancels, releases exclusive.
 
-use txv_core::event::{CommandId, Event, KeyCode, KeyEvent};
+use txv_core::event::{Event, KeyCode, KeyEvent};
 use txv_core::status::{ActiveItem, Gravity, VisibleItem};
 use txv_core::view::{EventSink, HandleResult};
 
-/// A single binding in the prefix map.
-struct Binding {
-    key: char,
-    command: CommandId,
-    label: &'static str,
-}
+use crate::prefix_binding::PrefixBinding;
 
 /// Two-key prefix item for StatusBar.
 ///
@@ -21,7 +16,7 @@ struct Binding {
 /// Active: exclusive, shows all bindings.
 pub struct PrefixItem {
     prefix_key: KeyEvent,
-    bindings: Vec<Binding>,
+    bindings: Vec<PrefixBinding>,
     active: bool,
     idle_label: String,
     active_label: String,
@@ -38,8 +33,8 @@ impl PrefixItem {
         }
     }
 
-    pub fn bind(mut self, key: char, command: CommandId, label: &'static str) -> Self {
-        self.bindings.push(Binding { key, command, label });
+    pub fn bind(mut self, key: char, command: txv_core::event::CommandId, label: &'static str) -> Self {
+        self.bindings.push(PrefixBinding { key, command, label });
         self.rebuild_active_label();
         self
     }
@@ -75,13 +70,13 @@ impl ActiveItem for PrefixItem {
         }
 
         // Active — waiting for second key
-        match key.code {
+        match key.code() {
             KeyCode::Esc => {
                 self.active = false;
             }
-            KeyCode::Char(ch) if !key.modifiers.alt => {
+            KeyCode::Char(ch) if !key.modifiers().alt() => {
                 // Ctrl-W Ctrl-W = cycle (treat ctrl+w as 'w')
-                let effective = if key.modifiers.ctrl && ch == 'w' {
+                let effective = if key.modifiers().ctrl() && ch == 'w' {
                     'w'
                 } else {
                     ch

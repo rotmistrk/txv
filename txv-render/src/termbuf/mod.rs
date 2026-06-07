@@ -1,8 +1,10 @@
 //! TermBuf — VTE-driven virtual terminal emulator that renders to a Buffer.
 
+mod csi_helpers;
 mod resize;
 mod row;
 mod scrollback;
+pub(crate) mod tcell;
 mod vte_actions;
 mod vte_handler;
 
@@ -11,6 +13,7 @@ use txv_core::cell::Style;
 
 use row::Row;
 use scrollback::Scrollback;
+pub use tcell::TCell;
 use vte_handler::Performer;
 
 /// Virtual terminal buffer backed by VTE parser.
@@ -35,24 +38,6 @@ pub struct TermBuf {
     /// Saw ESC while in swallow mode (next byte might be \).
     swallow_saw_esc: bool,
     scrollback: Scrollback,
-}
-
-#[derive(Clone)]
-pub struct TCell {
-    pub ch: char,
-    pub style: Style,
-    #[allow(dead_code)]
-    pub width: u8,
-}
-
-impl Default for TCell {
-    fn default() -> Self {
-        Self {
-            ch: ' ',
-            style: Style::default(),
-            width: 1,
-        }
-    }
 }
 
 impl TermBuf {
@@ -86,19 +71,7 @@ impl TermBuf {
     /// Feed bytes into the terminal emulator.
     pub fn process(&mut self, bytes: &[u8]) {
         for &byte in bytes {
-            // Swallow content of ESC k ... ESC \ (tmux title sequence)
-            if self.swallow_until_st {
-                if self.swallow_saw_esc {
-                    self.swallow_saw_esc = false;
-                    if byte == b'\\' {
-                        self.swallow_until_st = false;
-                    }
-                } else if byte == 0x1b {
-                    self.swallow_saw_esc = true;
-                }
-                if byte == 0x07 {
-                    self.swallow_until_st = false;
-                }
+            if self.handle_swallow(byte) {
                 continue;
             }
             let mut performer = Performer {
@@ -120,6 +93,25 @@ impl TermBuf {
             };
             self.parser.advance(&mut performer, byte);
         }
+    }
+
+    /// Handle swallow state for ESC k sequences. Returns true if byte was consumed.
+    fn handle_swallow(&mut self, byte: u8) -> bool {
+        if !self.swallow_until_st {
+            return false;
+        }
+        if self.swallow_saw_esc {
+            self.swallow_saw_esc = false;
+            if byte == b'\\' {
+                self.swallow_until_st = false;
+            }
+        } else if byte == 0x1b {
+            self.swallow_saw_esc = true;
+        }
+        if byte == 0x07 {
+            self.swallow_until_st = false;
+        }
+        true
     }
 
     /// Drain any pending response bytes (DA1, CPR replies).

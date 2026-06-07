@@ -25,11 +25,11 @@ impl MsgLevel {
 /// A single application message.
 #[derive(Clone)]
 pub struct Message {
-    pub level: MsgLevel,
-    pub origin: &'static str,
-    pub text: String,
-    pub timestamp: u64,
-    pub count: u32,
+    pub(crate) level: MsgLevel,
+    pub(crate) origin: &'static str,
+    pub(crate) text: String,
+    pub(crate) timestamp: u64,
+    pub(crate) count: u32,
 }
 
 impl Message {
@@ -56,5 +56,29 @@ impl Message {
 
     pub fn error(origin: &'static str, text: impl Into<String>) -> Self {
         Self::new(MsgLevel::Error, origin, text)
+    }
+
+    pub fn level(&self) -> MsgLevel {
+        self.level
+    }
+
+    pub fn origin(&self) -> &'static str {
+        self.origin
+    }
+
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    pub fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
+
+    pub fn count(&self) -> u32 {
+        self.count
+    }
+
+    pub fn increment(&mut self) {
+        self.count += 1;
     }
 }

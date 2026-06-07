@@ -5,9 +5,9 @@ use super::TCell;
 /// A single terminal row: cells + whether it soft-wraps to the next row.
 #[derive(Clone)]
 pub(super) struct Row {
-    pub cells: Vec<TCell>,
+    pub(crate) cells: Vec<TCell>,
     /// True if this row continues on the next row (auto-wrapped at column limit).
-    pub wrapped: bool,
+    pub(crate) wrapped: bool,
 }
 
 impl Row {

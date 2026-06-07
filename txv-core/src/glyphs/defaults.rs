@@ -1,6 +1,6 @@
 //! Default glyph sets for each tier.
 
-use super::defs::*;
+use super::*;
 
 impl Default for GlyphSet {
     fn default() -> Self {

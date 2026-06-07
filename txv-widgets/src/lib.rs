@@ -3,10 +3,14 @@
 //! Concrete View implementations — ready-to-use interactive TUI components.
 //! Depends only on txv-core (plus `ignore` for filesystem widgets).
 
+pub mod branch_item;
+pub mod clock_item;
 pub mod command_item;
 pub mod confirm_item;
+pub mod cursor_pos;
 pub mod dialog;
 pub mod file_list;
+pub(crate) mod file_list_entry;
 pub mod file_tree;
 mod file_tree_data;
 mod file_tree_filter;
@@ -17,9 +21,14 @@ pub mod fuzzy_select;
 pub mod input_dialog;
 pub mod input_line;
 pub mod key_encode;
+pub mod key_label_item;
 pub mod list_view;
 pub mod menu;
+pub mod menu_item;
+pub mod message_item;
 pub mod modal_key;
+pub mod mode_item;
+pub mod position_item;
 pub mod prefix_item;
 pub mod progress_bar;
 pub mod pty_session;
@@ -34,12 +43,15 @@ pub mod split_pane;
 pub mod split_panel;
 pub mod status_bar;
 pub mod status_indicators;
+pub mod status_item;
 pub mod status_items;
 #[path = "tab_bar_new/mod.rs"]
 pub mod tab_bar;
 pub mod tab_panel;
 pub mod table;
+pub mod table_column;
 pub mod text_area;
+mod text_area_search;
 pub mod tiled_workspace;
 mod tree_node;
 pub mod tree_table_source;
@@ -65,7 +77,8 @@ pub use fuzzy_select::FuzzySelect;
 pub use input_dialog::InputDialog;
 pub use input_line::InputLine;
 pub use list_view::{ListData, ListView};
-pub use menu::{Menu, MenuItem};
+pub use menu::Menu;
+pub use menu_item::MenuItem;
 pub use modal_key::ModalKey;
 pub use progress_bar::{ProgressBar, ProgressMode};
 pub use pty_terminal::PtyTerminal;
@@ -73,12 +86,14 @@ pub use scroll_view::ScrollView;
 pub use scrollbar::Scrollbar;
 pub use split_pane::{SplitDirection, SplitPane};
 pub use split_panel::{SplitDir, SplitPanel};
-pub use status_bar::{StatusBar, StatusItem};
+pub use status_bar::StatusBar;
 pub use status_indicators::{BranchItem, CursorPos, ModeItem, PositionItem};
+pub use status_item::StatusItem;
 pub use status_items::{ClockItem, KeyLabelItem, MessageItem, CM_STATUS_MESSAGE};
 pub use tab_bar::{TabBar, TabBarMode};
 pub use tab_panel::TabPanel;
-pub use table::{Column, Table};
+pub use table::Table;
+pub use table_column::Column;
 pub use text_area::TextArea;
 pub use tree_table_source::TreeTableSource;
 pub use tree_table_source::{auto_detect_align, AcceptAll, CellValidator, ColAlign};
@@ -93,21 +108,28 @@ pub use v_message::MessageView;
 pub use v_prefix::PrefixView;
 
 #[cfg(test)]
-#[path = "palette_integration_tests.rs"]
+mod palette_test_helpers;
+
+#[cfg(test)]
+mod palette_custom_tests;
+
+#[cfg(test)]
 mod palette_integration_tests;
 
 #[cfg(test)]
-#[path = "glyphs_integration_tests.rs"]
 mod glyphs_integration_tests;
 
 #[cfg(test)]
-#[path = "cursor_integration_tests.rs"]
 mod cursor_integration_tests;
 
 #[cfg(test)]
-#[path = "modal_key_tests.rs"]
+mod modal_key_test_helpers;
+
+#[cfg(test)]
+mod modal_key_test_completion;
+
+#[cfg(test)]
 mod modal_key_tests;
 
 #[cfg(test)]
-#[path = "tree_table_view_tests.rs"]
 mod tree_table_view_tests;

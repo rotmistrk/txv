@@ -81,7 +81,7 @@ fn row_text(v: &TreeTableView<TestSource>, y: u16) -> String {
     let buf = v.buffer();
     let mut s = String::new();
     for x in 0..buf.width() {
-        s.push(buf.cell(x, y).ch);
+        s.push(buf.cell(x, y).ch());
     }
     s.trim_end().to_string()
 }
@@ -102,10 +102,7 @@ fn draw_renders_labels_and_columns() {
 fn navigate_down_moves_cursor() {
     let mut v = make_view();
     assert_eq!(v.cursor(), 0);
-    let down = Event::Key(KeyEvent {
-        code: KeyCode::Down,
-        modifiers: KeyMod::default(),
-    });
+    let down = Event::Key(KeyEvent::new(KeyCode::Down, KeyMod::default()));
     v.handle(&down);
     assert_eq!(v.cursor(), 1);
     v.handle(&down);
@@ -116,10 +113,7 @@ fn navigate_down_moves_cursor() {
 fn navigate_up_moves_cursor() {
     let mut v = make_view();
     v.set_cursor(2);
-    let up = Event::Key(KeyEvent {
-        code: KeyCode::Up,
-        modifiers: KeyMod::default(),
-    });
+    let up = Event::Key(KeyEvent::new(KeyCode::Up, KeyMod::default()));
     v.handle(&up);
     assert_eq!(v.cursor(), 1);
 }
@@ -128,10 +122,7 @@ fn navigate_up_moves_cursor() {
 fn expand_on_right_key() {
     let mut v = make_view();
     v.set_cursor(1); // Beta (expandable)
-    let right = Event::Key(KeyEvent {
-        code: KeyCode::Right,
-        modifiers: KeyMod::default(),
-    });
+    let right = Event::Key(KeyEvent::new(KeyCode::Right, KeyMod::default()));
     v.handle(&right);
     assert!(v.data().expanded);
     assert_eq!(v.data().visible_count(), 5);
@@ -142,10 +133,7 @@ fn collapse_on_left_key() {
     let mut v = make_view();
     v.set_cursor(1);
     v.data_mut().expanded = true;
-    let left = Event::Key(KeyEvent {
-        code: KeyCode::Left,
-        modifiers: KeyMod::default(),
-    });
+    let left = Event::Key(KeyEvent::new(KeyCode::Left, KeyMod::default()));
     v.handle(&left);
     assert!(!v.data().expanded);
     assert_eq!(v.data().visible_count(), 3);
@@ -156,10 +144,7 @@ fn left_on_child_goes_to_parent() {
     let mut v = make_view();
     v.data_mut().expanded = true;
     v.set_cursor(2); // Child1, depth=1
-    let left = Event::Key(KeyEvent {
-        code: KeyCode::Left,
-        modifiers: KeyMod::default(),
-    });
+    let left = Event::Key(KeyEvent::new(KeyCode::Left, KeyMod::default()));
     v.handle(&left);
     assert_eq!(v.cursor(), 1); // Beta (parent)
 }
@@ -183,9 +168,9 @@ fn extra_column_at_correct_position() {
     // Separator at x=33, cell starts at x=34
     let buf = v.buffer();
     let sep = buf.cell(33, 0);
-    assert_eq!(sep.ch, '\u{2502}', "separator at x=33");
+    assert_eq!(sep.ch(), '\u{2502}', "separator at x=33");
     let c = buf.cell(34, 0);
-    assert_eq!(c.ch, 't', "cell content starts at x=34");
+    assert_eq!(c.ch(), 't', "cell content starts at x=34");
 }
 
 // === Regression: collapse must clear stale rows below visible items (61ee5aa) ===
@@ -206,10 +191,7 @@ fn collapse_clears_stale_rows_below_content() {
 
     // Collapse Beta (back to 3 items)
     v.set_cursor(1);
-    let left = Event::Key(KeyEvent {
-        code: KeyCode::Left,
-        modifiers: KeyMod::default(),
-    });
+    let left = Event::Key(KeyEvent::new(KeyCode::Left, KeyMod::default()));
     v.handle(&left);
     v.draw();
 

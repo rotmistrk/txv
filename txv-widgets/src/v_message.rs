@@ -16,12 +16,8 @@ pub struct MessageView {
 
 impl MessageView {
     pub fn new(timeout_secs: u16) -> Self {
-        let mut state = ViewState::new(ViewOptions {
-            preprocess: true,
-            focusable: false,
-            ..ViewOptions::default()
-        });
-        state.set_bounds(Rect { x: 0, y: 0, w: 0, h: 1 });
+        let mut state = ViewState::new(ViewOptions::default().with_preprocess());
+        state.set_bounds(Rect::new(0, 0, 0, 1));
         Self {
             state,
             display: String::new(),
@@ -38,37 +34,28 @@ impl MessageView {
             self.display.len() as u16 + 2
         };
         let bounds = self.state.bounds();
-        if bounds.w != w {
-            self.state.set_bounds(Rect {
-                x: bounds.x,
-                y: bounds.y,
-                w,
-                h: 1,
-            });
+        if bounds.w() != w {
+            self.state.set_bounds(Rect::new(bounds.x(), bounds.y(), w, 1));
         }
     }
 
     fn apply_message(&mut self, msg: &Message) {
-        if msg.level == MsgLevel::Debug {
+        if msg.level() == MsgLevel::Debug {
             return;
         }
-        self.display = if msg.count > 1 {
-            format!("[{}] {} (×{})", msg.origin, msg.text, msg.count)
+        self.display = if msg.count() > 1 {
+            format!("[{}] {} (×{})", msg.origin(), msg.text(), msg.count())
         } else {
-            format!("[{}] {}", msg.origin, msg.text)
+            format!("[{}] {}", msg.origin(), msg.text())
         };
-        let pal = txv_core::palette::palette();
-        let bar_bg = pal.style(StyleId::StatusBar).bg;
-        let fg_style = match msg.level {
+        let pal = palette();
+        let bar_bg = pal.style(StyleId::StatusBar).bg();
+        let fg_style = match msg.level() {
             MsgLevel::Error => pal.style(StyleId::StateError),
             MsgLevel::Warn => pal.style(StyleId::StateWarning),
             _ => pal.style(StyleId::StateInfo),
         };
-        self.display_style = Style {
-            fg: fg_style.fg,
-            bg: bar_bg,
-            attrs: Attrs::default(),
-        };
+        self.display_style = Style::new(fg_style.fg(), bar_bg);
         self.last_set = Some(Instant::now());
         self.update_bounds();
         self.state.mark_dirty();
@@ -95,7 +82,7 @@ impl View for MessageView {
     fn draw(&mut self) {
         let buf = self.state.buffer_mut();
         if self.display.is_empty() {
-            let style = txv_core::palette::palette().style(StyleId::StatusBar);
+            let style = palette().style(StyleId::StatusBar);
             buf.fill(' ', style);
             self.state.mark_redrawn();
             return;

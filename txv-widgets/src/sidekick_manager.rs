@@ -20,26 +20,17 @@ pub struct SidekickManager {
 impl SidekickManager {
     pub fn new() -> Self {
         Self {
-            state: ViewState::new(ViewOptions {
-                postprocess: true,
-                ..ViewOptions::default()
-            }),
+            state: ViewState::new(ViewOptions::default().with_postprocess()),
             child: None,
         }
     }
 
     fn request_reposition(&self, width: u16, height: u16, offset_x: i16, offset_y: i16, relative_to: Option<ViewId>) {
-        self.state.put_command(
-            CM_REPOSITION,
-            Some(Box::new(RepositionRequest {
-                view_id: self.state.id(),
-                width,
-                height,
-                offset_x,
-                offset_y,
-                relative_to,
-            })),
-        );
+        let mut req = RepositionRequest::new(self.state.id(), width, height).with_offset(offset_x, offset_y);
+        if let Some(rel) = relative_to {
+            req = req.relative_to(rel);
+        }
+        self.state.put_command(CM_REPOSITION, Some(Box::new(req)));
     }
 }
 
@@ -84,14 +75,14 @@ impl View for SidekickManager {
         match *id {
             CM_SIDEKICK_SHOW => {
                 if let Some(show) = data.as_ref().and_then(|d| d.downcast_ref::<SidekickShow>()) {
-                    let h = show.rect.h;
-                    let w = show.rect.w;
+                    let h = show.rect.h();
+                    let w = show.rect.w();
                     if let Ok(mut child) = show.view.lock() {
                         child.set_bounds(Rect::new(0, 0, w, h));
                     }
                     self.child = Some(Arc::clone(&show.view));
                     // Position above the emitter
-                    self.request_reposition(w, h, show.rect.x as i16, -(h as i16), Some(show.emitter_id));
+                    self.request_reposition(w, h, show.rect.x() as i16, -(h as i16), Some(show.emitter_id));
                 }
                 HandleResult::Consumed
             }

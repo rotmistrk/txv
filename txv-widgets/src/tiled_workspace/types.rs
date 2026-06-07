@@ -1,5 +1,7 @@
 //! Types for TiledWorkspace panel configuration and layout.
 
+use crate::tab_bar::TabBarMode;
+
 /// Identifies a panel by index.
 pub type PanelId = usize;
 
@@ -15,18 +17,12 @@ pub enum PanelPosition {
 /// Configuration for a single panel.
 #[derive(Clone, Debug)]
 pub struct PanelConfig {
-    /// Human-readable name (for debugging/state persistence).
-    pub name: String,
-    /// Whether users can close tabs in this panel.
-    pub closeable: bool,
-    /// Whether the panel can be hidden by the user.
-    pub hideable: bool,
-    /// Whether the panel supports internal subpanel splitting.
-    pub splittable: bool,
-    /// Preferred position.
-    pub position: PanelPosition,
-    /// Tab bar mode for this panel.
-    pub tab_mode: crate::tab_bar::TabBarMode,
+    pub(crate) name: String,
+    pub(crate) closeable: bool,
+    pub(crate) hideable: bool,
+    pub(crate) splittable: bool,
+    pub(crate) position: PanelPosition,
+    pub(crate) tab_mode: TabBarMode,
 }
 
 impl PanelConfig {
@@ -37,7 +33,7 @@ impl PanelConfig {
             hideable: true,
             splittable: false,
             position,
-            tab_mode: crate::tab_bar::TabBarMode::Lru,
+            tab_mode: TabBarMode::Lru,
         }
     }
 
@@ -48,8 +44,37 @@ impl PanelConfig {
             hideable: true,
             splittable: false,
             position,
-            tab_mode: crate::tab_bar::TabBarMode::Static,
+            tab_mode: TabBarMode::Static,
         }
+    }
+
+    pub fn with_splittable(mut self) -> Self {
+        self.splittable = true;
+        self
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn closeable(&self) -> bool {
+        self.closeable
+    }
+
+    pub fn hideable(&self) -> bool {
+        self.hideable
+    }
+
+    pub fn splittable(&self) -> bool {
+        self.splittable
+    }
+
+    pub fn position(&self) -> PanelPosition {
+        self.position
+    }
+
+    pub fn tab_mode(&self) -> TabBarMode {
+        self.tab_mode
     }
 }
 
@@ -114,15 +139,4 @@ impl SplitNode {
             Self::Leaf(_) => None,
         }
     }
-}
-
-/// Serializable workspace state for save/restore.
-#[derive(Clone, Debug)]
-pub struct WorkspaceState {
-    /// Proportions for wide layout (flattened depth-first).
-    pub wide_proportions: Vec<f32>,
-    /// Proportions for narrow layout (flattened depth-first).
-    pub narrow_proportions: Vec<f32>,
-    /// Which panels are currently hidden.
-    pub hidden: Vec<PanelId>,
 }

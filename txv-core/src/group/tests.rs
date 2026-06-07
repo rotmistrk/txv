@@ -1,27 +1,13 @@
 use super::*;
 use crate::event::{Event, KeyCode, KeyEvent, KeyMod};
-use crate::view::{HandleResult, ViewState};
+use crate::view::HandleResult;
 
-struct DummyView {
-    state: ViewState,
-}
-impl DummyView {
-    fn new(focusable: bool) -> Self {
-        Self {
-            state: ViewState::new(ViewOptions {
-                focusable,
-                ..ViewOptions::default()
-            }),
-        }
-    }
-}
-impl View for DummyView {
-    crate::delegate_view_state!(state);
-    fn draw(&mut self) {}
-    fn handle(&mut self, _event: &Event) -> HandleResult {
-        HandleResult::Ignored
-    }
-}
+#[path = "test_dummy.rs"]
+mod test_dummy;
+#[path = "test_helpers.rs"]
+mod test_helpers;
+use test_dummy::DummyView;
+use test_helpers::PreView;
 
 #[test]
 fn focus_next_skips_unfocusable() {
@@ -47,25 +33,8 @@ fn focus_prev_wraps() {
 
 #[test]
 fn three_phase_dispatch() {
-    struct PreView {
-        state: ViewState,
-    }
-    impl View for PreView {
-        crate::delegate_view_state!(state);
-        fn draw(&mut self) {}
-        fn handle(&mut self, _event: &Event) -> HandleResult {
-            HandleResult::Consumed
-        }
-    }
-
     let mut g = GroupState::default();
-    g.insert(Box::new(PreView {
-        state: ViewState::new(ViewOptions {
-            preprocess: true,
-            focusable: false,
-            ..ViewOptions::default()
-        }),
-    }));
+    g.insert(Box::new(PreView::new()));
     g.insert(Box::new(DummyView::new(true)));
     g.focused = 1;
 

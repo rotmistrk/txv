@@ -40,7 +40,7 @@ fn sgr_colors() {
     let mut tb = TermBuf::new(80, 24);
     tb.process(b"\x1b[31mR\x1b[0m");
     assert_eq!(tb.cells[0].cells[0].ch, 'R');
-    assert_eq!(tb.cells[0].cells[0].style.fg, Color::Ansi(1));
+    assert_eq!(tb.cells[0].cells[0].style.fg(), Color::Ansi(1));
 }
 
 #[test]
@@ -58,8 +58,8 @@ fn render_to_buffer() {
     tb.process(b"Hi");
     let mut buf = Buffer::new(10, 5);
     tb.render_to(&mut buf);
-    assert_eq!(buf.cell(0, 0).ch, 'H');
-    assert_eq!(buf.cell(1, 0).ch, 'i');
+    assert_eq!(buf.cell(0, 0).ch(), 'H');
+    assert_eq!(buf.cell(1, 0).ch(), 'i');
 }
 
 #[test]

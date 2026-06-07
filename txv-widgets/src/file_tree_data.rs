@@ -59,10 +59,7 @@ impl TreeData for FileTreeData {
         let rel = node.path.strip_prefix(root).ok().and_then(|p| p.to_str());
         if let Some(rel_path) = rel {
             if let Some(&color) = self.colors.get(rel_path) {
-                return Style {
-                    fg: color,
-                    ..Style::default()
-                };
+                return Style::default().with_fg(color);
             }
         }
         Style::default()

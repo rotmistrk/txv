@@ -2,6 +2,7 @@
 
 use txv_core::prelude::*;
 
+use crate::tiled_workspace::commands::{CM_TW_FOCUS_RIGHT, CM_TW_LAYOUT_CYCLE, CM_TW_TOGGLE_TREE, CM_TW_ZOOM};
 use crate::tiled_workspace::types::*;
 use crate::tiled_workspace::TiledWorkspace;
 
@@ -45,31 +46,32 @@ impl View for Dummy {
 }
 
 #[test]
-fn wide_layout_three_columns() {
+fn wide_layout_three_columns() -> Result<(), Box<dyn std::error::Error>> {
     let mut ws = three_panel_workspace();
     ws.insert_tab(0, "Files", Box::new(Dummy::new()));
     ws.insert_tab(1, "Editor", Box::new(Dummy::new()));
     ws.insert_tab(2, "Shell", Box::new(Dummy::new()));
     ws.set_bounds(Rect::new(0, 0, 200, 50));
 
-    let b0 = ws.group.child(0).unwrap().bounds();
-    let b1 = ws.group.child(1).unwrap().bounds();
-    let b2 = ws.group.child(2).unwrap().bounds();
+    let b0 = ws.group.child(0).ok_or("child 0")?.bounds();
+    let b1 = ws.group.child(1).ok_or("child 1")?.bounds();
+    let b2 = ws.group.child(2).ok_or("child 2")?.bounds();
     let (o0x, _) = ws.group.child_origin(0);
     let (o1x, _) = ws.group.child_origin(1);
     let (o2x, _) = ws.group.child_origin(2);
 
-    assert!(b0.w > 0, "tree should have width");
-    assert!(b1.w > 0, "main should have width");
-    assert!(b2.w > 0, "tools should have width");
+    assert!(b0.w() > 0, "tree should have width");
+    assert!(b1.w() > 0, "main should have width");
+    assert!(b2.w() > 0, "tools should have width");
     // 2 divider gaps (1 cell each) between 3 panels
-    assert_eq!(b0.w + b1.w + b2.w + 2, 200);
+    assert_eq!(b0.w() + b1.w() + b2.w() + 2, 200);
     assert!(o0x < o1x, "tree left of main");
     assert!(o1x < o2x, "main left of tools");
+    Ok(())
 }
 
 #[test]
-fn narrow_layout_stacked() {
+fn narrow_layout_stacked() -> Result<(), Box<dyn std::error::Error>> {
     let mut ws = three_panel_workspace();
     ws.layout_mode = LayoutMode::Narrow;
     ws.insert_tab(0, "Files", Box::new(Dummy::new()));
@@ -77,21 +79,22 @@ fn narrow_layout_stacked() {
     ws.insert_tab(2, "Shell", Box::new(Dummy::new()));
     ws.set_bounds(Rect::new(0, 0, 80, 40));
 
-    let b0 = ws.group.child(0).unwrap().bounds();
-    let b1 = ws.group.child(1).unwrap().bounds();
-    let b2 = ws.group.child(2).unwrap().bounds();
+    let b0 = ws.group.child(0).ok_or("child 0")?.bounds();
+    let b1 = ws.group.child(1).ok_or("child 1")?.bounds();
+    let b2 = ws.group.child(2).ok_or("child 2")?.bounds();
     let (_, o1y) = ws.group.child_origin(1);
     let (_, o2y) = ws.group.child_origin(2);
 
     // Narrow: tree on left, main+tools stacked vertically on right
-    assert!(b0.w > 0);
-    assert!(b1.w > 0);
-    assert!(b2.w > 0);
+    assert!(b0.w() > 0);
+    assert!(b1.w() > 0);
+    assert!(b2.w() > 0);
     assert!(o1y < o2y, "main above tools in narrow mode");
+    Ok(())
 }
 
 #[test]
-fn toggle_hides_panel() {
+fn toggle_hides_panel() -> Result<(), Box<dyn std::error::Error>> {
     let mut ws = three_panel_workspace();
     ws.insert_tab(0, "Files", Box::new(Dummy::new()));
     ws.insert_tab(1, "Editor", Box::new(Dummy::new()));
@@ -99,24 +102,26 @@ fn toggle_hides_panel() {
     ws.set_bounds(Rect::new(0, 0, 200, 50));
 
     ws.toggle_panel(0); // hide tree
-    let b0 = ws.group.child(0).unwrap().bounds();
+    let b0 = ws.group.child(0).ok_or("child 0")?.bounds();
     let (o1x, _) = ws.group.child_origin(1);
     // Tree gets no space, main+tools fill width
-    assert_eq!(b0.w, 0);
+    assert_eq!(b0.w(), 0);
     assert_eq!(o1x, 0, "main starts at left edge when tree hidden");
+    Ok(())
 }
 
 #[test]
-fn zoom_gives_full_bounds() {
+fn zoom_gives_full_bounds() -> Result<(), Box<dyn std::error::Error>> {
     let mut ws = three_panel_workspace();
     ws.insert_tab(1, "Editor", Box::new(Dummy::new()));
     ws.set_bounds(Rect::new(0, 0, 200, 50));
     ws.focus_panel(1);
     ws.toggle_zoom();
 
-    let b1 = ws.group.child(1).unwrap().bounds();
-    assert_eq!(b1.w, 200);
-    assert_eq!(b1.h, 50);
+    let b1 = ws.group.child(1).ok_or("child 1")?.bounds();
+    assert_eq!(b1.w(), 200);
+    assert_eq!(b1.h(), 50);
+    Ok(())
 }
 
 #[test]
@@ -203,20 +208,20 @@ fn command_events_control_workspace() {
     ws.set_bounds(Rect::new(0, 0, 200, 50));
 
     // Focus via command (focus right)
-    ws.handle_command(crate::tiled_workspace::commands::CM_TW_FOCUS_RIGHT, &None);
+    ws.handle_command(CM_TW_FOCUS_RIGHT, &None);
     assert_ne!(ws.group.focused_index(), 0);
 
     // Toggle tree panel via command
-    ws.handle_command(crate::tiled_workspace::commands::CM_TW_TOGGLE_TREE, &None);
+    ws.handle_command(CM_TW_TOGGLE_TREE, &None);
     assert!(ws.hidden[0]);
 
     // Zoom via command
-    ws.handle_command(crate::tiled_workspace::commands::CM_TW_ZOOM, &None);
+    ws.handle_command(CM_TW_ZOOM, &None);
     assert!(ws.zoomed.is_some());
 
     // Layout cycle via command
-    ws.handle_command(crate::tiled_workspace::commands::CM_TW_LAYOUT_CYCLE, &None);
-    assert_eq!(ws.layout_mode, crate::tiled_workspace::types::LayoutMode::Wide);
+    ws.handle_command(CM_TW_LAYOUT_CYCLE, &None);
+    assert_eq!(ws.layout_mode, LayoutMode::Wide);
 }
 
 #[test]
@@ -228,14 +233,7 @@ fn handle_keys_disabled_ignores_keystrokes() {
     ws.set_handle_keys(false);
 
     // M-/ (zoom) should NOT be consumed when keys disabled
-    let zoom_key = Event::Key(KeyEvent {
-        code: KeyCode::Char('/'),
-        modifiers: KeyMod {
-            alt: true,
-            ctrl: false,
-            shift: false,
-        },
-    });
+    let zoom_key = Event::Key(KeyEvent::new(KeyCode::Char('/'), KeyMod::ALT));
     let result = ws.handle(&zoom_key);
     assert_eq!(result, HandleResult::Ignored);
     assert!(ws.zoomed.is_none(), "zoom should not trigger with keys disabled");

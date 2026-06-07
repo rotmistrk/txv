@@ -5,25 +5,8 @@ use std::sync::Arc;
 use txv_core::prelude::*;
 
 use crate::input_line::InputLine;
+use crate::palette_test_helpers::Dummy;
 use crate::split_pane::{SplitDirection, SplitPane};
-
-struct Dummy {
-    state: ViewState,
-}
-impl Dummy {
-    fn new() -> Self {
-        Self {
-            state: ViewState::default(),
-        }
-    }
-}
-impl View for Dummy {
-    delegate_view_state!(state);
-    fn draw(&mut self) {}
-    fn handle(&mut self, _: &Event) -> HandleResult {
-        HandleResult::Ignored
-    }
-}
 
 #[test]
 fn palette_integration() {
@@ -32,7 +15,7 @@ fn palette_integration() {
     // --- input_line_selection_uses_palette ---
     set_palette(Arc::new(DarkPalette));
     let pal = palette();
-    let expected_bg = pal.style(StyleId::EditSelection).bg;
+    let expected_bg = pal.style(StyleId::EditSelection).bg();
 
     let mut il = InputLine::new();
     il.set_text("hello");
@@ -41,11 +24,11 @@ fn palette_integration() {
     il.draw();
 
     let cell = il.buffer().cell(1, 0);
-    assert_eq!(cell.style.bg, expected_bg, "selection bg should come from palette");
+    assert_eq!(cell.style().bg(), expected_bg, "selection bg should come from palette");
 
     // --- split_pane_separator_uses_palette_dim ---
     let pal = palette();
-    let expected_fg = pal.style(StyleId::Dim).fg;
+    let expected_fg = pal.style(StyleId::Dim).fg();
 
     let mut sp = SplitPane::new(
         SplitDirection::Horizontal,
@@ -56,28 +39,15 @@ fn palette_integration() {
     sp.draw();
 
     let cell = sp.buffer().cell(10, 0);
-    assert_eq!(cell.style.fg, expected_fg, "separator should use palette dim color");
+    assert_eq!(cell.style().fg(), expected_fg, "separator should use palette dim color");
 }
 
 #[test]
 fn palette_change_affects_widget_rendering() {
     use txv_core::palette::dark::DarkPalette;
-    use txv_core::palette::style_id::StyleId;
 
-    // Set a custom palette with different selection color
-    struct CustomPalette;
-    impl txv_core::palette::Palette for CustomPalette {
-        fn style(&self, id: StyleId) -> Style {
-            if id == StyleId::EditSelection {
-                Style {
-                    bg: Color::Ansi(5),
-                    ..Style::default()
-                }
-            } else {
-                DarkPalette.style(id)
-            }
-        }
-    }
+    use crate::palette_custom_tests::CustomPalette;
+
     set_palette(Arc::new(CustomPalette));
 
     let mut il = InputLine::new();
@@ -87,7 +57,11 @@ fn palette_change_affects_widget_rendering() {
     il.draw();
 
     let cell = il.buffer().cell(1, 0);
-    assert_eq!(cell.style.bg, Color::Ansi(5), "widget should reflect updated palette");
+    assert_eq!(
+        cell.style().bg(),
+        Color::Ansi(5),
+        "widget should reflect updated palette"
+    );
 
     // Restore
     set_palette(Arc::new(DarkPalette));

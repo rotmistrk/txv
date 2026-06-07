@@ -23,123 +23,124 @@ impl<D: TreeData> TreeView<D> {
             if idx >= self.data.visible_count() {
                 break;
             }
-            let id = self.data.visible_id(idx);
-            let depth = self.data.depth(id);
-            let indent = (depth * 2) as u16;
-            let marker = if self.data.is_expandable(id) {
-                let g = glyphs();
-                if self.data.is_expanded(id) {
-                    g.tree.expanded
-                } else {
-                    g.tree.collapsed
-                }
-            } else {
-                "  "
-            };
-            let node_style = self.data.style(id);
-            let style = if idx == self.cursor {
-                let pal = palette();
-                if self.state.is_focused() {
-                    let cs = pal.style(StyleId::CursorFocused);
-                    Style {
-                        fg: node_style.fg,
-                        bg: cs.bg,
-                        attrs: cs.attrs,
-                    }
-                } else {
-                    let cs = pal.style(StyleId::CursorUnfocused);
-                    Style {
-                        fg: node_style.fg,
-                        bg: cs.bg,
-                        attrs: node_style.attrs,
-                    }
-                }
-            } else {
-                node_style
-            };
-            let y = row as u16;
-            self.state.buffer_mut().hline(0, y, w, ' ', style);
-            let x = indent;
-            if self.show_connectors && depth > 0 {
-                self.draw_connectors(idx, depth, y, style);
-            }
-            self.state.buffer_mut().print(x, y, marker, style);
-            let label = self.data.label(id);
-            let label_x = x + 2;
-            // Draw badge before label if present
-            let badge_offset = if let Some(color) = self.data.badge_color(id) {
-                let badge_style = Style {
-                    fg: color,
-                    bg: style.bg,
-                    ..Style::default()
-                };
-                self.state.buffer_mut().put(label_x, y, '●', badge_style);
-                2
-            } else {
-                0
-            };
-            let label_x = label_x + badge_offset;
-            // Draw icon if present
-            let icon_offset = if let Some(icon) = self.data.icon(id) {
-                let icon_style = Style {
-                    fg: node_style.fg,
-                    bg: style.bg,
-                    ..Style::default()
-                };
-                for (i, ch) in icon.chars().enumerate() {
-                    self.state.buffer_mut().put(label_x + i as u16, y, ch, icon_style);
-                }
-                icon.chars().count() as u16
-            } else {
-                0
-            };
-            let label_x = label_x + icon_offset;
-            if let Some(positions) = self.data.highlight_positions(id) {
-                let sm = palette().style(StyleId::SearchMatch);
-                let hl_style = Style {
-                    fg: if sm.bg != Color::Reset {
-                        sm.bg
-                    } else {
-                        sm.fg
-                    },
-                    bg: style.bg,
-                    attrs: Attrs {
-                        bold: true,
-                        ..style.attrs
-                    },
-                };
-                for (ci, ch) in label.chars().enumerate() {
-                    let cx = label_x + ci as u16;
-                    if cx >= w {
-                        break;
-                    }
-                    let s = if positions.contains(&ci) {
-                        hl_style
-                    } else {
-                        style
-                    };
-                    self.state.buffer_mut().put(cx, y, ch, s);
-                }
-            } else {
-                self.state.buffer_mut().print(label_x, y, label, style);
-            }
-            // Open-file indicator (right-aligned)
-            if self.data.is_open(id) {
-                let g = glyphs();
-                let ind = g.tree.open_indicator;
-                let ind_w = ind.chars().count() as u16;
-                let ix = w.saturating_sub(ind_w + 1);
-                if ix > label_x {
-                    let dim = palette().style(StyleId::Dim);
-                    let ind_style = Style {
-                        fg: dim.fg,
-                        bg: style.bg,
-                        ..Style::default()
-                    };
-                    self.state.buffer_mut().print(ix, y, ind, ind_style);
-                }
-            }
+            self.draw_row(row, idx, w);
         }
+        self.draw_empty_rows(tree_h, w);
+        self.draw_filter_line(h, w, filter_text.as_deref());
+    }
+
+    fn draw_row(&mut self, row: usize, idx: usize, w: u16) {
+        let id = self.data.visible_id(idx);
+        let depth = self.data.depth(id);
+        let indent = (depth * 2) as u16;
+        let marker = if !self.data.is_expandable(id) {
+            "  "
+        } else {
+            let g = glyphs();
+            if self.data.is_expanded(id) {
+                g.tree().expanded()
+            } else {
+                g.tree().collapsed()
+            }
+        };
+        let node_style = self.data.style(id);
+        let style = self.row_cursor_style(idx, node_style);
+        let y = row as u16;
+        self.state.buffer_mut().hline(0, y, w, ' ', style);
+        if self.show_connectors && depth > 0 {
+            self.draw_connectors(idx, depth, y, style);
+        }
+        self.state.buffer_mut().print(indent, y, marker, style);
+        let label_x = indent + 2;
+        let label_x = self.draw_badge(id, label_x, y, style);
+        let label_x = self.draw_icon(id, label_x, y, node_style, style);
+        self.draw_label(id, label_x, y, w, style);
+        self.draw_open_indicator(id, label_x, y, w, style);
+    }
+
+    fn row_cursor_style(&self, idx: usize, node_style: Style) -> Style {
+        if idx != self.cursor {
+            return node_style;
+        }
+        let pal = palette();
+        if self.state.is_focused() {
+            let cs = pal.style(StyleId::CursorFocused);
+            Style::new(node_style.fg(), cs.bg()).with_attrs(cs.attrs())
+        } else {
+            let cs = pal.style(StyleId::CursorUnfocused);
+            Style::new(node_style.fg(), cs.bg()).with_attrs(node_style.attrs())
+        }
+    }
+
+    fn draw_badge(&mut self, id: usize, label_x: u16, y: u16, style: Style) -> u16 {
+        let Some(color) = self.data.badge_color(id) else {
+            return label_x;
+        };
+        let badge_style = Style::new(color, style.bg());
+        self.state.buffer_mut().put(label_x, y, '●', badge_style);
+        label_x + 2
+    }
+
+    fn draw_icon(&mut self, id: usize, label_x: u16, y: u16, node_style: Style, style: Style) -> u16 {
+        let Some(icon) = self.data.icon(id) else {
+            return label_x;
+        };
+        let icon_style = Style::new(node_style.fg(), style.bg());
+        for (i, ch) in icon.chars().enumerate() {
+            self.state.buffer_mut().put(label_x + i as u16, y, ch, icon_style);
+        }
+        label_x + icon.chars().count() as u16
+    }
+
+    fn draw_label(&mut self, id: usize, label_x: u16, y: u16, w: u16, style: Style) {
+        let label = self.data.label(id).to_string();
+        let positions = self.data.highlight_positions(id).map(|p| p.to_vec());
+        if let Some(positions) = positions {
+            self.draw_highlighted_label(&label, &positions, label_x, y, w, style);
+        } else {
+            self.state.buffer_mut().print(label_x, y, &label, style);
+        }
+    }
+
+    fn draw_highlighted_label(&mut self, label: &str, positions: &[usize], label_x: u16, y: u16, w: u16, style: Style) {
+        let sm = palette().style(StyleId::SearchMatch);
+        let hl_fg = if sm.bg() != Color::Reset {
+            sm.bg()
+        } else {
+            sm.fg()
+        };
+        let hl_style = Style::new(hl_fg, style.bg()).with_attrs(style.attrs().bold());
+        for (ci, ch) in label.chars().enumerate() {
+            let cx = label_x + ci as u16;
+            if cx >= w {
+                break;
+            }
+            let s = if positions.contains(&ci) {
+                hl_style
+            } else {
+                style
+            };
+            self.state.buffer_mut().put(cx, y, ch, s);
+        }
+    }
+
+    fn draw_open_indicator(&mut self, id: usize, label_x: u16, y: u16, w: u16, style: Style) {
+        if !self.data.is_open(id) {
+            return;
+        }
+        let g = glyphs();
+        let ind = g.tree().open_indicator();
+        let ind_w = ind.chars().count() as u16;
+        let ix = w.saturating_sub(ind_w + 1);
+        if ix <= label_x {
+            return;
+        }
+        let dim = palette().style(StyleId::Dim);
+        let ind_style = Style::new(dim.fg(), style.bg());
+        self.state.buffer_mut().print(ix, y, ind, ind_style);
+    }
+
+    fn draw_empty_rows(&mut self, tree_h: u16, w: u16) {
         let drawn = self
             .data
             .visible_count()
@@ -148,37 +149,38 @@ impl<D: TreeData> TreeView<D> {
         for row in drawn..tree_h as usize {
             self.state.buffer_mut().hline(0, row as u16, w, ' ', Style::default());
         }
-        if let Some(text) = &filter_text {
-            let y = h - 1;
-            let pal = palette();
-            let status_style = pal.style(StyleId::Dim);
-            self.state.buffer_mut().hline(0, y, w, ' ', status_style);
-            let display = format!("/{}", text);
-            self.state.buffer_mut().print(0, y, &display, status_style);
-        }
+    }
+
+    fn draw_filter_line(&mut self, h: u16, w: u16, filter_text: Option<&str>) {
+        let Some(text) = filter_text else {
+            return;
+        };
+        let y = h - 1;
+        let status_style = palette().style(StyleId::Dim);
+        self.state.buffer_mut().hline(0, y, w, ' ', status_style);
+        let display = format!("/{}", text);
+        self.state.buffer_mut().print(0, y, &display, status_style);
     }
 
     fn draw_connectors(&mut self, row: usize, depth: usize, y: u16, base: Style) {
         let g = glyphs();
-        let guide_style = Style {
-            fg: palette().style(StyleId::TreeGuide).fg,
-            bg: base.bg,
-            ..Style::default()
-        };
+        let guide_style = Style::new(palette().style(StyleId::TreeGuide).fg(), base.bg());
         for level in 0..depth.saturating_sub(1) {
             let x = (level * 2) as u16;
             if self.ancestor_has_more_siblings(row, level + 1) {
-                self.state.buffer_mut().put(x, y, g.tree.pipe, guide_style);
+                self.state.buffer_mut().put(x, y, g.tree().pipe(), guide_style);
             }
         }
         let cx = ((depth - 1) * 2) as u16;
         let ch = if self.data.is_last_sibling(row) {
-            g.tree.last_branch
+            g.tree().last_branch()
         } else {
-            g.tree.branch
+            g.tree().branch()
         };
         self.state.buffer_mut().put(cx, y, ch, guide_style);
-        self.state.buffer_mut().put(cx + 1, y, g.tree.horizontal, guide_style);
+        self.state
+            .buffer_mut()
+            .put(cx + 1, y, g.tree().horizontal(), guide_style);
     }
 
     fn ancestor_has_more_siblings(&self, row: usize, target_depth: usize) -> bool {

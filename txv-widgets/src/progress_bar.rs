@@ -21,10 +21,7 @@ pub struct ProgressBar {
 impl ProgressBar {
     pub fn new() -> Self {
         Self {
-            state: ViewState::new(ViewOptions {
-                focusable: false,
-                ..ViewOptions::default()
-            }),
+            state: ViewState::new(ViewOptions::default()),
             palette: None,
             mode: ProgressMode::Determinate,
             progress: 0.0,
@@ -35,7 +32,7 @@ impl ProgressBar {
     fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
-            None => txv_core::palette::palette().style(id),
+            None => palette().style(id),
         }
     }
 
@@ -67,16 +64,17 @@ impl View for ProgressBar {
         }
         let filled_style = self.resolve_style(StyleId::StatusBar);
         let empty_style = Style::default();
-        let pg = txv_core::glyphs::glyphs().progress;
+        let g = glyphs();
+        let pg = g.progress();
 
         match self.mode {
             ProgressMode::Determinate => {
                 let filled = (self.progress * w as f32) as u16;
                 for col in 0..w {
                     let (ch, style) = if col < filled {
-                        (pg.filled, filled_style)
+                        (pg.filled(), filled_style)
                     } else {
-                        (pg.empty, empty_style)
+                        (pg.empty(), empty_style)
                     };
                     self.state.buffer_mut().put(col, 0, ch, style);
                 }
@@ -87,9 +85,9 @@ impl View for ProgressBar {
                 for col in 0..w {
                     let in_bar = col >= pos && col < pos + width;
                     let (ch, style) = if in_bar {
-                        (pg.filled, filled_style)
+                        (pg.filled(), filled_style)
                     } else {
-                        (pg.empty, empty_style)
+                        (pg.empty(), empty_style)
                     };
                     self.state.buffer_mut().put(col, 0, ch, style);
                 }

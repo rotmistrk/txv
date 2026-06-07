@@ -14,7 +14,7 @@ fn diff_detects_all_changed_cells() {
     for y in 0..5 {
         for x in 0..10 {
             let c = s1.cell(x, y);
-            prev.put(x, y, c.ch, c.style);
+            prev.put(x, y, c.ch(), c.style());
         }
     }
 
@@ -41,18 +41,12 @@ fn diff_detects_style_changes() {
     let mut prev = Buffer::new(10, 1);
     for x in 0..10 {
         let c = s1.cell(x, 0);
-        prev.put(x, 0, c.ch, c.style);
+        prev.put(x, 0, c.ch(), c.style());
     }
 
     // Same chars but different style
     let mut s2 = Buffer::new(10, 1);
-    let bold = Style {
-        attrs: Attrs {
-            bold: true,
-            ..Attrs::default()
-        },
-        ..Style::default()
-    };
+    let bold = Style::default().with_attrs(Attrs::default().bold());
     s2.print(0, 0, "test", bold);
 
     let changed = diff_cells(&s2, &prev);
@@ -73,7 +67,7 @@ fn previous_buffer_updated_after_flush_simulation() {
     for y in 0..3 {
         for x in 0..10 {
             let c = frame1.cell(x, y);
-            prev.put(x, y, c.ch, c.style);
+            prev.put(x, y, c.ch(), c.style());
         }
     }
 

@@ -1,13 +1,10 @@
 //! StatusBar — bottom status line with key→command shortcuts.
 //! preprocess:true so it intercepts keys before focused views.
 
+use txv_core::palette::palette;
 use txv_core::prelude::*;
 
-pub struct StatusItem {
-    pub(crate) key: KeyEvent,
-    pub(crate) command: CommandId,
-    pub(crate) label: String,
-}
+use crate::status_item::StatusItem;
 
 pub struct StatusBar {
     state: ViewState,
@@ -18,11 +15,7 @@ pub struct StatusBar {
 impl StatusBar {
     pub fn new() -> Self {
         Self {
-            state: ViewState::new(ViewOptions {
-                preprocess: true,
-                focusable: false,
-                ..ViewOptions::default()
-            }),
+            state: ViewState::new(ViewOptions::default().with_preprocess()),
             items: Vec::new(),
             context: String::new(),
         }
@@ -58,7 +51,7 @@ impl View for StatusBar {
         if w == 0 || h == 0 {
             return;
         }
-        let style = txv_core::palette::palette().style(StyleId::StatusBar);
+        let style = palette().style(StyleId::StatusBar);
         self.state.buffer_mut().hline(0, 0, w, ' ', style);
         // Labels left-aligned
         let mut x = 0u16;

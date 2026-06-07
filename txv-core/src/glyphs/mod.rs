@@ -17,18 +17,28 @@
 //!
 //! let g = glyphs();
 //! // Use semantic roles:
-//! let corner = g.box_drawing.tl; // '┌' in Unicode, '+' in ASCII
+//! let corner = g.box_drawing().tl(); // '┌' in Unicode, '+' in ASCII
 //! ```
 
+mod box_glyphs;
+mod chrome_glyphs;
 mod defaults;
-mod defs;
+mod glyph_set;
+mod progress_glyphs;
+mod tree_glyphs;
+mod ui_glyphs;
 
 #[cfg(test)]
 mod tests;
 
 use std::sync::OnceLock;
 
-pub use defs::{BoxGlyphs, ChromeGlyphs, GlyphSet, GlyphTier, ProgressGlyphs, TreeGlyphs, UiGlyphs};
+pub use box_glyphs::BoxGlyphs;
+pub use chrome_glyphs::ChromeGlyphs;
+pub use glyph_set::{GlyphSet, GlyphTier};
+pub use progress_glyphs::ProgressGlyphs;
+pub use tree_glyphs::TreeGlyphs;
+pub use ui_glyphs::UiGlyphs;
 
 static GLYPHS: OnceLock<std::sync::RwLock<GlyphSet>> = OnceLock::new();
 

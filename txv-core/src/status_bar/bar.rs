@@ -7,6 +7,7 @@
 use crate::buffer::Buffer;
 use crate::geometry::Rect;
 use crate::group::GroupState;
+use crate::palette::{palette, StyleId};
 use crate::view::{View, ViewOptions};
 
 use super::gravity::Gravity;
@@ -132,7 +133,7 @@ impl View for StatusBar {
         }
         self.recompute_layout();
 
-        let bar_style = crate::palette::palette().style(crate::palette::StyleId::StatusBar);
+        let bar_style = palette().style(StyleId::StatusBar);
         self.group.buffer_mut().fill(' ', bar_style);
 
         // Draw children into their buffers

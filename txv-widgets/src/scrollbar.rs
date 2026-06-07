@@ -1,5 +1,6 @@
 //! Scrollbar — vertical scroll indicator View.
 
+use txv_core::palette::palette;
 use txv_core::prelude::*;
 
 use crate::scroll_view::ScrollView;
@@ -12,10 +13,7 @@ pub struct Scrollbar {
 impl Scrollbar {
     pub fn new() -> Self {
         Self {
-            state: ViewState::new(ViewOptions {
-                focusable: false,
-                ..ViewOptions::default()
-            }),
+            state: ViewState::new(ViewOptions::default()),
             scroll: ScrollView::new(),
         }
     }
@@ -36,7 +34,7 @@ impl View for Scrollbar {
         if w == 0 || h == 0 {
             return;
         }
-        let pal = txv_core::palette::palette();
+        let pal = palette();
         let track_style = pal.style(StyleId::ScrollbarTrack);
         let thumb_style = pal.style(StyleId::ScrollbarThumb);
         let (thumb_pos, thumb_size) = self.scroll.thumb(h);
@@ -46,7 +44,9 @@ impl View for Scrollbar {
             } else {
                 track_style
             };
-            self.state.buffer_mut().put(0, row, glyphs().ui.scrollbar_track, style);
+            self.state
+                .buffer_mut()
+                .put(0, row, glyphs().ui().scrollbar_track(), style);
         }
     }
 

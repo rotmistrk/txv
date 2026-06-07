@@ -31,31 +31,38 @@ impl Palette for DarkPalette {
             StyleId::TabFocused => PaletteStyle::colors(ansi(14), ansi(4)).bold().to_style(),
             StyleId::TabFocusedArrow => PaletteStyle::colors(ansi(10), ansi(4)).to_style(),
             StyleId::TabFocusedBadge => PaletteStyle::colors(ansi(15), ansi(6)).bold().to_style(),
-            StyleId::TabActive => PaletteStyle::colors(ansi(0), Color::Rgb(0xc0, 0xc0, 0xc0))
-                .bold()
-                .to_style(),
-            StyleId::TabActiveArrow => PaletteStyle::colors(ansi(7), ansi(8)).to_style(),
-            StyleId::TabActiveBadge => PaletteStyle::colors(ansi(15), ansi(8)).to_style(),
-            StyleId::TabInactive => PaletteStyle::colors(ansi(15), Color::Rgb(0x70, 0x70, 0x70)).to_style(),
-            StyleId::StatusBar => PaletteStyle::colors(ansi(7), Color::Palette(236)).to_style(),
-            StyleId::StatusBarModal => PaletteStyle::colors(ansi(15), Color::Palette(18)).to_style(),
-            StyleId::ScrollbarTrack => PaletteStyle::fg(ansi(8)).to_style(),
-            StyleId::ScrollbarThumb => PaletteStyle::colors(ansi(0), ansi(7)).to_style(),
-            StyleId::PopupBackground => PaletteStyle::colors(ansi(15), ansi(0)).to_style(),
-            StyleId::PopupBorder => PaletteStyle::colors(ansi(6), ansi(0)).to_style(),
-            StyleId::PopupSelected => PaletteStyle::colors(ansi(15), ansi(4)).underline().to_style(),
-            StyleId::PopupTableHeader => PaletteStyle::colors(ansi(0), ansi(7)).bold().to_style(),
-            StyleId::StateError => PaletteStyle::fg(ansi(9)).to_style(),
-            StyleId::StateWarning => PaletteStyle::fg(ansi(11)).to_style(),
-            StyleId::StateInfo => PaletteStyle::fg(ansi(14)).to_style(),
-            StyleId::StateSuccess => PaletteStyle::fg(ansi(2)).to_style(),
-            StyleId::StateHint => PaletteStyle::fg(ansi(8)).to_style(),
-            StyleId::EditorGutter => PaletteStyle::fg(ansi(8)).to_style(),
-            StyleId::StatusQuestion => PaletteStyle::fg(ansi(11)).bold().to_style(),
-            StyleId::StatusHighlight => PaletteStyle::fg(ansi(15)).bold().to_style(),
-            StyleId::TableRowActive => PaletteStyle::new().underline().to_style(),
-            StyleId::TableRowInactive => PaletteStyle::fg(ansi(7)).underline().to_style(),
-            StyleId::TreeGuide => PaletteStyle::fg(ansi(8)).to_style(),
+            _ => dark_remaining(id),
         }
+    }
+}
+
+fn dark_remaining(id: StyleId) -> Style {
+    match id {
+        StyleId::TabActive => PaletteStyle::colors(ansi(0), Color::Rgb(0xc0, 0xc0, 0xc0))
+            .bold()
+            .to_style(),
+        StyleId::TabActiveArrow => PaletteStyle::colors(ansi(7), ansi(8)).to_style(),
+        StyleId::TabActiveBadge => PaletteStyle::colors(ansi(15), ansi(8)).to_style(),
+        StyleId::TabInactive => PaletteStyle::colors(ansi(15), Color::Rgb(0x70, 0x70, 0x70)).to_style(),
+        StyleId::StatusBar => PaletteStyle::colors(ansi(7), Color::Palette(236)).to_style(),
+        StyleId::StatusBarModal => PaletteStyle::colors(ansi(15), Color::Palette(18)).to_style(),
+        StyleId::ScrollbarTrack => PaletteStyle::fg(ansi(8)).to_style(),
+        StyleId::ScrollbarThumb => PaletteStyle::colors(ansi(0), ansi(7)).to_style(),
+        StyleId::PopupBackground => PaletteStyle::colors(ansi(15), ansi(0)).to_style(),
+        StyleId::PopupBorder => PaletteStyle::colors(ansi(6), ansi(0)).to_style(),
+        StyleId::PopupSelected => PaletteStyle::colors(ansi(15), ansi(4)).underline().to_style(),
+        StyleId::PopupTableHeader => PaletteStyle::colors(ansi(0), ansi(7)).bold().to_style(),
+        StyleId::StateError => PaletteStyle::fg(ansi(9)).to_style(),
+        StyleId::StateWarning => PaletteStyle::fg(ansi(11)).to_style(),
+        StyleId::StateInfo => PaletteStyle::fg(ansi(14)).to_style(),
+        StyleId::StateSuccess => PaletteStyle::fg(ansi(2)).to_style(),
+        StyleId::StateHint => PaletteStyle::fg(ansi(8)).to_style(),
+        StyleId::EditorGutter => PaletteStyle::fg(ansi(8)).to_style(),
+        StyleId::StatusQuestion => PaletteStyle::fg(ansi(11)).bold().to_style(),
+        StyleId::StatusHighlight => PaletteStyle::fg(ansi(15)).bold().to_style(),
+        StyleId::TableRowActive => PaletteStyle::new().underline().to_style(),
+        StyleId::TableRowInactive => PaletteStyle::fg(ansi(7)).underline().to_style(),
+        StyleId::TreeGuide => PaletteStyle::fg(ansi(8)).to_style(),
+        _ => Style::default(),
     }
 }

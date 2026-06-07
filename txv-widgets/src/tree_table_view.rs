@@ -14,14 +14,14 @@ use crate::tree_table_source::TreeTableSource;
 
 /// Tree + columns widget. Column widths are fixed; the tree column gets remaining space.
 pub struct TreeTableView<D: TreeTableSource> {
-    pub state: ViewState,
-    pub data: D,
-    pub cursor: usize,
-    pub scroll: ScrollView,
+    pub(crate) state: ViewState,
+    pub(crate) data: D,
+    pub(crate) cursor: usize,
+    pub(crate) scroll: ScrollView,
     col_widths: Vec<u16>,
     focused_col: Option<usize>,
     pub(crate) h_scroll: u16,
-    pub show_connectors: bool,
+    pub(crate) show_connectors: bool,
 }
 
 impl<D: TreeTableSource> TreeTableView<D> {
@@ -45,6 +45,24 @@ impl<D: TreeTableSource> TreeTableView<D> {
     pub fn data_mut(&mut self) -> &mut D {
         self.state.mark_dirty();
         &mut self.data
+    }
+
+    pub fn state_mut(&mut self) -> &mut ViewState {
+        &mut self.state
+    }
+
+    pub fn scroll_offset(&self) -> usize {
+        self.scroll.offset
+    }
+
+    pub fn set_show_connectors(&mut self, show: bool) {
+        self.show_connectors = show;
+        self.state.mark_dirty();
+    }
+
+    /// Access data mutably and cursor together (avoids split-borrow issues).
+    pub fn data_and_cursor(&mut self) -> (&mut D, usize) {
+        (&mut self.data, self.cursor)
     }
 
     pub fn cursor(&self) -> usize {
@@ -78,7 +96,7 @@ impl<D: TreeTableSource> TreeTableView<D> {
     /// Compute (x_offset, width) for a given column at the current view bounds.
     /// col 0 = tree column, col 1..N = extra columns (1-indexed into col_widths).
     pub fn column_bounds(&self, col: usize) -> (u16, u16) {
-        let total_w = self.state.bounds().w;
+        let total_w = self.state.bounds().w();
         let extra_total: u16 = self.col_widths.iter().map(|&cw| cw + 1).sum();
         let tree_w = total_w.saturating_sub(extra_total);
         if col == 0 {
@@ -96,7 +114,7 @@ impl<D: TreeTableSource> TreeTableView<D> {
     }
 
     fn sync_scroll(&mut self) {
-        let h = self.state.bounds().h as usize;
+        let h = self.state.bounds().h() as usize;
         self.scroll.set_viewport(h);
         self.scroll.set_total(self.data.visible_count());
         self.scroll.ensure_visible(self.cursor);
@@ -120,14 +138,14 @@ impl<D: TreeTableSource> TreeTableView<D> {
     }
 
     fn page_up(&mut self) {
-        let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
+        let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
         self.cursor = self.cursor.saturating_sub(page);
         self.sync_scroll();
         self.state.mark_dirty();
     }
 
     fn page_down(&mut self) {
-        let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
+        let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
         let max = self.data.visible_count().saturating_sub(1);
         self.cursor = (self.cursor + page).min(max);
         self.sync_scroll();
@@ -175,47 +193,50 @@ impl<D: TreeTableSource> View for TreeTableView<D> {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        match event {
-            Event::Key(key) => match key.code {
-                KeyCode::Up => {
-                    self.move_up();
-                    HandleResult::Consumed
-                }
-                KeyCode::Down => {
-                    self.move_down();
-                    HandleResult::Consumed
-                }
-                KeyCode::PageUp => {
-                    self.page_up();
-                    HandleResult::Consumed
-                }
-                KeyCode::PageDown => {
-                    self.page_down();
-                    HandleResult::Consumed
-                }
-                KeyCode::Home => {
-                    self.cursor = 0;
-                    self.sync_scroll();
-                    self.state.mark_dirty();
-                    HandleResult::Consumed
-                }
-                KeyCode::End => {
-                    self.cursor = self.data.visible_count().saturating_sub(1);
-                    self.sync_scroll();
-                    self.state.mark_dirty();
-                    HandleResult::Consumed
-                }
-                KeyCode::Enter | KeyCode::Right => {
-                    self.handle_enter_right();
-                    HandleResult::Consumed
-                }
-                KeyCode::Left => {
-                    self.handle_left();
-                    HandleResult::Consumed
-                }
-                _ => self.handle_char_key(key),
-            },
-            _ => HandleResult::Ignored,
+        let Event::Key(key) = event else {
+            return HandleResult::Ignored;
+        };
+        match key.code() {
+            KeyCode::Up => {
+                self.move_up();
+                HandleResult::Consumed
+            }
+            KeyCode::Down => {
+                self.move_down();
+                HandleResult::Consumed
+            }
+            KeyCode::PageUp => {
+                self.page_up();
+                HandleResult::Consumed
+            }
+            KeyCode::PageDown => {
+                self.page_down();
+                HandleResult::Consumed
+            }
+            KeyCode::Home | KeyCode::End => {
+                self.jump_to(key.code());
+                HandleResult::Consumed
+            }
+            KeyCode::Enter | KeyCode::Right => {
+                self.handle_enter_right();
+                HandleResult::Consumed
+            }
+            KeyCode::Left => {
+                self.handle_left();
+                HandleResult::Consumed
+            }
+            _ => self.handle_char_key(key),
         }
+    }
+}
+
+impl<D: TreeTableSource> TreeTableView<D> {
+    fn jump_to(&mut self, code: KeyCode) {
+        self.cursor = match code {
+            KeyCode::Home => 0,
+            _ => self.data.visible_count().saturating_sub(1),
+        };
+        self.sync_scroll();
+        self.state.mark_dirty();
     }
 }

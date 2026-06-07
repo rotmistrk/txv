@@ -10,84 +10,77 @@ pub struct WorkspaceKeymap {
     pub(crate) zoom: KeyEvent,
     pub(crate) focus_left: KeyEvent,
     pub(crate) focus_right: KeyEvent,
-    pub focus_up: KeyEvent,
-    pub focus_down: KeyEvent,
+    pub(crate) focus_up: KeyEvent,
+    pub(crate) focus_down: KeyEvent,
     pub(crate) resize_left: KeyEvent,
     pub(crate) resize_right: KeyEvent,
     pub(crate) resize_up: KeyEvent,
     pub(crate) resize_down: KeyEvent,
     pub(crate) tab_dropdown: KeyEvent,
-    pub tab_dropdown_up: KeyEvent,
-    pub tab_dropdown_down: KeyEvent,
+    pub(crate) tab_dropdown_up: KeyEvent,
+    pub(crate) tab_dropdown_down: KeyEvent,
     pub(crate) tab_next: KeyEvent,
     pub(crate) tab_prev: KeyEvent,
     pub(crate) tab_close: KeyEvent,
-    pub subpanel_focus: KeyEvent,
+    pub(crate) subpanel_focus: KeyEvent,
     pub(crate) subpanel_move_tab: KeyEvent,
-    pub subpanel_grow: KeyEvent,
-    pub subpanel_shrink: KeyEvent,
+    pub(crate) subpanel_grow: KeyEvent,
+    pub(crate) subpanel_shrink: KeyEvent,
     pub(crate) layout_cycle: KeyEvent,
 }
 
 impl WorkspaceKeymap {
     pub fn matches(&self, key: &KeyEvent, action: &KeyEvent) -> bool {
-        key.code == action.code && key.modifiers == action.modifiers
+        key.code() == action.code() && key.modifiers() == action.modifiers()
+    }
+
+    pub fn set_focus_up(&mut self, key: KeyEvent) {
+        self.focus_up = key;
+    }
+
+    pub fn set_focus_down(&mut self, key: KeyEvent) {
+        self.focus_down = key;
+    }
+
+    pub fn set_tab_dropdown_up(&mut self, key: KeyEvent) {
+        self.tab_dropdown_up = key;
+    }
+
+    pub fn set_tab_dropdown_down(&mut self, key: KeyEvent) {
+        self.tab_dropdown_down = key;
+    }
+
+    pub fn set_subpanel_focus(&mut self, key: KeyEvent) {
+        self.subpanel_focus = key;
+    }
+
+    pub fn set_subpanel_grow(&mut self, key: KeyEvent) {
+        self.subpanel_grow = key;
+    }
+
+    pub fn set_subpanel_shrink(&mut self, key: KeyEvent) {
+        self.subpanel_shrink = key;
     }
 }
 
 fn alt(code: KeyCode) -> KeyEvent {
-    KeyEvent {
-        code,
-        modifiers: KeyMod {
-            alt: true,
-            ctrl: false,
-            shift: false,
-        },
-    }
+    KeyEvent::new(code, KeyMod::ALT)
 }
 
 fn ctrl_shift(code: KeyCode) -> KeyEvent {
-    KeyEvent {
-        code,
-        modifiers: KeyMod {
-            ctrl: true,
-            shift: true,
-            alt: false,
-        },
-    }
+    KeyEvent::new(code, KeyMod::CTRL.with_shift())
 }
 
 fn alt_shift(code: KeyCode) -> KeyEvent {
-    KeyEvent {
-        code,
-        modifiers: KeyMod {
-            alt: true,
-            shift: true,
-            ctrl: false,
-        },
-    }
+    KeyEvent::new(code, KeyMod::ALT.with_shift())
 }
 
 fn ctrl(code: KeyCode) -> KeyEvent {
-    KeyEvent {
-        code,
-        modifiers: KeyMod {
-            ctrl: true,
-            shift: false,
-            alt: false,
-        },
-    }
+    KeyEvent::new(code, KeyMod::CTRL)
 }
 
 fn ctrl_alt(code: KeyCode) -> KeyEvent {
-    KeyEvent {
-        code,
-        modifiers: KeyMod {
-            ctrl: true,
-            alt: true,
-            shift: false,
-        },
-    }
+    KeyEvent::new(code, KeyMod::CTRL.with_alt())
 }
 
 impl Default for WorkspaceKeymap {

@@ -5,18 +5,22 @@ use crate::window::WindowState;
 
 /// Common dialog state — embed in modal dialog views.
 pub struct DialogState {
-    pub window: WindowState,
+    pub(crate) window: WindowState,
 }
 
 impl DialogState {
     pub fn new() -> Self {
         Self {
-            window: WindowState::new(ViewOptions {
-                focusable: true,
-                modal: true,
-                ..ViewOptions::default()
-            }),
+            window: WindowState::new(ViewOptions::default().with_focusable().with_modal()),
         }
+    }
+
+    pub fn window(&self) -> &WindowState {
+        &self.window
+    }
+
+    pub fn window_mut(&mut self) -> &mut WindowState {
+        &mut self.window
     }
 }
 

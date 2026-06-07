@@ -1,5 +1,8 @@
 //! View trait implementation for SplitPanel using GroupState.
 
+use txv_core::cell::Color;
+use txv_core::glyphs::glyphs;
+use txv_core::palette::palette;
 use txv_core::prelude::*;
 
 use super::{SplitDir, SplitPanel};
@@ -14,45 +17,12 @@ impl View for SplitPanel {
 
     fn draw(&mut self) {
         let b = self.group.bounds();
-        if b.w == 0 || b.h == 0 {
+        if b.w() == 0 || b.h() == 0 {
             return;
         }
-        let transparent = Style {
-            fg: txv_core::cell::Color::Transparent,
-            bg: txv_core::cell::Color::Transparent,
-            ..Style::default()
-        };
+        let transparent = Style::new(Color::Transparent, Color::Transparent);
         self.group.buffer_mut().fill(' ', transparent);
-
-        // Draw dividers BEFORE children so tab bars render on top
-        if self.group.child_count() > 1 {
-            let dim = txv_core::palette::palette().style(StyleId::Dim);
-            let g = txv_core::glyphs::glyphs();
-            for i in 0..self.group.child_count() - 1 {
-                let Some(child) = self.group.child(i) else {
-                    continue;
-                };
-                let (ox, oy) = self.group.child_origin(i);
-                let cs = child.bounds();
-                match self.direction {
-                    SplitDir::Horizontal => {
-                        let x = ox + cs.w;
-                        let y0 = if self.chrome_row {
-                            1
-                        } else {
-                            0
-                        };
-                        self.group
-                            .buffer_mut()
-                            .vline(x, y0, b.h.saturating_sub(y0), g.ui.separator_v, dim);
-                    }
-                    SplitDir::Vertical => {
-                        let y = oy + cs.h;
-                        self.group.buffer_mut().hline(0, y, b.w, g.ui.separator_h, dim);
-                    }
-                }
-            }
-        }
+        self.draw_dividers(b);
 
         let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         for i in 0..self.group.child_count() {
@@ -60,7 +30,7 @@ impl View for SplitPanel {
             if let Some(child) = self.group.child_mut(i) {
                 child.draw();
                 let cs = child.bounds();
-                if cs.w > 0 && cs.h > 0 {
+                if cs.w() > 0 && cs.h() > 0 {
                     unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
                 }
             }
@@ -68,7 +38,6 @@ impl View for SplitPanel {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        // Tick: broadcast to ALL children
         if matches!(event, Event::Tick) {
             for i in 0..self.group.child_count() {
                 if let Some(child) = self.group.child_mut(i) {
@@ -77,7 +46,6 @@ impl View for SplitPanel {
             }
             return HandleResult::Ignored;
         }
-        // All other events: three-phase dispatch
         self.group.dispatch(event)
     }
 
@@ -87,5 +55,39 @@ impl View for SplitPanel {
 
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
         Some(self)
+    }
+}
+
+impl SplitPanel {
+    fn draw_dividers(&mut self, b: Rect) {
+        if self.group.child_count() <= 1 {
+            return;
+        }
+        let dim = palette().style(StyleId::Dim);
+        let g = glyphs();
+        for i in 0..self.group.child_count() - 1 {
+            let Some(child) = self.group.child(i) else {
+                continue;
+            };
+            let (ox, oy) = self.group.child_origin(i);
+            let cs = child.bounds();
+            match self.direction {
+                SplitDir::Horizontal => {
+                    let x = ox + cs.w();
+                    let y0 = if self.chrome_row {
+                        1
+                    } else {
+                        0
+                    };
+                    self.group
+                        .buffer_mut()
+                        .vline(x, y0, b.h().saturating_sub(y0), g.ui().separator_v(), dim);
+                }
+                SplitDir::Vertical => {
+                    let y = oy + cs.h();
+                    self.group.buffer_mut().hline(0, y, b.w(), g.ui().separator_h(), dim);
+                }
+            }
+        }
     }
 }

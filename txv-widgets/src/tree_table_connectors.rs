@@ -15,17 +15,19 @@ impl<D: TreeTableSource> TreeTableView<D> {
         for level in 0..depth.saturating_sub(1) {
             let x = (level * 2) as u16;
             if self.ancestor_has_siblings(row, level + 1) {
-                self.state.buffer_mut().put(x, y, g.tree.pipe, guide_style);
+                self.state.buffer_mut().put(x, y, g.tree().pipe(), guide_style);
             }
         }
         let cx = ((depth - 1) * 2) as u16;
         let ch = if self.data.is_last_sibling(row) {
-            g.tree.last_branch
+            g.tree().last_branch()
         } else {
-            g.tree.branch
+            g.tree().branch()
         };
         self.state.buffer_mut().put(cx, y, ch, guide_style);
-        self.state.buffer_mut().put(cx + 1, y, g.tree.horizontal, guide_style);
+        self.state
+            .buffer_mut()
+            .put(cx + 1, y, g.tree().horizontal(), guide_style);
     }
 
     fn ancestor_has_siblings(&self, row: usize, target_depth: usize) -> bool {
@@ -44,9 +46,5 @@ impl<D: TreeTableSource> TreeTableView<D> {
 
 fn guide_style_with_bg(base: Style) -> Style {
     let guide = palette().style(StyleId::TreeGuide);
-    Style {
-        fg: guide.fg,
-        bg: base.bg,
-        attrs: guide.attrs,
-    }
+    Style::new(guide.fg(), base.bg()).with_attrs(guide.attrs())
 }

@@ -9,21 +9,21 @@ use super::TCell;
 
 /// VTE Performer that mutates TermBuf state.
 pub(super) struct Performer<'a> {
-    pub cols: u16,
-    pub rows: u16,
-    pub cells: &'a mut Vec<Row>,
-    pub cursor_x: &'a mut u16,
-    pub cursor_y: &'a mut u16,
-    pub cursor_visible: &'a mut bool,
-    pub style: &'a mut Style,
-    pub reversed: &'a mut bool,
-    pub saved_cursor: &'a mut (u16, u16),
-    pub scroll_top: &'a mut u16,
-    pub scroll_bottom: &'a mut u16,
-    pub responses: &'a mut Vec<Vec<u8>>,
-    pub swallow_flag: &'a mut bool,
-    pub osc_title: &'a mut Option<String>,
-    pub scrollback: &'a mut Scrollback,
+    pub(crate) cols: u16,
+    pub(crate) rows: u16,
+    pub(crate) cells: &'a mut Vec<Row>,
+    pub(crate) cursor_x: &'a mut u16,
+    pub(crate) cursor_y: &'a mut u16,
+    pub(crate) cursor_visible: &'a mut bool,
+    pub(crate) style: &'a mut Style,
+    pub(crate) reversed: &'a mut bool,
+    pub(crate) saved_cursor: &'a mut (u16, u16),
+    pub(crate) scroll_top: &'a mut u16,
+    pub(crate) scroll_bottom: &'a mut u16,
+    pub(crate) responses: &'a mut Vec<Vec<u8>>,
+    pub(crate) swallow_flag: &'a mut bool,
+    pub(crate) osc_title: &'a mut Option<String>,
+    pub(crate) scrollback: &'a mut Scrollback,
 }
 
 impl Performer<'_> {
@@ -152,61 +152,74 @@ impl Performer<'_> {
                     *self.style = Style::default();
                     *self.reversed = false;
                 }
-                1 => self.style.attrs.bold = true,
-                2 => self.style.attrs.dim = true,
-                3 => self.style.attrs.italic = true,
-                4 => self.style.attrs.underline = true,
-                7 => {
-                    if !*self.reversed {
-                        std::mem::swap(&mut self.style.fg, &mut self.style.bg);
-                        *self.reversed = true;
-                    }
-                }
+                1 => self.style.attrs_mut().set_bold(true),
+                2 => self.style.attrs_mut().set_dim(true),
+                3 => self.style.attrs_mut().set_italic(true),
+                4 => self.style.attrs_mut().set_underline(true),
+                7 => self.set_reverse(true),
                 22 => {
-                    self.style.attrs.bold = false;
-                    self.style.attrs.dim = false;
+                    self.style.attrs_mut().set_bold(false);
+                    self.style.attrs_mut().set_dim(false);
                 }
-                23 => self.style.attrs.italic = false,
-                24 => self.style.attrs.underline = false,
-                27 => {
-                    if *self.reversed {
-                        std::mem::swap(&mut self.style.fg, &mut self.style.bg);
-                        *self.reversed = false;
-                    }
-                }
-                30..=37 => self.style.fg = Color::Ansi((params[i] - 30) as u8),
-                38 => {
-                    i += 1;
-                    if i < params.len() && params[i] == 5 {
-                        i += 1;
-                        if i < params.len() {
-                            self.style.fg = Color::Palette(params[i] as u8);
-                        }
-                    } else if i < params.len() && params[i] == 2 && i + 3 < params.len() {
-                        self.style.fg = Color::Rgb(params[i + 1] as u8, params[i + 2] as u8, params[i + 3] as u8);
-                        i += 3;
-                    }
-                }
-                39 => self.style.fg = Color::Reset,
-                40..=47 => self.style.bg = Color::Ansi((params[i] - 40) as u8),
-                48 => {
-                    i += 1;
-                    if i < params.len() && params[i] == 5 {
-                        i += 1;
-                        if i < params.len() {
-                            self.style.bg = Color::Palette(params[i] as u8);
-                        }
-                    } else if i < params.len() && params[i] == 2 && i + 3 < params.len() {
-                        self.style.bg = Color::Rgb(params[i + 1] as u8, params[i + 2] as u8, params[i + 3] as u8);
-                        i += 3;
-                    }
-                }
-                49 => self.style.bg = Color::Reset,
-                90..=97 => self.style.fg = Color::Ansi((params[i] - 90 + 8) as u8),
-                100..=107 => self.style.bg = Color::Ansi((params[i] - 100 + 8) as u8),
+                23 => self.style.attrs_mut().set_italic(false),
+                24 => self.style.attrs_mut().set_underline(false),
+                27 => self.set_reverse(false),
+                30..=37 => self.style.set_fg(Color::Ansi((params[i] - 30) as u8)),
+                38 => i = self.parse_sgr_color_fg(params, i),
+                39 => self.style.set_fg(Color::Reset),
+                40..=47 => self.style.set_bg(Color::Ansi((params[i] - 40) as u8)),
+                48 => i = self.parse_sgr_color_bg(params, i),
+                49 => self.style.set_bg(Color::Reset),
+                90..=97 => self.style.set_fg(Color::Ansi((params[i] - 90 + 8) as u8)),
+                100..=107 => self.style.set_bg(Color::Ansi((params[i] - 100 + 8) as u8)),
                 _ => {}
             }
             i += 1;
         }
+    }
+
+    fn set_reverse(&mut self, on: bool) {
+        if on != *self.reversed {
+            self.style.swap_fg_bg();
+            *self.reversed = on;
+        }
+    }
+
+    /// Parse extended foreground color (38;5;N or 38;2;R;G;B). Returns updated index.
+    fn parse_sgr_color_fg(&mut self, params: &[u16], i: usize) -> usize {
+        let mut i = i + 1;
+        if i < params.len() && params[i] == 5 {
+            i += 1;
+            if i < params.len() {
+                self.style.set_fg(Color::Palette(params[i] as u8));
+            }
+        } else if i < params.len() && params[i] == 2 && i + 3 < params.len() {
+            self.style.set_fg(Color::Rgb(
+                params[i + 1] as u8,
+                params[i + 2] as u8,
+                params[i + 3] as u8,
+            ));
+            i += 3;
+        }
+        i
+    }
+
+    /// Parse extended background color (48;5;N or 48;2;R;G;B). Returns updated index.
+    fn parse_sgr_color_bg(&mut self, params: &[u16], i: usize) -> usize {
+        let mut i = i + 1;
+        if i < params.len() && params[i] == 5 {
+            i += 1;
+            if i < params.len() {
+                self.style.set_bg(Color::Palette(params[i] as u8));
+            }
+        } else if i < params.len() && params[i] == 2 && i + 3 < params.len() {
+            self.style.set_bg(Color::Rgb(
+                params[i + 1] as u8,
+                params[i + 2] as u8,
+                params[i + 3] as u8,
+            ));
+            i += 3;
+        }
+        i
     }
 }

@@ -1,14 +1,15 @@
 //! TextArea — read-only text viewer with line numbers and search.
 
+use txv_core::palette::palette;
 use txv_core::prelude::*;
 
 use crate::scroll_view::ScrollView;
 
 pub struct TextArea {
-    state: ViewState,
+    pub(crate) state: ViewState,
     pub(crate) lines: Vec<String>,
     pub(crate) scroll: ScrollView,
-    pub line_numbers: bool,
+    pub(crate) line_numbers_enabled: bool,
     pub(crate) search_query: String,
     pub(crate) search_matches: Vec<usize>,
     pub(crate) current_match: usize,
@@ -24,7 +25,7 @@ impl TextArea {
             state: ViewState::default(),
             lines: Vec::new(),
             scroll: ScrollView::new(),
-            line_numbers: true,
+            line_numbers_enabled: true,
             search_query: String::new(),
             search_matches: Vec::new(),
             current_match: 0,
@@ -40,49 +41,25 @@ impl TextArea {
         self.state.mark_dirty();
     }
 
-    pub fn search(&mut self, query: &str) {
-        self.search_query = query.to_string();
-        self.search_matches.clear();
-        if !query.is_empty() {
-            for (i, line) in self.lines.iter().enumerate() {
-                if line.contains(query) {
-                    self.search_matches.push(i);
-                }
-            }
-        }
-        self.current_match = 0;
-        if let Some(&line) = self.search_matches.first() {
-            self.scroll.ensure_visible(line);
-        }
+    pub fn content(&self) -> String {
+        self.lines.join("\n")
+    }
+
+    pub fn show_line_numbers(&mut self, show: bool) {
+        self.line_numbers_enabled = show;
         self.state.mark_dirty();
     }
 
-    pub fn next_match(&mut self) {
-        if self.search_matches.is_empty() {
-            return;
+    pub fn append_lines(&mut self, text: &str) {
+        for line in text.lines() {
+            self.lines.push(line.to_string());
         }
-        self.current_match = (self.current_match + 1) % self.search_matches.len();
-        let line = self.search_matches[self.current_match];
-        self.scroll.ensure_visible(line);
-        self.state.mark_dirty();
-    }
-
-    pub fn prev_match(&mut self) {
-        if self.search_matches.is_empty() {
-            return;
-        }
-        self.current_match = if self.current_match == 0 {
-            self.search_matches.len() - 1
-        } else {
-            self.current_match - 1
-        };
-        let line = self.search_matches[self.current_match];
-        self.scroll.ensure_visible(line);
+        self.scroll.set_total(self.lines.len());
         self.state.mark_dirty();
     }
 
     fn gutter_width(&self) -> u16 {
-        if !self.line_numbers {
+        if !self.line_numbers_enabled {
             return 0;
         }
         let digits = if self.lines.is_empty() {
@@ -110,58 +87,14 @@ impl View for TextArea {
             return;
         }
         let gutter_w = self.gutter_width();
-        let pal = txv_core::palette::palette();
-        let gutter_style = pal.style(StyleId::Dim);
-        let normal = Style::default();
-        let highlight = pal.style(StyleId::SearchMatch);
-
         let content_h = if self.searching {
             h.saturating_sub(1) as usize
         } else {
             h as usize
         };
-
-        for row in 0..content_h {
-            let line_idx = self.scroll.offset + row;
-            let y = row as u16;
-            self.state.buffer_mut().hline(0, y, w, ' ', normal);
-
-            if line_idx >= self.lines.len() {
-                continue;
-            }
-
-            // Line number
-            if self.line_numbers {
-                let num = format!("{:>width$} ", line_idx + 1, width = (gutter_w - 1) as usize);
-                self.state.buffer_mut().print(0, y, &num, gutter_style);
-            }
-
-            // Line content
-            let is_match = self.search_matches.contains(&line_idx);
-            let style = if is_match {
-                highlight
-            } else if let Some(&color) = self.line_colors.get(line_idx) {
-                Style {
-                    fg: color,
-                    ..Style::default()
-                }
-            } else {
-                normal
-            };
-            let text_x = gutter_w;
-            let avail = w.saturating_sub(gutter_w) as usize;
-            let line = &self.lines[line_idx];
-            let visible: String = line.chars().take(avail).collect();
-            self.state.buffer_mut().print(text_x, y, &visible, style);
-        }
-
-        // Search prompt at bottom
+        self.draw_content_lines(w, gutter_w, content_h);
         if self.searching {
-            let y = h.saturating_sub(1);
-            let prompt_style = txv_core::palette::palette().style(StyleId::StatusBar);
-            self.state.buffer_mut().hline(0, y, w, ' ', prompt_style);
-            let prompt = format!("/{}", self.search_input);
-            self.state.buffer_mut().print(0, y, &prompt, prompt_style);
+            self.draw_search_prompt(w, h);
         }
     }
 
@@ -169,79 +102,115 @@ impl View for TextArea {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
-        // Search input mode
         if self.searching {
-            match key.code {
-                KeyCode::Enter => {
-                    self.searching = false;
-                    self.search(&self.search_input.clone());
-                }
-                KeyCode::Esc => {
-                    self.searching = false;
-                    self.search_input.clear();
-                    self.state.mark_dirty();
-                }
-                KeyCode::Backspace => {
-                    self.search_input.pop();
-                    self.state.mark_dirty();
-                }
-                KeyCode::Char(ch) => {
-                    self.search_input.push(ch);
-                    self.state.mark_dirty();
-                }
-                _ => {}
-            }
-            return HandleResult::Consumed;
+            return self.handle_search_input(key);
         }
-        match key.code {
-            KeyCode::Up => {
-                self.scroll.scroll_up(1);
-                self.state.mark_dirty();
-                HandleResult::Consumed
+        self.handle_navigation(key)
+    }
+}
+
+impl TextArea {
+    fn draw_content_lines(&mut self, w: u16, gutter_w: u16, content_h: usize) {
+        let pal = palette();
+        let gutter_style = pal.style(StyleId::Dim);
+        let normal = Style::default();
+        let highlight = pal.style(StyleId::SearchMatch);
+
+        for row in 0..content_h {
+            let line_idx = self.scroll.offset + row;
+            let y = row as u16;
+            self.state.buffer_mut().hline(0, y, w, ' ', normal);
+            if line_idx >= self.lines.len() {
+                continue;
             }
-            KeyCode::Down => {
-                self.scroll.scroll_down(1);
-                self.state.mark_dirty();
-                HandleResult::Consumed
+            if self.line_numbers_enabled {
+                let num = format!("{:>width$} ", line_idx + 1, width = (gutter_w - 1) as usize);
+                self.state.buffer_mut().print(0, y, &num, gutter_style);
             }
+            let is_match = self.search_matches.contains(&line_idx);
+            let style = if is_match {
+                highlight
+            } else if let Some(&color) = self.line_colors.get(line_idx) {
+                Style::default().with_fg(color)
+            } else {
+                normal
+            };
+            let avail = w.saturating_sub(gutter_w) as usize;
+            let visible: String = self.lines[line_idx].chars().take(avail).collect();
+            self.state.buffer_mut().print(gutter_w, y, &visible, style);
+        }
+    }
+
+    fn draw_search_prompt(&mut self, w: u16, h: u16) {
+        let y = h.saturating_sub(1);
+        let prompt_style = palette().style(StyleId::StatusBar);
+        self.state.buffer_mut().hline(0, y, w, ' ', prompt_style);
+        let prompt = format!("/{}", self.search_input);
+        self.state.buffer_mut().print(0, y, &prompt, prompt_style);
+    }
+
+    fn handle_search_input(&mut self, key: &txv_core::event::KeyEvent) -> HandleResult {
+        match key.code() {
+            KeyCode::Enter => {
+                self.searching = false;
+                self.search(&self.search_input.clone());
+            }
+            KeyCode::Esc => {
+                self.searching = false;
+                self.search_input.clear();
+                self.state.mark_dirty();
+            }
+            KeyCode::Backspace => {
+                self.search_input.pop();
+                self.state.mark_dirty();
+            }
+            KeyCode::Char(ch) => {
+                self.search_input.push(ch);
+                self.state.mark_dirty();
+            }
+            _ => {}
+        }
+        HandleResult::Consumed
+    }
+
+    fn handle_navigation(&mut self, key: &txv_core::event::KeyEvent) -> HandleResult {
+        match key.code() {
+            KeyCode::Up => self.scroll_and_dirty(|s| s.scroll.scroll_up(1)),
+            KeyCode::Down => self.scroll_and_dirty(|s| s.scroll.scroll_down(1)),
             KeyCode::PageUp => {
-                let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
-                self.scroll.scroll_up(page);
-                self.state.mark_dirty();
-                HandleResult::Consumed
+                let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
+                self.scroll_and_dirty(|s| s.scroll.scroll_up(page))
             }
             KeyCode::PageDown => {
-                let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
-                self.scroll.scroll_down(page);
-                self.state.mark_dirty();
-                HandleResult::Consumed
+                let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
+                self.scroll_and_dirty(|s| s.scroll.scroll_down(page))
             }
-            KeyCode::Home => {
-                self.scroll.scroll_to(0);
-                self.state.mark_dirty();
-                HandleResult::Consumed
-            }
+            KeyCode::Home => self.scroll_and_dirty(|s| s.scroll.scroll_to(0)),
             KeyCode::End => {
                 let max = self.scroll.max_offset();
-                self.scroll.scroll_to(max);
-                self.state.mark_dirty();
-                HandleResult::Consumed
+                self.scroll_and_dirty(|s| s.scroll.scroll_to(max))
             }
-            KeyCode::Char('/') if !key.modifiers.ctrl => {
+            KeyCode::Char('/') if !key.modifiers().ctrl() => {
                 self.searching = true;
                 self.search_input.clear();
                 self.state.mark_dirty();
                 HandleResult::Consumed
             }
-            KeyCode::Char('n') if !key.modifiers.ctrl => {
+            KeyCode::Char('n') if !key.modifiers().ctrl() => {
                 self.next_match();
                 HandleResult::Consumed
             }
-            KeyCode::Char('N') if !key.modifiers.ctrl => {
+            KeyCode::Char('N') if !key.modifiers().ctrl() => {
                 self.prev_match();
                 HandleResult::Consumed
             }
             _ => HandleResult::Ignored,
         }
+    }
+
+    fn scroll_and_dirty(&mut self, f: impl FnOnce(&mut Self)) -> HandleResult {
+        f(self);
+        self.state.mark_dirty();
+        HandleResult::Consumed
     }
 }

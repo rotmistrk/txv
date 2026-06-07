@@ -3,9 +3,9 @@
 
 /// Tracks scroll offset and viewport for a scrollable region.
 pub struct ScrollView {
-    pub offset: usize,
-    pub total: usize,
-    pub viewport: usize,
+    pub(crate) offset: usize,
+    pub(crate) total: usize,
+    pub(crate) viewport: usize,
 }
 
 impl ScrollView {
@@ -15,6 +15,18 @@ impl ScrollView {
             total: 0,
             viewport: 0,
         }
+    }
+
+    pub fn offset(&self) -> usize {
+        self.offset
+    }
+
+    pub fn total(&self) -> usize {
+        self.total
+    }
+
+    pub fn viewport(&self) -> usize {
+        self.viewport
     }
 
     pub fn set_total(&mut self, total: usize) {

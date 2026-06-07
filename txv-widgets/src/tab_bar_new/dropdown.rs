@@ -96,33 +96,33 @@ impl TabBar {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
-
-        // Dropdown open — consume all keys
         if self.dropdown_cursor.is_some() {
             return self.handle_dropdown_key(key);
         }
-
         if !self.handle_keys {
             return HandleResult::Ignored;
         }
+        self.handle_alt_key(key)
+    }
 
-        // M-0: open dropdown
-        if key.modifiers.alt && !key.modifiers.ctrl && !key.modifiers.shift {
-            if let KeyCode::Char('0') = key.code {
-                self.open_dropdown();
-                return HandleResult::Consumed;
-            }
-            // M-digit: activate tab
-            if let KeyCode::Char(c) = key.code {
-                if let Some(n) = c.to_digit(10) {
-                    if n >= 1 {
-                        self.activate_by_number(n as usize);
-                        return HandleResult::Consumed;
-                    }
-                }
-            }
+    fn handle_alt_key(&mut self, key: &KeyEvent) -> HandleResult {
+        if !key.modifiers().alt() || key.modifiers().ctrl() || key.modifiers().shift() {
+            return HandleResult::Ignored;
         }
-
+        let KeyCode::Char(c) = key.code() else {
+            return HandleResult::Ignored;
+        };
+        if c == '0' {
+            self.open_dropdown();
+            return HandleResult::Consumed;
+        }
+        let Some(n) = c.to_digit(10) else {
+            return HandleResult::Ignored;
+        };
+        if n >= 1 {
+            self.activate_by_number(n as usize);
+            return HandleResult::Consumed;
+        }
         HandleResult::Ignored
     }
 
@@ -130,48 +130,17 @@ impl TabBar {
         let Some(cursor) = self.dropdown_cursor else {
             return HandleResult::Ignored;
         };
-        match key.code {
-            KeyCode::Esc => {
-                self.dropdown_cursor = None;
-                self.dropdown_filter.clear();
-                self.state.mark_dirty();
-            }
-            KeyCode::Enter => {
-                let entries = self.dropdown_entries();
-                if let Some(&(tab_idx, _, _)) = entries.get(cursor) {
-                    self.set_active(tab_idx);
-                }
-                self.dropdown_cursor = None;
-                self.dropdown_filter.clear();
-                self.state.mark_dirty();
-            }
-            KeyCode::Down => {
-                let count = self.dropdown_entries().len();
-                if count > 0 {
-                    self.dropdown_cursor = Some((cursor + 1) % count);
-                    self.state.mark_dirty();
-                }
-            }
-            KeyCode::Up => {
-                let count = self.dropdown_entries().len();
-                if count > 0 {
-                    self.dropdown_cursor = Some(if cursor == 0 {
-                        count - 1
-                    } else {
-                        cursor - 1
-                    });
-                    self.state.mark_dirty();
-                }
-            }
+        match key.code() {
+            KeyCode::Esc => self.close_dropdown(),
+            KeyCode::Enter => self.accept_dropdown(cursor),
+            KeyCode::Down => self.dropdown_nav(cursor, true),
+            KeyCode::Up => self.dropdown_nav(cursor, false),
             KeyCode::Backspace => {
                 self.dropdown_filter.pop();
-                let count = self.dropdown_entries().len();
-                if cursor >= count && count > 0 {
-                    self.dropdown_cursor = Some(count - 1);
-                }
+                self.clamp_dropdown_cursor();
                 self.state.mark_dirty();
             }
-            KeyCode::Char(c) if !key.modifiers.ctrl && !key.modifiers.alt => {
+            KeyCode::Char(c) if !key.modifiers().ctrl() && !key.modifiers().alt() => {
                 self.dropdown_filter.push(c);
                 self.dropdown_cursor = Some(0);
                 self.state.mark_dirty();
@@ -179,6 +148,40 @@ impl TabBar {
             _ => {}
         }
         HandleResult::Consumed
+    }
+
+    fn accept_dropdown(&mut self, cursor: usize) {
+        let entries = self.dropdown_entries();
+        if let Some(&(tab_idx, _, _)) = entries.get(cursor) {
+            self.set_active(tab_idx);
+        }
+        self.dropdown_cursor = None;
+        self.dropdown_filter.clear();
+        self.state.mark_dirty();
+    }
+
+    fn dropdown_nav(&mut self, cursor: usize, down: bool) {
+        let count = self.dropdown_entries().len();
+        if count == 0 {
+            return;
+        }
+        self.dropdown_cursor = Some(if down {
+            (cursor + 1) % count
+        } else if cursor == 0 {
+            count - 1
+        } else {
+            cursor - 1
+        });
+        self.state.mark_dirty();
+    }
+
+    fn clamp_dropdown_cursor(&mut self) {
+        let count = self.dropdown_entries().len();
+        if let Some(c) = self.dropdown_cursor {
+            if c >= count && count > 0 {
+                self.dropdown_cursor = Some(count - 1);
+            }
+        }
     }
 
     /// Activate tab by M-digit number (1-based).
@@ -192,18 +195,20 @@ impl TabBar {
                     self.set_active(idx);
                 }
             }
-            TabBarMode::Lru => {
-                // n=1 is first inactive in LRU order
-                let mut count = 0;
-                for &i in &self.lru_order {
-                    if i != self.active && i < self.titles.len() {
-                        count += 1;
-                        if count == n {
-                            self.set_active(i);
-                            return;
-                        }
-                    }
-                }
+            TabBarMode::Lru => self.activate_lru_number(n),
+        }
+    }
+
+    fn activate_lru_number(&mut self, n: usize) {
+        let mut count = 0;
+        for &i in &self.lru_order {
+            if i == self.active || i >= self.titles.len() {
+                continue;
+            }
+            count += 1;
+            if count == n {
+                self.set_active(i);
+                return;
             }
         }
     }

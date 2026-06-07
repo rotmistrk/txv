@@ -3,6 +3,8 @@
 //! Activates on a command, shows a prompt, and emits a response command
 //! with the key pressed (as a char). Deactivates after one key.
 
+use txv_core::cell::Style;
+use txv_core::palette::{palette, StyleId};
 use txv_core::prelude::*;
 use txv_core::status::{ActiveItem, Gravity, VisibleItem};
 
@@ -32,38 +34,48 @@ impl ConfirmItem {
 impl ActiveItem for ConfirmItem {
     fn handle(&mut self, event: &Event, sink: &EventSink) -> HandleResult {
         if !self.active {
-            if let Event::Command { id, data, .. } = event {
-                if *id == self.activate_command {
-                    if let Some(boxed) = data.as_ref() {
-                        if let Some(text) = boxed.downcast_ref::<String>() {
-                            self.label = text.clone();
-                            self.active = true;
-                            self.highlight_pos = 0;
-                            self.tick_counter = 0;
-                            return HandleResult::Consumed;
-                        }
-                    }
-                }
-            }
-            return HandleResult::Ignored;
+            return self.try_activate(event);
         }
-        // Active: consume the next key and emit response
-        if let Event::Key(key) = event {
-            let ch = match key.code {
-                KeyCode::Char(c) => c,
-                KeyCode::Esc => 'c',
-                _ => return HandleResult::Consumed,
-            };
-            self.active = false;
-            self.label.clear();
-            sink.push_command(self.response_command, Some(Box::new(ch)));
-            return HandleResult::Consumed;
-        }
-        HandleResult::Consumed
+        self.handle_active_key(event, sink)
     }
 
     fn is_exclusive(&self) -> bool {
         self.active
+    }
+}
+
+impl ConfirmItem {
+    fn try_activate(&mut self, event: &Event) -> HandleResult {
+        let Event::Command { id, data, .. } = event else {
+            return HandleResult::Ignored;
+        };
+        if *id != self.activate_command {
+            return HandleResult::Ignored;
+        }
+        let text = data.as_ref().and_then(|b| b.downcast_ref::<String>());
+        let Some(text) = text else {
+            return HandleResult::Ignored;
+        };
+        self.label = text.clone();
+        self.active = true;
+        self.highlight_pos = 0;
+        self.tick_counter = 0;
+        HandleResult::Consumed
+    }
+
+    fn handle_active_key(&mut self, event: &Event, sink: &EventSink) -> HandleResult {
+        let Event::Key(key) = event else {
+            return HandleResult::Consumed;
+        };
+        let ch = match key.code() {
+            KeyCode::Char(c) => c,
+            KeyCode::Esc => 'c',
+            _ => return HandleResult::Consumed,
+        };
+        self.active = false;
+        self.label.clear();
+        sink.push_command(self.response_command, Some(Box::new(ch)));
+        HandleResult::Consumed
     }
 }
 
@@ -76,11 +88,11 @@ impl VisibleItem for ConfirmItem {
         Gravity::Left
     }
 
-    fn style(&self) -> txv_core::cell::Style {
+    fn style(&self) -> Style {
         if self.active {
-            txv_core::palette::palette().style(txv_core::palette::StyleId::StatusQuestion)
+            palette().style(StyleId::StatusQuestion)
         } else {
-            txv_core::cell::Style::default()
+            Style::default()
         }
     }
 

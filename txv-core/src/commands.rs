@@ -29,15 +29,60 @@ pub const CM_CORE_MAX: CommandId = 99;
 
 /// Data payload for CM_REPOSITION.
 pub struct RepositionRequest {
-    pub view_id: ViewId,
-    /// Desired size.
-    pub width: u16,
-    pub height: u16,
-    /// Offset from `relative_to` (or from group origin if None). Signed for above/left.
-    pub offset_x: i16,
-    pub offset_y: i16,
-    /// If Some, offset is relative to this view's origin in the group.
-    pub relative_to: Option<ViewId>,
+    pub(crate) view_id: ViewId,
+    pub(crate) width: u16,
+    pub(crate) height: u16,
+    pub(crate) offset_x: i16,
+    pub(crate) offset_y: i16,
+    pub(crate) relative_to: Option<ViewId>,
+}
+
+impl RepositionRequest {
+    pub fn new(view_id: ViewId, width: u16, height: u16) -> Self {
+        Self {
+            view_id,
+            width,
+            height,
+            offset_x: 0,
+            offset_y: 0,
+            relative_to: None,
+        }
+    }
+
+    pub fn with_offset(mut self, x: i16, y: i16) -> Self {
+        self.offset_x = x;
+        self.offset_y = y;
+        self
+    }
+
+    pub fn relative_to(mut self, view_id: ViewId) -> Self {
+        self.relative_to = Some(view_id);
+        self
+    }
+
+    pub fn view_id(&self) -> ViewId {
+        self.view_id
+    }
+
+    pub fn width(&self) -> u16 {
+        self.width
+    }
+
+    pub fn height(&self) -> u16 {
+        self.height
+    }
+
+    pub fn offset_x(&self) -> i16 {
+        self.offset_x
+    }
+
+    pub fn offset_y(&self) -> i16 {
+        self.offset_y
+    }
+
+    pub fn relative_to_view(&self) -> Option<ViewId> {
+        self.relative_to
+    }
 }
 
 /// End of all TXV command ranges. Applications use IDs above this.

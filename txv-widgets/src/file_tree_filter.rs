@@ -33,25 +33,32 @@ impl FileTreeData {
         }
         let mut i = 0;
         while i < self.nodes.len() {
-            let dominated = self.nodes[i].is_dir
-                && !parents.contains(&i)
-                && self.nodes[i].depth < MAX_DEPTH
-                && self.nodes[i].label != ".git"
-                && !self.nodes[i].ignored;
-            if dominated {
-                let path = self.nodes[i].path.clone();
-                let depth = self.nodes[i].depth + 1;
-                let before = self.nodes.len();
-                self.load_children(path, Some(i), depth);
-                for j in before..self.nodes.len() {
-                    if let Some(p) = self.nodes[j].parent {
-                        parents.insert(p);
-                    }
-                }
+            if self.should_expand_for_filter(i, &parents, MAX_DEPTH) {
+                self.expand_for_filter(i, &mut parents);
             }
             i += 1;
         }
         self.fully_loaded = true;
+    }
+
+    fn expand_for_filter(&mut self, i: usize, parents: &mut std::collections::HashSet<usize>) {
+        let path = self.nodes[i].path.clone();
+        let depth = self.nodes[i].depth + 1;
+        let before = self.nodes.len();
+        self.load_children(path, Some(i), depth);
+        for j in before..self.nodes.len() {
+            if let Some(p) = self.nodes[j].parent {
+                parents.insert(p);
+            }
+        }
+    }
+
+    fn should_expand_for_filter(&self, i: usize, parents: &std::collections::HashSet<usize>, max_depth: usize) -> bool {
+        self.nodes[i].is_dir
+            && !parents.contains(&i)
+            && self.nodes[i].depth < max_depth
+            && self.nodes[i].label != ".git"
+            && !self.nodes[i].ignored
     }
 
     /// Current filter text.
@@ -91,17 +98,17 @@ impl FileTreeData {
     /// Bottom-up pass: mark dirs that have matching descendants.
     fn compute_has_match_below(&mut self) {
         self.has_match_below.resize(self.nodes.len(), false);
-        // Walk nodes; for each match, mark all ancestors
         for id in 0..self.nodes.len() {
-            if self.match_positions.contains_key(&id) {
-                let mut cur = self.nodes[id].parent;
-                while let Some(p) = cur {
-                    if self.has_match_below[p] {
-                        break; // already marked upward
-                    }
-                    self.has_match_below[p] = true;
-                    cur = self.nodes[p].parent;
+            if !self.match_positions.contains_key(&id) {
+                continue;
+            }
+            let mut cur = self.nodes[id].parent;
+            while let Some(p) = cur {
+                if self.has_match_below[p] {
+                    break;
                 }
+                self.has_match_below[p] = true;
+                cur = self.nodes[p].parent;
             }
         }
     }

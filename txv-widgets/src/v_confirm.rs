@@ -18,12 +18,8 @@ pub struct ConfirmView {
 
 impl ConfirmView {
     pub fn new(activate_command: CommandId, response_command: CommandId) -> Self {
-        let mut state = ViewState::new(ViewOptions {
-            preprocess: true,
-            focusable: false,
-            ..ViewOptions::default()
-        });
-        state.set_bounds(Rect { x: 0, y: 0, w: 0, h: 1 });
+        let mut state = ViewState::new(ViewOptions::default().with_preprocess());
+        state.set_bounds(Rect::new(0, 0, 0, 1));
         Self {
             state,
             palette: None,
@@ -39,7 +35,7 @@ impl ConfirmView {
     fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
-            None => txv_core::palette::palette().style(id),
+            None => palette().style(id),
         }
     }
 
@@ -59,13 +55,8 @@ impl ConfirmView {
             label.len() as u16 + 2
         };
         let bounds = self.state.bounds();
-        if bounds.w != w {
-            self.state.set_bounds(Rect {
-                x: bounds.x,
-                y: bounds.y,
-                w,
-                h: 1,
-            });
+        if bounds.w() != w {
+            self.state.set_bounds(Rect::new(bounds.x(), bounds.y(), w, 1));
         }
     }
 
@@ -102,20 +93,15 @@ impl View for ConfirmView {
     delegate_view_state!(state, override { options });
 
     fn options(&self) -> ViewOptions {
-        ViewOptions {
-            preprocess: true,
-            focusable: false,
-            modal: self.active,
-            ..ViewOptions::default()
-        }
+        ViewOptions::default().with_preprocess().with_modal_cond(self.active)
     }
 
     fn draw(&mut self) {
         let bar_style = self.resolve_style(StyleId::StatusBar);
         let q = self.resolve_style(StyleId::StatusQuestion);
         let h = self.resolve_style(StyleId::StatusHighlight);
-        let prompt_style = Style { bg: bar_style.bg, ..q };
-        let hi_style = Style { bg: bar_style.bg, ..h };
+        let prompt_style = q.with_bg(bar_style.bg());
+        let hi_style = h.with_bg(bar_style.bg());
         let label = self.display_text();
         let highlight_pos = self.highlight_pos;
         let buf = self.state.buffer_mut();
@@ -145,17 +131,7 @@ impl View for ConfirmView {
 
     fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Tick = event {
-            if self.active {
-                self.tick_counter += 1;
-                if self.tick_counter >= 5 {
-                    self.tick_counter = 0;
-                    let len = self.display_text().len();
-                    if len > 0 {
-                        self.highlight_pos = (self.highlight_pos + 1) % len;
-                    }
-                    self.state.mark_dirty();
-                }
-            }
+            self.handle_tick();
             return HandleResult::Ignored;
         }
         if !self.active {
@@ -164,11 +140,29 @@ impl View for ConfirmView {
         let Event::Key(key) = event else {
             return HandleResult::Consumed;
         };
-        match key.code {
+        match key.code() {
             KeyCode::Char(ch) => self.respond(ch),
             KeyCode::Esc => self.respond('c'),
             _ => {}
         }
         HandleResult::Consumed
+    }
+}
+
+impl ConfirmView {
+    fn handle_tick(&mut self) {
+        if !self.active {
+            return;
+        }
+        self.tick_counter += 1;
+        if self.tick_counter < 5 {
+            return;
+        }
+        self.tick_counter = 0;
+        let len = self.display_text().len();
+        if len > 0 {
+            self.highlight_pos = (self.highlight_pos + 1) % len;
+        }
+        self.state.mark_dirty();
     }
 }

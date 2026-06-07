@@ -7,6 +7,7 @@ mod view_impl;
 
 use std::time::Instant;
 
+use txv_core::palette::palette;
 use txv_core::prelude::*;
 
 /// A Group-based modal key handler for the status bar.
@@ -32,11 +33,7 @@ pub struct ModalKey {
 
 impl ModalKey {
     pub fn new(idle_label: impl Into<String>, prompt: impl Into<String>) -> Self {
-        let mut group = GroupState::new(ViewOptions {
-            preprocess: true,
-            focusable: false,
-            ..ViewOptions::default()
-        });
+        let mut group = GroupState::new(ViewOptions::default().with_preprocess());
         let idle = idle_label.into();
         let w = if idle.is_empty() {
             0
@@ -117,8 +114,8 @@ impl ModalKey {
         // Request minimum active width so parent layout can drop lower-priority items
         let b = self.group.bounds();
         let min_active = self.active_min_width();
-        if b.w < min_active {
-            self.group.set_bounds(Rect::new(b.x, b.y, min_active, b.h));
+        if b.w() < min_active {
+            self.group.set_bounds(Rect::new(b.x(), b.y(), min_active, b.h()));
         }
         self.group.mark_dirty();
     }
@@ -140,7 +137,7 @@ impl ModalKey {
     pub(crate) fn propagate_modal_palette(&mut self) {
         use std::sync::Arc;
         use txv_core::palette::{DerivedPalette, Palette, StyleId};
-        let base = txv_core::palette::palette();
+        let base = palette();
         let modal_style = base.style(StyleId::StatusBarModal);
         let derived: Arc<dyn Palette> = Arc::new(
             DerivedPalette::new(base)
@@ -155,7 +152,7 @@ impl ModalKey {
     }
 
     pub(crate) fn propagate_default_palette(&mut self) {
-        let pal = txv_core::palette::palette();
+        let pal = palette();
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
                 child.set_palette(pal.clone());
@@ -171,8 +168,8 @@ impl ModalKey {
             self.dormant_width()
         };
         let b = self.group.bounds();
-        if b.w != w {
-            self.group.set_bounds(Rect::new(b.x, b.y, w, b.h));
+        if b.w() != w {
+            self.group.set_bounds(Rect::new(b.x(), b.y(), w, b.h()));
         }
         self.group.mark_dirty();
     }

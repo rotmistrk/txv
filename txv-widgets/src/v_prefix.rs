@@ -23,12 +23,8 @@ impl PrefixView {
     pub fn new(prefix_key: KeyEvent, idle_label: impl Into<String>) -> Self {
         let idle_label = idle_label.into();
         let w = idle_label.len() as u16 + 2;
-        let mut state = ViewState::new(ViewOptions {
-            preprocess: true,
-            focusable: false,
-            ..ViewOptions::default()
-        });
-        state.set_bounds(Rect { x: 0, y: 0, w, h: 1 });
+        let mut state = ViewState::new(ViewOptions::default().with_preprocess());
+        state.set_bounds(Rect::new(0, 0, w, 1));
         Self {
             state,
             palette: None,
@@ -43,7 +39,7 @@ impl PrefixView {
     fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
-            None => txv_core::palette::palette().style(id),
+            None => palette().style(id),
         }
     }
 
@@ -81,13 +77,8 @@ impl PrefixView {
         };
         let w = label.len() as u16 + 2;
         let bounds = self.state.bounds();
-        if bounds.w != w {
-            self.state.set_bounds(Rect {
-                x: bounds.x,
-                y: bounds.y,
-                w,
-                h: 1,
-            });
+        if bounds.w() != w {
+            self.state.set_bounds(Rect::new(bounds.x(), bounds.y(), w, 1));
         }
     }
 }
@@ -96,12 +87,7 @@ impl View for PrefixView {
     delegate_view_state!(state, override { options });
 
     fn options(&self) -> ViewOptions {
-        ViewOptions {
-            preprocess: true,
-            focusable: false,
-            modal: self.active,
-            ..ViewOptions::default()
-        }
+        ViewOptions::default().with_preprocess().with_modal_cond(self.active)
     }
 
     fn draw(&mut self) {
@@ -139,11 +125,11 @@ impl View for PrefixView {
         }
 
         // Active — waiting for second key
-        match key.code {
+        match key.code() {
             KeyCode::Esc => {
                 self.active = false;
             }
-            KeyCode::Char(ch) if !key.modifiers.alt => {
+            KeyCode::Char(ch) if !key.modifiers().alt() => {
                 self.dispatch_key(ch);
                 self.active = false;
             }

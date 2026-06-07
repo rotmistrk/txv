@@ -2,6 +2,7 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::env;
+use std::io::BufWriter;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -156,7 +157,7 @@ fn write_via_command(cmd: &str, args: &[&str], text: &str) -> Result<(), String>
         .map_err(|e| format!("{cmd}: {e}"))?;
     {
         let stdin = child.stdin.take().ok_or("no stdin")?;
-        let mut w = std::io::BufWriter::new(stdin);
+        let mut w = BufWriter::new(stdin);
         w.write_all(text.as_bytes()).map_err(|e| format!("{cmd}: {e}"))?;
     } // stdin dropped here → EOF sent to child
     child.wait().map_err(|e| format!("{cmd}: {e}"))?;

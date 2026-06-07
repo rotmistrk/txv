@@ -6,47 +6,19 @@ use txv_core::prelude::*;
 use crate::InputLine;
 
 fn key(code: KeyCode) -> Event {
-    Event::Key(KeyEvent {
-        code,
-        modifiers: KeyMod {
-            ctrl: false,
-            alt: false,
-            shift: false,
-        },
-    })
+    Event::Key(KeyEvent::new(code, KeyMod::NONE))
 }
 
 fn ctrl_key(ch: char) -> Event {
-    Event::Key(KeyEvent {
-        code: KeyCode::Char(ch),
-        modifiers: KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    })
+    Event::Key(KeyEvent::new(KeyCode::Char(ch), KeyMod::CTRL))
 }
 
 fn alt_key(ch: char) -> Event {
-    Event::Key(KeyEvent {
-        code: KeyCode::Char(ch),
-        modifiers: KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    })
+    Event::Key(KeyEvent::new(KeyCode::Char(ch), KeyMod::ALT))
 }
 
 fn char_key(ch: char) -> Event {
-    Event::Key(KeyEvent {
-        code: KeyCode::Char(ch),
-        modifiers: KeyMod {
-            ctrl: false,
-            alt: false,
-            shift: false,
-        },
-    })
+    Event::Key(KeyEvent::new(KeyCode::Char(ch), KeyMod::NONE))
 }
 
 // === Character insertion ===

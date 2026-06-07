@@ -4,6 +4,7 @@
 //! We compute gap coordinates directly from panel rects, then issue
 //! hline/vline/put calls — each O(1) amortized by the buffer.
 
+use txv_core::palette::palette;
 use txv_core::prelude::*;
 
 use super::TiledWorkspace;
@@ -18,7 +19,7 @@ struct VGap {
 impl TiledWorkspace {
     /// Draw chrome dividers between panels. O(n) in panel count.
     pub(super) fn draw_chrome(&mut self) {
-        let style = txv_core::palette::palette().style(StyleId::ChromeBar);
+        let style = palette().style(StyleId::ChromeBar);
         let origin = self.group.bounds();
         let w = self.group.buffer_mut().width();
         let h = self.group.buffer_mut().height();
@@ -66,36 +67,36 @@ impl TiledWorkspace {
             .filter_map(|i| {
                 let child = self.group.child(i)?;
                 let cs = child.bounds();
-                if cs.w == 0 || cs.h == 0 {
+                if cs.w() == 0 || cs.h() == 0 {
                     return None;
                 }
                 let (ox, oy) = self.group.child_origin(i);
-                Some(Rect::new(ox, oy, cs.w, cs.h))
+                Some(Rect::new(ox, oy, cs.w(), cs.h()))
             })
             .collect()
     }
 
     /// Compute chrome coordinates from panel rects. O(n²) where n = panel count (≤8).
     fn compute_chrome_coords(rects: &[Rect]) -> (Vec<u16>, Vec<VGap>) {
-        let mut tier_ys: Vec<u16> = rects.iter().map(|r| r.y).collect();
+        let mut tier_ys: Vec<u16> = rects.iter().map(|r| r.y()).collect();
         tier_ys.sort_unstable();
         tier_ys.dedup();
 
         let mut gaps: Vec<VGap> = Vec::new();
         for a in rects {
-            let gap_x = a.x + a.w;
+            let gap_x = a.x() + a.w();
             // Check if another panel starts immediately after the gap
-            let has_neighbor = rects.iter().any(|b| b.x == gap_x + 1 && b.y == a.y);
+            let has_neighbor = rects.iter().any(|b| b.x() == gap_x + 1 && b.y() == a.y());
             if !has_neighbor {
                 continue;
             }
-            if gaps.iter().any(|g| g.x == gap_x && g.y_start == a.y) {
+            if gaps.iter().any(|g| g.x == gap_x && g.y_start == a.y()) {
                 continue;
             }
             gaps.push(VGap {
                 x: gap_x,
-                y_start: a.y,
-                y_end: a.y + a.h,
+                y_start: a.y(),
+                y_end: a.y() + a.h(),
             });
         }
 

@@ -4,6 +4,7 @@
 //! Uses GroupState with an InputLine child for editing, so cursor
 //! propagation and editing features (history, etc.) come for free.
 
+use txv_core::palette::palette;
 use txv_core::prelude::*;
 
 use crate::input_line::InputLine;
@@ -17,11 +18,7 @@ pub struct InputDialog {
 impl InputDialog {
     pub fn new(title: impl Into<String>) -> Self {
         let title_text: String = title.into();
-        let mut group = GroupState::new(ViewOptions {
-            modal: true,
-            focusable: true,
-            ..ViewOptions::default()
-        });
+        let mut group = GroupState::new(ViewOptions::default().with_focusable().with_modal());
         let mut input = InputLine::new();
         input.select();
         group.insert(Box::new(input));
@@ -45,11 +42,11 @@ impl InputDialog {
 
     fn layout(&mut self) {
         let b = self.group.bounds();
-        if b.w < 4 || b.h < 4 {
+        if b.w() < 4 || b.h() < 4 {
             return;
         }
         self.group
-            .set_child_bounds(0, Rect::new(b.x + 2, b.y + 2, b.w.saturating_sub(4), 1));
+            .set_child_bounds(0, Rect::new(b.x() + 2, b.y() + 2, b.w().saturating_sub(4), 1));
     }
 }
 
@@ -68,37 +65,50 @@ impl View for InputDialog {
             return;
         }
         let normal = Style::default();
-        let border = txv_core::palette::palette().style(StyleId::Border);
-        let g = glyphs();
-        let bx = &g.box_drawing;
-
-        // Background
+        let border = palette().style(StyleId::Border);
         for row in 0..h {
             self.group.buffer_mut().hline(0, row, w, ' ', normal);
         }
-        // Border
-        self.group.buffer_mut().hline(0, 0, w, bx.h_heavy, border);
-        self.group
-            .buffer_mut()
-            .hline(0, h.saturating_sub(1), w, bx.h_heavy, border);
-        for row in 1..h.saturating_sub(1) {
-            self.group.buffer_mut().put(0, row, bx.v_heavy, border);
-            self.group
-                .buffer_mut()
-                .put(w.saturating_sub(1), row, bx.v_heavy, border);
-        }
-        self.group.buffer_mut().put(0, 0, bx.tl_heavy, border);
-        self.group.buffer_mut().put(w.saturating_sub(1), 0, bx.tr_heavy, border);
-        self.group.buffer_mut().put(0, h.saturating_sub(1), bx.bl_heavy, border);
-        self.group
-            .buffer_mut()
-            .put(w.saturating_sub(1), h.saturating_sub(1), bx.br_heavy, border);
-        // Title
+        self.draw_input_border(w, h, border);
         if !self.title_text.is_empty() {
             let title = format!(" {} ", self.title_text);
             self.group.buffer_mut().print(2, 0, &title, border);
         }
-        // Draw and blit InputLine child
+        self.draw_and_blit_child();
+    }
+
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        self.group.dispatch(event)
+    }
+}
+
+impl InputDialog {
+    fn draw_input_border(&mut self, w: u16, h: u16, border: Style) {
+        let g = glyphs();
+        let bx = &g.box_drawing();
+        self.group.buffer_mut().hline(0, 0, w, bx.h_heavy(), border);
+        self.group
+            .buffer_mut()
+            .hline(0, h.saturating_sub(1), w, bx.h_heavy(), border);
+        for row in 1..h.saturating_sub(1) {
+            self.group.buffer_mut().put(0, row, bx.v_heavy(), border);
+            self.group
+                .buffer_mut()
+                .put(w.saturating_sub(1), row, bx.v_heavy(), border);
+        }
+        self.group.buffer_mut().put(0, 0, bx.tl_heavy(), border);
+        self.group
+            .buffer_mut()
+            .put(w.saturating_sub(1), 0, bx.tr_heavy(), border);
+        self.group
+            .buffer_mut()
+            .put(0, h.saturating_sub(1), bx.bl_heavy(), border);
+        self.group
+            .buffer_mut()
+            .put(w.saturating_sub(1), h.saturating_sub(1), bx.br_heavy(), border);
+    }
+
+    fn draw_and_blit_child(&mut self) {
         if let Some(child) = self.group.child_mut(0) {
             child.draw();
         }
@@ -108,9 +118,5 @@ impl View for InputDialog {
         if let Some(cbuf) = child_buf {
             unsafe { (*buf_ptr).blit(&*cbuf, ox, oy) };
         }
-    }
-
-    fn handle(&mut self, event: &Event) -> HandleResult {
-        self.group.dispatch(event)
     }
 }

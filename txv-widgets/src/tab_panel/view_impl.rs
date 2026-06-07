@@ -35,50 +35,22 @@ impl View for TabPanel {
 
     fn draw(&mut self) {
         let b = self.group.bounds();
-        if b.w == 0 || b.h == 0 {
+        if b.w() == 0 || b.h() == 0 {
             return;
         }
-        // Row 0: transparent so parent's chrome shows through
-        let transparent = Style {
-            fg: Color::Transparent,
-            bg: Color::Transparent,
-            ..Style::default()
-        };
-        for col in 0..b.w {
-            self.group.buffer_mut().put(col, 0, ' ', transparent);
-        }
-        // Content area: opaque fill
-        for row in 1..b.h {
-            for col in 0..b.w {
-                self.group.buffer_mut().put(col, row, ' ', Style::default());
-            }
-        }
-
-        // Draw bar (child 0)
+        self.fill_background(b);
         let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         if let Some(bar) = self.group.child_mut(0) {
             bar.draw();
             unsafe { (*buf_ptr).blit(bar.buffer(), 0, 0) };
         }
-
-        // Draw active content child
-        let active_gi = self.bar().active_index() + 1;
-        let (ox, oy) = self.group.child_origin(active_gi);
-        if let Some(child) = self.group.child_mut(active_gi) {
-            child.draw();
-            let cs = child.bounds();
-            if cs.w > 0 && cs.h > 0 {
-                unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
-            }
-        }
-
+        self.draw_active_content(buf_ptr);
         if self.bar().dropdown_open() {
             self.draw_dropdown();
         }
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        // Tick: broadcast to ALL children (background tabs need updates)
         if matches!(event, Event::Tick) {
             for i in 0..self.group.child_count() {
                 if let Some(child) = self.group.child_mut(i) {
@@ -88,10 +60,8 @@ impl View for TabPanel {
             self.sync_subtitle();
             return HandleResult::Ignored;
         }
-        // Three-phase dispatch: bar (preprocess) → active tab (focused) → postprocess
         let prev_active = self.bar().active_index();
         let result = self.group.dispatch(event);
-        // If bar changed active tab, sync layout
         if self.bar().active_index() != prev_active {
             self.sync_focus_from_bar(prev_active);
         }
@@ -104,5 +74,31 @@ impl View for TabPanel {
 
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
         Some(self)
+    }
+}
+
+impl TabPanel {
+    fn fill_background(&mut self, b: Rect) {
+        let transparent = Style::new(Color::Transparent, Color::Transparent);
+        for col in 0..b.w() {
+            self.group.buffer_mut().put(col, 0, ' ', transparent);
+        }
+        for row in 1..b.h() {
+            for col in 0..b.w() {
+                self.group.buffer_mut().put(col, row, ' ', Style::default());
+            }
+        }
+    }
+
+    fn draw_active_content(&mut self, buf_ptr: *mut Buffer) {
+        let active_gi = self.bar().active_index() + 1;
+        let (ox, oy) = self.group.child_origin(active_gi);
+        if let Some(child) = self.group.child_mut(active_gi) {
+            child.draw();
+            let cs = child.bounds();
+            if cs.w() > 0 && cs.h() > 0 {
+                unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
+            }
+        }
     }
 }

@@ -10,6 +10,7 @@ use txv_core::prelude::*;
 use crate::tab_bar::{TabBar, TabBarMode};
 
 mod compat;
+mod dd_ctx;
 mod dropdown;
 mod view_impl;
 
@@ -24,10 +25,7 @@ pub struct TabPanel {
 
 impl TabPanel {
     pub fn new(mode: TabBarMode) -> Self {
-        let mut group = GroupState::new(ViewOptions {
-            focusable: true,
-            ..ViewOptions::default()
-        });
+        let mut group = GroupState::new(ViewOptions::default().with_focusable());
         let mut bar = TabBar::new(mode);
         bar.state.set_preprocess(true);
         group.insert(Box::new(bar));
@@ -197,19 +195,19 @@ impl TabPanel {
 
     pub(crate) fn content_rect(&self) -> Rect {
         let b = self.group.bounds();
-        if b.h <= 1 {
-            return Rect::new(b.x, b.y, b.w, 0);
+        if b.h() <= 1 {
+            return Rect::new(b.x(), b.y(), b.w(), 0);
         }
-        Rect::new(b.x, b.y + 1, b.w, b.h - 1)
+        Rect::new(b.x(), b.y() + 1, b.w(), b.h() - 1)
     }
 
     pub(crate) fn relayout(&mut self) {
         let b = self.group.bounds();
-        if b.w == 0 || b.h == 0 {
+        if b.w() == 0 || b.h() == 0 {
             return;
         }
         // Bar gets row 0
-        self.group.set_child_bounds(0, Rect::new(b.x, b.y, b.w, 1));
+        self.group.set_child_bounds(0, Rect::new(b.x(), b.y(), b.w(), 1));
         // Active child gets content rect, others get zero
         let cr = self.content_rect();
         let active = self.bar().active_index();

@@ -12,7 +12,7 @@ pub fn diff_cells(current: &Buffer, previous: &Buffer) -> Vec<(u16, u16)> {
         for x in 0..w {
             let c = current.cell(x, y);
             let p = previous.cell(x, y);
-            if c.ch != p.ch || c.style != p.style {
+            if c.ch() != p.ch() || c.style() != p.style() {
                 changed.push((x, y));
             }
         }

@@ -4,11 +4,11 @@ use txv_core::event::{KeyCode, KeyEvent};
 
 /// Encode a KeyEvent into bytes suitable for writing to a PTY.
 pub fn key_to_bytes(key: &KeyEvent) -> Option<Vec<u8>> {
-    let bytes = encode_key_code(&key.code, key.modifiers.ctrl);
+    let bytes = encode_key_code(&key.code(), key.modifiers().ctrl());
     if bytes.is_empty() {
         return None;
     }
-    if key.modifiers.alt {
+    if key.modifiers().alt() {
         let mut v = vec![0x1b];
         v.extend(&bytes);
         Some(v)
@@ -73,55 +73,33 @@ mod tests {
 
     #[test]
     fn enter_is_cr() {
-        let key = KeyEvent {
-            code: KeyCode::Enter,
-            modifiers: KeyMod::default(),
-        };
+        let key = KeyEvent::new(KeyCode::Enter, KeyMod::default());
         assert_eq!(key_to_bytes(&key), Some(vec![b'\r']));
     }
 
     #[test]
     fn backspace_is_del() {
-        let key = KeyEvent {
-            code: KeyCode::Backspace,
-            modifiers: KeyMod::default(),
-        };
+        let key = KeyEvent::new(KeyCode::Backspace, KeyMod::default());
         assert_eq!(key_to_bytes(&key), Some(vec![0x7f]));
     }
 
     #[test]
     fn arrows_encode() {
-        let up = KeyEvent {
-            code: KeyCode::Up,
-            modifiers: KeyMod::default(),
-        };
+        let up = KeyEvent::new(KeyCode::Up, KeyMod::default());
         assert_eq!(key_to_bytes(&up), Some(vec![0x1b, b'[', b'A']));
-        let down = KeyEvent {
-            code: KeyCode::Down,
-            modifiers: KeyMod::default(),
-        };
+        let down = KeyEvent::new(KeyCode::Down, KeyMod::default());
         assert_eq!(key_to_bytes(&down), Some(vec![0x1b, b'[', b'B']));
     }
 
     #[test]
     fn ctrl_c() {
-        let key = KeyEvent {
-            code: KeyCode::Char('c'),
-            modifiers: KeyMod {
-                ctrl: true,
-                alt: false,
-                shift: false,
-            },
-        };
+        let key = KeyEvent::new(KeyCode::Char('c'), KeyMod::CTRL);
         assert_eq!(key_to_bytes(&key), Some(vec![3]));
     }
 
     #[test]
     fn char_encoding() {
-        let key = KeyEvent {
-            code: KeyCode::Char('a'),
-            modifiers: KeyMod::default(),
-        };
+        let key = KeyEvent::new(KeyCode::Char('a'), KeyMod::default());
         assert_eq!(key_to_bytes(&key), Some(vec![b'a']));
     }
 }

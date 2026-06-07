@@ -11,6 +11,13 @@ use super::TiledWorkspace;
 impl TiledWorkspace {
     /// Handle a workspace command event. Returns true if consumed.
     pub fn handle_command(&mut self, id: CommandId, data: &Option<Box<dyn Any + Send>>) -> bool {
+        self.handle_panel_cmd(id, data)
+            || self.handle_focus_resize_cmd(id)
+            || self.handle_tab_cmd(id, data)
+            || self.handle_subpanel_cmd(id)
+    }
+
+    fn handle_panel_cmd(&mut self, id: CommandId, data: &Option<Box<dyn Any + Send>>) -> bool {
         match id {
             CM_TW_TOGGLE_TREE => {
                 if let Some(panel_id) = self.find_panel_by_position(PanelPosition::Left) {
@@ -19,10 +26,10 @@ impl TiledWorkspace {
                 true
             }
             CM_TW_TOGGLE_TOOLS => {
-                let id = self
+                let pid = self
                     .find_panel_by_position(PanelPosition::Right)
                     .or_else(|| self.find_panel_by_position(PanelPosition::Bottom));
-                if let Some(panel_id) = id {
+                if let Some(panel_id) = pid {
                     self.toggle_panel(panel_id);
                 }
                 true
@@ -49,6 +56,12 @@ impl TiledWorkspace {
                 self.toggle_zoom();
                 true
             }
+            _ => false,
+        }
+    }
+
+    fn handle_focus_resize_cmd(&mut self, id: CommandId) -> bool {
+        match id {
             CM_TW_FOCUS_LEFT => {
                 self.focus_direction(-1, 0);
                 true
@@ -81,6 +94,12 @@ impl TiledWorkspace {
                 self.resize_panel(SplitDir::Vertical, -1);
                 true
             }
+            _ => false,
+        }
+    }
+
+    fn handle_tab_cmd(&mut self, id: CommandId, data: &Option<Box<dyn Any + Send>>) -> bool {
+        match id {
             CM_TW_TAB_DROPDOWN => {
                 if let Some(panel) = self.panel_mut(self.group.focused_index()) {
                     panel.bar_mut().open_dropdown();
@@ -88,23 +107,11 @@ impl TiledWorkspace {
                 true
             }
             CM_TW_TAB_DROPDOWN_UP => {
-                if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                    if panel.bar().dropdown_open() {
-                        panel.bar_mut().dropdown_move_up();
-                    } else if panel.tab_count() > 1 {
-                        panel.bar_mut().open_dropdown();
-                    }
-                }
+                self.handle_dropdown_up();
                 true
             }
             CM_TW_TAB_DROPDOWN_DOWN => {
-                if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                    if panel.bar().dropdown_open() {
-                        panel.bar_mut().dropdown_move_down();
-                    } else if panel.tab_count() > 1 {
-                        panel.bar_mut().open_dropdown();
-                    }
-                }
+                self.handle_dropdown_down();
                 true
             }
             CM_TW_TAB_DROPDOWN_CLOSE => {
@@ -125,18 +132,27 @@ impl TiledWorkspace {
                 self.cycle_layout();
                 true
             }
-            CM_TW_TAB_NEXT => {
-                if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                    panel.tab_next();
-                }
+            CM_TW_TAB_NEXT | CM_TW_TAB_PREV => {
+                self.handle_tab_nav(id);
                 true
             }
-            CM_TW_TAB_PREV => {
-                if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                    panel.tab_prev();
-                }
-                true
-            }
+            _ => false,
+        }
+    }
+
+    fn handle_tab_nav(&mut self, id: CommandId) {
+        let Some(panel) = self.panel_mut(self.group.focused_index()) else {
+            return;
+        };
+        if id == CM_TW_TAB_NEXT {
+            panel.tab_next();
+        } else {
+            panel.tab_prev();
+        }
+    }
+
+    fn handle_subpanel_cmd(&mut self, id: CommandId) -> bool {
+        match id {
             CM_TW_CYCLE_SUBPANEL => {
                 self.with_split_panel(|sp| sp.cycle_focus());
                 true
@@ -166,6 +182,28 @@ impl TiledWorkspace {
                 true
             }
             _ => false,
+        }
+    }
+
+    fn handle_dropdown_up(&mut self) {
+        let Some(panel) = self.panel_mut(self.group.focused_index()) else {
+            return;
+        };
+        if panel.bar().dropdown_open() {
+            panel.bar_mut().dropdown_move_up();
+        } else if panel.tab_count() > 1 {
+            panel.bar_mut().open_dropdown();
+        }
+    }
+
+    fn handle_dropdown_down(&mut self) {
+        let Some(panel) = self.panel_mut(self.group.focused_index()) else {
+            return;
+        };
+        if panel.bar().dropdown_open() {
+            panel.bar_mut().dropdown_move_down();
+        } else if panel.tab_count() > 1 {
+            panel.bar_mut().open_dropdown();
         }
     }
 

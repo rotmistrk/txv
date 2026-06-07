@@ -12,23 +12,7 @@ impl GroupState {
         // CM_REPOSITION: the group itself handles it (child asks parent to move it).
         if let Event::Command { id, data, .. } = event {
             if *id == CM_REPOSITION {
-                if let Some(req) = data.as_ref().and_then(|d| d.downcast_ref::<RepositionRequest>()) {
-                    let base = match req.relative_to {
-                        Some(rel_id) => self.origin_of(rel_id).unwrap_or((0, 0)),
-                        None => (0, 0),
-                    };
-                    let x = (base.0 as i16 + req.offset_x).max(0) as u16;
-                    let y = (base.1 as i16 + req.offset_y).max(0) as u16;
-                    let translated = Rect::new(x, y, req.width, req.height);
-                    for i in 0..self.children.len() {
-                        if self.children[i].view_id() == req.view_id {
-                            self.set_child_bounds(i, translated);
-                            self.mark_dirty();
-                            return HandleResult::Consumed;
-                        }
-                    }
-                }
-                return HandleResult::Ignored;
+                return self.handle_reposition(data);
             }
         }
 
@@ -62,6 +46,27 @@ impl GroupState {
             }
         }
 
+        HandleResult::Ignored
+    }
+
+    fn handle_reposition(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+        let Some(req) = data.as_ref().and_then(|d| d.downcast_ref::<RepositionRequest>()) else {
+            return HandleResult::Ignored;
+        };
+        let base = match req.relative_to {
+            Some(rel_id) => self.origin_of(rel_id).unwrap_or((0, 0)),
+            None => (0, 0),
+        };
+        let x = (base.0 as i16 + req.offset_x).max(0) as u16;
+        let y = (base.1 as i16 + req.offset_y).max(0) as u16;
+        let translated = Rect::new(x, y, req.width, req.height);
+        for i in 0..self.children.len() {
+            if self.children[i].view_id() == req.view_id {
+                self.set_child_bounds(i, translated);
+                self.mark_dirty();
+                return HandleResult::Consumed;
+            }
+        }
         HandleResult::Ignored
     }
 
@@ -127,12 +132,24 @@ macro_rules! delegate_group_state {
         }
     };
     ($field:ident, override { $($skip:ident),* $(,)? }) => {
-        $crate::__dvs_maybe!(bounds, [$($skip),*], { fn bounds(&self) -> $crate::geometry::Rect { self.$field.bounds() } });
-        $crate::__dvs_maybe!(set_bounds, [$($skip),*], { fn set_bounds(&mut self, r: $crate::geometry::Rect) { self.$field.set_bounds(r); } });
-        $crate::__dvs_maybe!(set_sink, [$($skip),*], { fn set_sink(&mut self, sink: $crate::view::EventSink) { self.$field.set_sink(sink); } });
-        $crate::__dvs_maybe!(options, [$($skip),*], { fn options(&self) -> $crate::view::ViewOptions { self.$field.options() } });
-        $crate::__dvs_maybe!(title, [$($skip),*], { fn title(&self) -> &str { self.$field.title() } });
-        $crate::__dvs_maybe!(needs_redraw, [$($skip),*], { fn needs_redraw(&self) -> bool { self.$field.any_dirty() } });
+        $crate::__dvs_maybe!(bounds, [$($skip),*], {
+            fn bounds(&self) -> $crate::geometry::Rect { self.$field.bounds() }
+        });
+        $crate::__dvs_maybe!(set_bounds, [$($skip),*], {
+            fn set_bounds(&mut self, r: $crate::geometry::Rect) { self.$field.set_bounds(r); }
+        });
+        $crate::__dvs_maybe!(set_sink, [$($skip),*], {
+            fn set_sink(&mut self, sink: $crate::view::EventSink) { self.$field.set_sink(sink); }
+        });
+        $crate::__dvs_maybe!(options, [$($skip),*], {
+            fn options(&self) -> $crate::view::ViewOptions { self.$field.options() }
+        });
+        $crate::__dvs_maybe!(title, [$($skip),*], {
+            fn title(&self) -> &str { self.$field.title() }
+        });
+        $crate::__dvs_maybe!(needs_redraw, [$($skip),*], {
+            fn needs_redraw(&self) -> bool { self.$field.any_dirty() }
+        });
         $crate::__dvs_maybe!(mark_redrawn, [$($skip),*], {
             fn mark_redrawn(&mut self) {
                 self.$field.mark_redrawn();

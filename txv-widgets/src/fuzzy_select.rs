@@ -1,5 +1,6 @@
 //! FuzzySelect — input line + filtered list for fuzzy file search.
 
+use txv_core::palette::palette;
 use txv_core::prelude::*;
 
 use crate::scroll_view::ScrollView;
@@ -18,11 +19,7 @@ impl FuzzySelect {
     pub fn new(items: Vec<String>) -> Self {
         let filtered: Vec<usize> = (0..items.len()).collect();
         let mut s = Self {
-            state: ViewState::new(ViewOptions {
-                modal: true,
-                focusable: true,
-                ..ViewOptions::default()
-            }),
+            state: ViewState::new(ViewOptions::default().with_focusable().with_modal()),
             query: String::new(),
             cursor_pos: 0,
             items,
@@ -54,7 +51,7 @@ impl FuzzySelect {
     }
 
     fn sync_scroll(&mut self) {
-        let h = self.state.bounds().h.saturating_sub(1) as usize; // -1 for input line
+        let h = self.state.bounds().h().saturating_sub(1) as usize; // -1 for input line
         self.scroll.set_viewport(h);
         self.scroll.ensure_visible(self.selected);
     }
@@ -85,26 +82,70 @@ impl View for FuzzySelect {
         if w == 0 || h == 0 {
             return;
         }
-        let pal = txv_core::palette::palette();
+        let pal = palette();
         let normal = Style::default();
         let selected_style = pal.style(StyleId::CursorFocused);
-        let input_style = Style {
-            attrs: Attrs {
-                underline: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let input_style = Style::default().with_attrs(Attrs::default().underline());
+        self.draw_input_line(w, input_style);
+        self.draw_filtered_list(w, h, normal, selected_style);
+    }
 
-        // Input line at top
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        let Event::Key(key) = event else {
+            return HandleResult::Consumed;
+        };
+        match key.code() {
+            KeyCode::Char(ch) => {
+                self.query.insert(self.cursor_pos, ch);
+                self.cursor_pos += 1;
+                self.refilter();
+            }
+            KeyCode::Backspace => {
+                if self.cursor_pos > 0 {
+                    self.cursor_pos -= 1;
+                    self.query.remove(self.cursor_pos);
+                    self.refilter();
+                }
+            }
+            KeyCode::Up => self.select_prev(),
+            KeyCode::Down => self.select_next(),
+            KeyCode::Enter => {
+                if let Some(&item_idx) = self.filtered.get(self.selected) {
+                    self.state.put_command(CM_OK, Some(Box::new(item_idx)));
+                }
+            }
+            KeyCode::Esc => self.state.put_command(CM_CANCEL, None),
+            _ => {}
+        }
+        HandleResult::Consumed
+    }
+}
+
+impl FuzzySelect {
+    fn select_prev(&mut self) {
+        if self.selected > 0 {
+            self.selected -= 1;
+            self.sync_scroll();
+            self.state.mark_dirty();
+        }
+    }
+
+    fn select_next(&mut self) {
+        if self.selected + 1 < self.filtered.len() {
+            self.selected += 1;
+            self.sync_scroll();
+            self.state.mark_dirty();
+        }
+    }
+    fn draw_input_line(&mut self, w: u16, input_style: Style) {
         self.state.buffer_mut().hline(0, 0, w, ' ', input_style);
-        let prompt = "> ";
-        self.state.buffer_mut().print(0, 0, prompt, input_style);
+        self.state.buffer_mut().print(0, 0, "> ", input_style);
         let avail = w.saturating_sub(2) as usize;
         let visible: String = self.query.chars().take(avail).collect();
         self.state.buffer_mut().print(2, 0, &visible, input_style);
+    }
 
-        // Filtered list
+    fn draw_filtered_list(&mut self, w: u16, h: u16, normal: Style, selected_style: Style) {
         let list_h = h.saturating_sub(1) as usize;
         for row in 0..list_h {
             let idx = self.scroll.offset + row;
@@ -122,55 +163,6 @@ impl View for FuzzySelect {
             let item_idx = self.filtered[idx];
             let text: String = self.items[item_idx].chars().take(w as usize).collect();
             self.state.buffer_mut().print(1, y, &text, style);
-        }
-    }
-
-    fn handle(&mut self, event: &Event) -> HandleResult {
-        let Event::Key(key) = event else {
-            return HandleResult::Consumed;
-        };
-        match &key.code {
-            KeyCode::Char(ch) => {
-                self.query.insert(self.cursor_pos, *ch);
-                self.cursor_pos += 1;
-                self.refilter();
-                HandleResult::Consumed
-            }
-            KeyCode::Backspace => {
-                if self.cursor_pos > 0 {
-                    self.cursor_pos -= 1;
-                    self.query.remove(self.cursor_pos);
-                    self.refilter();
-                }
-                HandleResult::Consumed
-            }
-            KeyCode::Up => {
-                if self.selected > 0 {
-                    self.selected -= 1;
-                    self.sync_scroll();
-                    self.state.mark_dirty();
-                }
-                HandleResult::Consumed
-            }
-            KeyCode::Down => {
-                if self.selected + 1 < self.filtered.len() {
-                    self.selected += 1;
-                    self.sync_scroll();
-                    self.state.mark_dirty();
-                }
-                HandleResult::Consumed
-            }
-            KeyCode::Enter => {
-                if let Some(&item_idx) = self.filtered.get(self.selected) {
-                    self.state.put_command(CM_OK, Some(Box::new(item_idx)));
-                }
-                HandleResult::Consumed
-            }
-            KeyCode::Esc => {
-                self.state.put_command(CM_CANCEL, None);
-                HandleResult::Consumed
-            }
-            _ => HandleResult::Consumed,
         }
     }
 }

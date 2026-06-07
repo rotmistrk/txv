@@ -17,10 +17,7 @@ pub struct SplitPane {
 
 impl SplitPane {
     pub fn new(direction: SplitDirection, first: Box<dyn View>, second: Box<dyn View>) -> Self {
-        let mut group = GroupState::new(ViewOptions {
-            focusable: true,
-            ..ViewOptions::default()
-        });
+        let mut group = GroupState::new(ViewOptions::default().with_focusable());
         group.insert(first);
         group.insert(second);
         Self {
@@ -37,8 +34,8 @@ impl SplitPane {
 
     pub fn resize(&mut self, delta: i16) {
         let total = match self.direction {
-            SplitDirection::Horizontal => self.group.bounds().w,
-            SplitDirection::Vertical => self.group.bounds().h,
+            SplitDirection::Horizontal => self.group.bounds().w(),
+            SplitDirection::Vertical => self.group.bounds().h(),
         } as f32;
         if total > 0.0 {
             self.ratio = (self.ratio + delta as f32 / total).clamp(0.1, 0.9);
@@ -82,22 +79,22 @@ impl SplitPane {
 
     fn apply_layout(&mut self) {
         let b = self.group.bounds();
-        if b.w == 0 || b.h == 0 {
+        if b.w() == 0 || b.h() == 0 {
             return;
         }
         let (r1, r2) = match self.direction {
             SplitDirection::Horizontal => {
-                let split = (b.w as f32 * self.ratio) as u16;
+                let split = (b.w() as f32 * self.ratio) as u16;
                 (
-                    Rect::new(b.x, b.y, split, b.h),
-                    Rect::new(b.x + split + 1, b.y, b.w.saturating_sub(split + 1), b.h),
+                    Rect::new(b.x(), b.y(), split, b.h()),
+                    Rect::new(b.x() + split + 1, b.y(), b.w().saturating_sub(split + 1), b.h()),
                 )
             }
             SplitDirection::Vertical => {
-                let split = (b.h as f32 * self.ratio) as u16;
+                let split = (b.h() as f32 * self.ratio) as u16;
                 (
-                    Rect::new(b.x, b.y, b.w, split),
-                    Rect::new(b.x, b.y + split + 1, b.w, b.h.saturating_sub(split + 1)),
+                    Rect::new(b.x(), b.y(), b.w(), split),
+                    Rect::new(b.x(), b.y() + split + 1, b.w(), b.h().saturating_sub(split + 1)),
                 )
             }
         };
@@ -143,11 +140,11 @@ impl View for SplitPane {
         match self.direction {
             SplitDirection::Horizontal => {
                 let x = (w as f32 * self.ratio) as u16;
-                self.group.buffer_mut().vline(x, 0, h, g.ui.separator_v, dim);
+                self.group.buffer_mut().vline(x, 0, h, g.ui().separator_v(), dim);
             }
             SplitDirection::Vertical => {
                 let y = (h as f32 * self.ratio) as u16;
-                self.group.buffer_mut().hline(0, y, w, g.ui.separator_h, dim);
+                self.group.buffer_mut().hline(0, y, w, g.ui().separator_h(), dim);
             }
         }
     }

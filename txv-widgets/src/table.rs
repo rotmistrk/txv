@@ -1,13 +1,10 @@
 //! Table — columnar data display with row selection.
 
+use txv_core::palette::palette;
 use txv_core::prelude::*;
 
 use crate::scroll_view::ScrollView;
-
-pub struct Column {
-    pub(crate) title: String,
-    pub(crate) width: u16,
-}
+use crate::table_column::Column;
 
 pub struct Table {
     state: ViewState,
@@ -35,8 +32,25 @@ impl Table {
         self.state.mark_dirty();
     }
 
+    pub fn add_row(&mut self, row: Vec<String>) {
+        self.rows.push(row);
+        self.scroll.set_total(self.rows.len());
+        self.state.mark_dirty();
+    }
+
+    pub fn selected(&self) -> usize {
+        self.cursor
+    }
+
+    pub fn select(&mut self, idx: usize) {
+        if idx < self.rows.len() {
+            self.cursor = idx;
+            self.state.mark_dirty();
+        }
+    }
+
     fn sync_scroll(&mut self) {
-        let h = self.state.bounds().h.saturating_sub(1) as usize; // -1 for header
+        let h = self.state.bounds().h().saturating_sub(1) as usize; // -1 for header
         self.scroll.set_viewport(h);
         self.scroll.set_total(self.rows.len());
         self.scroll.ensure_visible(self.cursor);
@@ -52,7 +66,7 @@ impl View for Table {
         if w == 0 || h == 0 {
             return;
         }
-        let pal = txv_core::palette::palette();
+        let pal = palette();
         let header_style = pal.style(StyleId::PopupTableHeader);
         let normal = Style::default();
         let selected = if self.state.is_focused() {
@@ -60,8 +74,47 @@ impl View for Table {
         } else {
             pal.style(StyleId::CursorUnfocused)
         };
+        self.draw_header(w, header_style);
+        self.draw_data_rows(w, h, normal, selected);
+    }
 
-        // Header row
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        let Event::Key(key) = event else {
+            return HandleResult::Ignored;
+        };
+        match key.code() {
+            KeyCode::Up => {
+                if self.cursor > 0 {
+                    self.cursor -= 1;
+                    self.sync_scroll();
+                    self.state.mark_dirty();
+                }
+                HandleResult::Consumed
+            }
+            KeyCode::Down => {
+                let max = self.rows.len().saturating_sub(1);
+                if self.cursor < max {
+                    self.cursor += 1;
+                    self.sync_scroll();
+                    self.state.mark_dirty();
+                }
+                HandleResult::Consumed
+            }
+            KeyCode::Enter => {
+                self.state.put_command(CM_OK, Some(Box::new(self.cursor)));
+                HandleResult::Consumed
+            }
+            KeyCode::PageDown | KeyCode::PageUp => {
+                self.handle_page(key.code());
+                HandleResult::Consumed
+            }
+            _ => HandleResult::Ignored,
+        }
+    }
+}
+
+impl Table {
+    fn draw_header(&mut self, w: u16, header_style: Style) {
         self.state.buffer_mut().hline(0, 0, w, ' ', header_style);
         let mut x = 0u16;
         for col in &self.columns {
@@ -73,8 +126,9 @@ impl View for Table {
             self.state.buffer_mut().print(x, 0, &title, header_style);
             x += col.width;
         }
+    }
 
-        // Data rows
+    fn draw_data_rows(&mut self, w: u16, h: u16, normal: Style, selected: Style) {
         let data_h = h.saturating_sub(1) as usize;
         for row in 0..data_h {
             let idx = self.scroll.offset + row;
@@ -103,48 +157,15 @@ impl View for Table {
         }
     }
 
-    fn handle(&mut self, event: &Event) -> HandleResult {
-        let Event::Key(key) = event else {
-            return HandleResult::Ignored;
-        };
-        match key.code {
-            KeyCode::Up => {
-                if self.cursor > 0 {
-                    self.cursor -= 1;
-                    self.sync_scroll();
-                    self.state.mark_dirty();
-                }
-                HandleResult::Consumed
-            }
-            KeyCode::Down => {
-                let max = self.rows.len().saturating_sub(1);
-                if self.cursor < max {
-                    self.cursor += 1;
-                    self.sync_scroll();
-                    self.state.mark_dirty();
-                }
-                HandleResult::Consumed
-            }
-            KeyCode::Enter => {
-                self.state.put_command(CM_OK, Some(Box::new(self.cursor)));
-                HandleResult::Consumed
-            }
-            KeyCode::PageDown => {
-                let page = self.state.bounds().h.saturating_sub(2) as usize;
-                let max = self.rows.len().saturating_sub(1);
-                self.cursor = (self.cursor + page).min(max);
-                self.sync_scroll();
-                self.state.mark_dirty();
-                HandleResult::Consumed
-            }
-            KeyCode::PageUp => {
-                let page = self.state.bounds().h.saturating_sub(2) as usize;
-                self.cursor = self.cursor.saturating_sub(page);
-                self.sync_scroll();
-                self.state.mark_dirty();
-                HandleResult::Consumed
-            }
-            _ => HandleResult::Ignored,
+    fn handle_page(&mut self, code: KeyCode) {
+        let page = self.state.bounds().h().saturating_sub(2) as usize;
+        let max = self.rows.len().saturating_sub(1);
+        match code {
+            KeyCode::PageDown => self.cursor = (self.cursor + page).min(max),
+            KeyCode::PageUp => self.cursor = self.cursor.saturating_sub(page),
+            _ => {}
         }
+        self.sync_scroll();
+        self.state.mark_dirty();
     }
 }

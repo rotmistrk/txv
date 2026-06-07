@@ -1,5 +1,6 @@
 //! BranchView — git branch indicator as a proper View.
 
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -19,11 +20,7 @@ pub struct BranchView {
 impl BranchView {
     pub fn new(root_dir: PathBuf) -> Self {
         let mut view = Self {
-            state: ViewState::new(ViewOptions {
-                preprocess: true,
-                focusable: false,
-                ..ViewOptions::default()
-            }),
+            state: ViewState::new(ViewOptions::default().with_preprocess()),
             palette: None,
             root_dir,
             label_text: String::new(),
@@ -48,25 +45,20 @@ impl BranchView {
             self.label_text.len() as u16 + 2
         };
         let bounds = self.state.bounds();
-        if bounds.w != w {
-            self.state.set_bounds(Rect {
-                x: bounds.x,
-                y: bounds.y,
-                w,
-                h: 1,
-            });
+        if bounds.w() != w {
+            self.state.set_bounds(Rect::new(bounds.x(), bounds.y(), w, 1));
         }
     }
 
     fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
-            None => txv_core::palette::palette().style(id),
+            None => palette().style(id),
         }
     }
 
     fn read_branch(root: &Path) -> Option<String> {
-        let head = std::fs::read_to_string(root.join(".git/HEAD")).ok()?;
+        let head = fs::read_to_string(root.join(".git/HEAD")).ok()?;
         let head = head.trim();
         if let Some(r) = head.strip_prefix("ref: refs/heads/") {
             Some(format!("\u{e0a0} {r}"))

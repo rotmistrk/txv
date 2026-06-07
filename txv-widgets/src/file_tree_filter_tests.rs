@@ -1,3 +1,5 @@
+use std::fs;
+
 use super::*;
 use crate::file_tree::FileTreeData;
 use crate::tree_view::TreeData;
@@ -21,11 +23,11 @@ fn fuzzy_match_exact() {
 }
 
 #[test]
-fn filter_hides_non_matching_files() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    std::fs::write(dir.path().join("main.rs"), "").expect("write");
-    std::fs::write(dir.path().join("lib.rs"), "").expect("write");
-    std::fs::write(dir.path().join("test.txt"), "").expect("write");
+fn filter_hides_non_matching_files() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    fs::write(dir.path().join("main.rs"), "")?;
+    fs::write(dir.path().join("lib.rs"), "")?;
+    fs::write(dir.path().join("test.txt"), "")?;
 
     let mut data = FileTreeData::new(dir.path());
     data.set_filter("rs");
@@ -35,13 +37,14 @@ fn filter_hides_non_matching_files() {
     assert!(!visible.contains(&"test.txt"));
     assert!(visible.contains(&"main.rs"));
     assert!(visible.contains(&"lib.rs"));
+    Ok(())
 }
 
 #[test]
-fn clear_filter_restores_all() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    std::fs::write(dir.path().join("main.rs"), "").expect("write");
-    std::fs::write(dir.path().join("test.txt"), "").expect("write");
+fn clear_filter_restores_all() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    fs::write(dir.path().join("main.rs"), "")?;
+    fs::write(dir.path().join("test.txt"), "")?;
 
     let mut data = FileTreeData::new(dir.path());
     let total = data.visible_count();
@@ -49,12 +52,13 @@ fn clear_filter_restores_all() {
     assert!(data.visible_count() < total);
     data.set_filter("");
     assert_eq!(data.visible_count(), total);
+    Ok(())
 }
 
 #[test]
-fn filter_match_positions_recorded() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    std::fs::write(dir.path().join("movement.rs"), "").expect("write");
+fn filter_match_positions_recorded() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    fs::write(dir.path().join("movement.rs"), "")?;
 
     let mut data = FileTreeData::new(dir.path());
     data.set_filter("mvt");
@@ -67,15 +71,16 @@ fn filter_match_positions_recorded() {
         }
     }
     assert!(found);
+    Ok(())
 }
 
 #[test]
-fn filter_shows_closed_dir_with_matches_inside() {
-    let dir = tempfile::tempdir().expect("tempdir");
+fn filter_shows_closed_dir_with_matches_inside() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
     let sub = dir.path().join("src");
-    std::fs::create_dir(&sub).expect("mkdir");
-    std::fs::write(sub.join("deep.rs"), "").expect("write");
-    std::fs::write(dir.path().join("top.txt"), "").expect("write");
+    fs::create_dir(&sub)?;
+    fs::write(sub.join("deep.rs"), "")?;
+    fs::write(dir.path().join("top.txt"), "")?;
 
     let mut data = FileTreeData::new(dir.path());
     data.ensure_all_loaded();
@@ -87,22 +92,31 @@ fn filter_shows_closed_dir_with_matches_inside() {
     };
     assert!(vis(&data).contains(&"src".to_string()));
     assert!(!vis(&data).contains(&"deep.rs".to_string()));
-    let src_id = data.nodes.iter().position(|n| n.label == "src").expect("src");
+    let src_id = data
+        .nodes
+        .iter()
+        .position(|n| n.label == "src")
+        .ok_or("src not found")?;
     data.toggle(src_id);
     assert!(vis(&data).contains(&"deep.rs".to_string()));
+    Ok(())
 }
 
 #[test]
-fn filter_shows_children_of_expanded_dir() {
-    let dir = tempfile::tempdir().expect("tempdir");
+fn filter_shows_children_of_expanded_dir() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
     let sub = dir.path().join("src");
-    std::fs::create_dir(&sub).expect("mkdir");
-    std::fs::write(sub.join("deep.rs"), "").expect("write");
-    std::fs::write(sub.join("other.txt"), "").expect("write");
+    fs::create_dir(&sub)?;
+    fs::write(sub.join("deep.rs"), "")?;
+    fs::write(sub.join("other.txt"), "")?;
 
     let mut data = FileTreeData::new(dir.path());
     data.ensure_all_loaded();
-    let src_id = data.nodes.iter().position(|n| n.label == "src").expect("src");
+    let src_id = data
+        .nodes
+        .iter()
+        .position(|n| n.label == "src")
+        .ok_or("src not found")?;
     data.toggle(src_id);
     data.set_filter("deep");
     let visible: Vec<&str> = (0..data.visible_count())
@@ -110,19 +124,24 @@ fn filter_shows_children_of_expanded_dir() {
         .collect();
     assert!(visible.contains(&"src") && visible.contains(&"deep.rs"));
     assert!(!visible.contains(&"other.txt"));
+    Ok(())
 }
 
 #[test]
-fn dir_name_match_shows_all_children() {
-    let dir = tempfile::tempdir().expect("tempdir");
+fn dir_name_match_shows_all_children() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
     let hooks = dir.path().join("hooks");
-    std::fs::create_dir(&hooks).expect("mkdir");
-    std::fs::write(hooks.join("pre-commit"), "").expect("write");
-    std::fs::write(hooks.join("post-merge"), "").expect("write");
+    fs::create_dir(&hooks)?;
+    fs::write(hooks.join("pre-commit"), "")?;
+    fs::write(hooks.join("post-merge"), "")?;
 
     let mut data = FileTreeData::new(dir.path());
     data.ensure_all_loaded();
-    let hooks_id = data.nodes.iter().position(|n| n.label == "hooks").expect("hooks");
+    let hooks_id = data
+        .nodes
+        .iter()
+        .position(|n| n.label == "hooks")
+        .ok_or("hooks not found")?;
     data.toggle(hooks_id);
     data.set_filter("hooks");
     let visible: Vec<&str> = (0..data.visible_count())
@@ -130,18 +149,23 @@ fn dir_name_match_shows_all_children() {
         .collect();
     assert!(visible.contains(&"hooks") && visible.contains(&"pre-commit"));
     assert!(visible.contains(&"post-merge"));
+    Ok(())
 }
 
 #[test]
-fn collapse_during_filter_hides_children_keeps_dir() {
-    let dir = tempfile::tempdir().expect("tempdir");
+fn collapse_during_filter_hides_children_keeps_dir() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
     let doc = dir.path().join("doc");
-    std::fs::create_dir(&doc).expect("mkdir");
-    std::fs::write(doc.join("readme.md"), "").expect("write");
+    fs::create_dir(&doc)?;
+    fs::write(doc.join("readme.md"), "")?;
 
     let mut data = FileTreeData::new(dir.path());
     data.ensure_all_loaded();
-    let doc_id = data.nodes.iter().position(|n| n.label == "doc").expect("doc");
+    let doc_id = data
+        .nodes
+        .iter()
+        .position(|n| n.label == "doc")
+        .ok_or("doc not found")?;
     data.toggle(doc_id);
     data.set_filter("md");
     let vis = |d: &FileTreeData| -> Vec<String> {
@@ -153,4 +177,5 @@ fn collapse_during_filter_hides_children_keeps_dir() {
     data.toggle(doc_id);
     assert!(vis(&data).contains(&"doc".to_string()), "dir stays visible");
     assert!(!vis(&data).contains(&"readme.md".to_string()), "children hidden");
+    Ok(())
 }

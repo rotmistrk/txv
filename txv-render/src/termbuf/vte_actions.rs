@@ -1,8 +1,6 @@
 //! VTE Perform trait implementation — dispatches terminal escape sequences.
 
-use super::row::Row;
 use super::vte_handler::Performer;
-use super::TCell;
 
 impl vte::Perform for Performer<'_> {
     fn print(&mut self, c: char) {
@@ -28,7 +26,6 @@ impl vte::Perform for Performer<'_> {
     fn put(&mut self, _byte: u8) {}
     fn unhook(&mut self) {}
     fn osc_dispatch(&mut self, params: &[&[u8]], _bell_terminated: bool) {
-        // OSC 0 (icon+title) or OSC 2 (title) — capture window title
         if let Some(&cmd) = params.first() {
             if cmd == b"0" || cmd == b"2" {
                 if let Some(text) = params.get(1) {
@@ -43,182 +40,30 @@ impl vte::Perform for Performer<'_> {
         let p1 = ps.first().copied().unwrap_or(0);
 
         match (action, intermediates) {
-            ('A', []) => {
-                let n = if p1 == 0 {
-                    1
-                } else {
-                    p1
-                };
-                *self.cursor_y = self.cursor_y.saturating_sub(n);
-            }
-            ('B', []) => {
-                let n = if p1 == 0 {
-                    1
-                } else {
-                    p1
-                };
-                *self.cursor_y = (*self.cursor_y + n).min(self.rows.saturating_sub(1));
-            }
-            ('C', []) => {
-                let n = if p1 == 0 {
-                    1
-                } else {
-                    p1
-                };
-                *self.cursor_x = (*self.cursor_x + n).min(self.cols.saturating_sub(1));
-            }
-            ('D', []) => {
-                let n = if p1 == 0 {
-                    1
-                } else {
-                    p1
-                };
-                *self.cursor_x = self.cursor_x.saturating_sub(n);
-            }
-            ('H' | 'f', []) => {
-                let row = if p1 == 0 {
-                    1
-                } else {
-                    p1
-                };
-                let col = ps.get(1).copied().unwrap_or(1).max(1);
-                *self.cursor_y = (row - 1).min(self.rows.saturating_sub(1));
-                *self.cursor_x = (col - 1).min(self.cols.saturating_sub(1));
-            }
-            ('G', []) => {
-                let col = if p1 == 0 {
-                    1
-                } else {
-                    p1
-                };
-                *self.cursor_x = (col - 1).min(self.cols.saturating_sub(1));
-            }
+            ('A', []) => self.csi_cursor_up(p1),
+            ('B', []) => self.csi_cursor_down(p1),
+            ('C', []) => self.csi_cursor_forward(p1),
+            ('D', []) => self.csi_cursor_back(p1),
+            ('H' | 'f', []) => self.csi_cursor_position(p1, &ps),
+            ('G', []) => self.csi_cursor_col(p1),
             ('J', []) => self.erase_display(p1),
             ('K', []) => self.erase_line(p1),
-            ('L', []) => {
-                let n = if p1 == 0 {
-                    1
-                } else {
-                    p1 as usize
-                };
-                let y = *self.cursor_y as usize;
-                let bot = *self.scroll_bottom as usize;
-                for _ in 0..n {
-                    if y <= bot && bot < self.cells.len() {
-                        self.cells.remove(bot);
-                        self.cells.insert(y, Row::new(self.cols as usize));
-                    }
-                }
-            }
-            ('M', []) => {
-                let n = if p1 == 0 {
-                    1
-                } else {
-                    p1 as usize
-                };
-                let y = *self.cursor_y as usize;
-                let bot = *self.scroll_bottom as usize;
-                for _ in 0..n {
-                    if y <= bot && bot < self.cells.len() {
-                        self.cells.remove(y);
-                        self.cells.insert(bot, Row::new(self.cols as usize));
-                    }
-                }
-            }
-            ('S', []) => {
-                let n = if p1 == 0 {
-                    1
-                } else {
-                    p1
-                };
-                for _ in 0..n {
-                    self.scroll_up();
-                }
-            }
-            ('T', []) => {
-                let n = if p1 == 0 {
-                    1
-                } else {
-                    p1
-                };
-                for _ in 0..n {
-                    self.scroll_down();
-                }
-            }
-            ('m', []) => {
-                if ps.is_empty() {
-                    self.set_sgr(&[0]);
-                } else {
-                    self.set_sgr(&ps);
-                }
-            }
-            ('r', []) => {
-                let top = if p1 == 0 {
-                    1
-                } else {
-                    p1
-                };
-                let bot = ps.get(1).copied().unwrap_or(self.rows).min(self.rows);
-                *self.scroll_top = top.saturating_sub(1);
-                *self.scroll_bottom = bot.saturating_sub(1);
-                *self.cursor_x = 0;
-                *self.cursor_y = 0;
-            }
-            ('h', [b'?']) => {
-                if p1 == 25 {
-                    *self.cursor_visible = true;
-                }
-            }
-            ('l', [b'?']) => {
-                if p1 == 25 {
-                    *self.cursor_visible = false;
-                }
-            }
-            ('s', []) => {
-                *self.saved_cursor = (*self.cursor_x, *self.cursor_y);
-            }
+            ('L', []) => self.csi_insert_lines(p1),
+            ('M', []) => self.csi_delete_lines(p1),
+            ('S', []) => self.csi_scroll_up(p1),
+            ('T', []) => self.csi_scroll_down(p1),
+            ('m', []) => self.csi_sgr(&ps),
+            ('r', []) => self.csi_set_scroll_region(p1, &ps),
+            ('h', [b'?']) if p1 == 25 => *self.cursor_visible = true,
+            ('l', [b'?']) if p1 == 25 => *self.cursor_visible = false,
+            ('s', []) => *self.saved_cursor = (*self.cursor_x, *self.cursor_y),
             ('u', []) => {
                 *self.cursor_x = self.saved_cursor.0;
                 *self.cursor_y = self.saved_cursor.1;
             }
-            ('P', []) => {
-                let n = if p1 == 0 {
-                    1
-                } else {
-                    p1 as usize
-                };
-                let y = *self.cursor_y as usize;
-                let x = *self.cursor_x as usize;
-                if y < self.rows as usize {
-                    let row = &mut self.cells[y].cells;
-                    let end = (x + n).min(row.len());
-                    row.drain(x..end);
-                    row.resize(self.cols as usize, TCell::default());
-                }
-            }
-            ('@', []) => {
-                let n = if p1 == 0 {
-                    1
-                } else {
-                    p1 as usize
-                };
-                let y = *self.cursor_y as usize;
-                let x = *self.cursor_x as usize;
-                if y < self.rows as usize {
-                    let row = &mut self.cells[y].cells;
-                    for _ in 0..n {
-                        if x < row.len() {
-                            row.insert(x, TCell::default());
-                        }
-                    }
-                    row.truncate(self.cols as usize);
-                }
-            }
-            // DA1 — respond as VT100
-            ('c', []) => {
-                self.responses.push(b"\x1b[?1;2c".to_vec());
-            }
-            // DSR (CPR) — report cursor position
+            ('P', []) => self.csi_delete_chars(p1),
+            ('@', []) => self.csi_insert_chars(p1),
+            ('c', []) => self.responses.push(b"\x1b[?1;2c".to_vec()),
             ('n', []) if p1 == 6 => {
                 let reply = format!("\x1b[{};{}R", *self.cursor_y + 1, *self.cursor_x + 1);
                 self.responses.push(reply.into_bytes());
@@ -229,9 +74,7 @@ impl vte::Perform for Performer<'_> {
 
     fn esc_dispatch(&mut self, intermediates: &[u8], _ignore: bool, byte: u8) {
         match (byte, intermediates) {
-            (b'7', []) => {
-                *self.saved_cursor = (*self.cursor_x, *self.cursor_y);
-            }
+            (b'7', []) => *self.saved_cursor = (*self.cursor_x, *self.cursor_y),
             (b'8', []) => {
                 *self.cursor_x = self.saved_cursor.0;
                 *self.cursor_y = self.saved_cursor.1;
@@ -244,10 +87,7 @@ impl vte::Perform for Performer<'_> {
                     *self.cursor_y -= 1;
                 }
             }
-            // ESC k — tmux/screen title sequence; swallow until ST
-            (b'k', []) => {
-                *self.swallow_flag = true;
-            }
+            (b'k', []) => *self.swallow_flag = true,
             _ => {}
         }
     }

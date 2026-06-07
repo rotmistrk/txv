@@ -1,5 +1,6 @@
 //! PtyTerminal — a View that owns a TermBuf + PtySession.
 
+use txv_core::cursor::{CursorRequest, CursorShape};
 use txv_core::event::Event;
 use txv_core::prelude::*;
 use txv_render::termbuf::TermBuf;
@@ -84,21 +85,17 @@ impl View for PtyTerminal {
         &self.osc_suffix
     }
 
-    fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
+    fn cursor(&self) -> Option<CursorRequest> {
         if !self.state.is_focused() || self.exited || self.scroll_offset > 0 {
             return None;
         }
         let (cx, cy) = self.termbuf.cursor();
-        let w = self.state.bounds().w;
-        let h = self.state.bounds().h;
+        let w = self.state.bounds().w();
+        let h = self.state.bounds().h();
         // Clamp to valid range (child may report position at boundary)
         let cx = cx.min(w.saturating_sub(1));
         let cy = cy.min(h.saturating_sub(1));
-        Some(txv_core::cursor::CursorRequest {
-            x: cx,
-            y: cy,
-            shape: txv_core::cursor::CursorShape::Block,
-        })
+        Some(CursorRequest::new(cx, cy, CursorShape::Block))
     }
 
     fn needs_redraw(&self) -> bool {
@@ -108,8 +105,8 @@ impl View for PtyTerminal {
     fn set_bounds(&mut self, r: Rect) {
         self.state.set_bounds(r);
         self.state.mark_dirty();
-        let cols = r.w;
-        let rows = r.h;
+        let cols = r.w();
+        let rows = r.h();
         if cols > 0 && rows > 0 && (cols != self.prev_cols || rows != self.prev_rows) {
             self.prev_cols = cols;
             self.prev_rows = rows;
@@ -133,25 +130,7 @@ impl View for PtyTerminal {
             return;
         }
         if self.scroll_offset == 0 {
-            let rh = self.termbuf.grid_rows().min(h);
-            let rw = self.prev_cols.min(w);
-            for y in 0..rh {
-                if let Some(line) = self.termbuf.grid_line(y as usize) {
-                    for (x, tc) in line.iter().enumerate().take(rw as usize) {
-                        self.state.buffer_mut().put(x as u16, y, tc.ch, tc.style);
-                    }
-                }
-            }
-            if self.termbuf.cursor_visible() {
-                let (cx, cy) = self.termbuf.cursor();
-                if cx < w && cy < h {
-                    let cell = self.state.buffer_mut().cell(cx, cy);
-                    let mut style = cell.style;
-                    std::mem::swap(&mut style.fg, &mut style.bg);
-                    let ch = cell.ch;
-                    self.state.buffer_mut().put(cx, cy, ch, style);
-                }
-            }
+            self.draw_live_grid(w, h);
         } else {
             self.draw_scrollback_to_buf();
         }
@@ -163,47 +142,8 @@ impl View for PtyTerminal {
                 self.poll_and_feed();
                 HandleResult::Ignored
             }
-            Event::Paste(text) => {
-                if self.exited {
-                    return HandleResult::Consumed;
-                }
-                if let Some(session) = self.session.as_mut() {
-                    session.write(b"\x1b[200~");
-                    session.write(text.as_bytes());
-                    session.write(b"\x1b[201~");
-                }
-                HandleResult::Consumed
-            }
-            Event::Key(key) => {
-                if self.exited {
-                    return HandleResult::Consumed;
-                }
-                if key.code == KeyCode::PageUp {
-                    let max = self.termbuf.scrollback_len();
-                    let page = (self.prev_rows as usize).saturating_sub(1).max(1);
-                    self.scroll_offset = (self.scroll_offset + page).min(max);
-                    self.state.mark_dirty();
-                    return HandleResult::Consumed;
-                }
-                if key.code == KeyCode::PageDown {
-                    let page = (self.prev_rows as usize).saturating_sub(1).max(1);
-                    self.scroll_offset = self.scroll_offset.saturating_sub(page);
-                    self.state.mark_dirty();
-                    return HandleResult::Consumed;
-                }
-                if self.scroll_offset > 0 {
-                    self.scroll_offset = 0;
-                    self.state.mark_dirty();
-                }
-                if let Some(bytes) = key_to_bytes(key) {
-                    if let Some(session) = self.session.as_mut() {
-                        session.write(&bytes);
-                    }
-                    HandleResult::Consumed
-                } else {
-                    HandleResult::Ignored
-                }
-            }
+            Event::Paste(text) => self.handle_paste(text),
+            Event::Key(key) => self.handle_key(key),
             _ => HandleResult::Ignored,
         }
     }
@@ -214,5 +154,81 @@ impl View for PtyTerminal {
         } else {
             CloseResult::Denied("process still running".to_string())
         }
+    }
+}
+
+impl PtyTerminal {
+    fn draw_live_grid(&mut self, w: u16, h: u16) {
+        let rh = self.termbuf.grid_rows().min(h);
+        let rw = self.prev_cols.min(w);
+        for y in 0..rh {
+            if let Some(line) = self.termbuf.grid_line(y as usize) {
+                for (x, tc) in line.iter().enumerate().take(rw as usize) {
+                    self.state.buffer_mut().put(x as u16, y, tc.ch(), tc.style());
+                }
+            }
+        }
+        if !self.termbuf.cursor_visible() {
+            return;
+        }
+        let (cx, cy) = self.termbuf.cursor();
+        if cx < w && cy < h {
+            let cell = self.state.buffer_mut().cell(cx, cy);
+            let mut style = cell.style();
+            style.swap_fg_bg();
+            let ch = cell.ch();
+            self.state.buffer_mut().put(cx, cy, ch, style);
+        }
+    }
+
+    fn handle_paste(&mut self, text: &str) -> HandleResult {
+        if self.exited {
+            return HandleResult::Consumed;
+        }
+        if let Some(session) = self.session.as_mut() {
+            session.write(b"\x1b[200~");
+            session.write(text.as_bytes());
+            session.write(b"\x1b[201~");
+        }
+        HandleResult::Consumed
+    }
+
+    fn handle_key(&mut self, key: &KeyEvent) -> HandleResult {
+        if self.exited {
+            return HandleResult::Consumed;
+        }
+        if key.code() == KeyCode::PageUp {
+            return self.scroll_up_page();
+        }
+        if key.code() == KeyCode::PageDown {
+            return self.scroll_down_page();
+        }
+        if self.scroll_offset > 0 {
+            self.scroll_offset = 0;
+            self.state.mark_dirty();
+        }
+        if let Some(bytes) = key_to_bytes(key) {
+            if let Some(session) = self.session.as_mut() {
+                session.write(&bytes);
+            }
+            HandleResult::Consumed
+        } else {
+            HandleResult::Ignored
+        }
+    }
+
+    fn scroll_up_page(&mut self) -> HandleResult {
+        let max = self.termbuf.scrollback_len();
+        let page = (self.prev_rows as usize).saturating_sub(1).max(1);
+        self.scroll_offset = (self.scroll_offset + page).min(max);
+        self.state.mark_dirty();
+        HandleResult::Consumed
+    }
+
+    fn scroll_down_page(&mut self) -> HandleResult {
+        let page = (self.prev_rows as usize).saturating_sub(1).max(1);
+        self.scroll_offset = self.scroll_offset.saturating_sub(page);
+        self.state.mark_dirty();
+        HandleResult::Consumed
     }
 }

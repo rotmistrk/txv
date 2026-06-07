@@ -48,50 +48,38 @@ fn wrap_line(line: &str, max_width: usize, out: &mut Vec<String>) {
     for word in WordIter::new(line) {
         let ww = display_width(word);
         if col == 0 {
-            // First word on line — must take it even if too long
-            if ww <= max_width {
-                current.push_str(word);
-                col = ww;
-            } else {
-                // Force-break long word
-                for c in word.chars() {
-                    let cw = char_width(c);
-                    if col + cw > max_width {
-                        out.push(std::mem::take(&mut current));
-                        col = 0;
-                    }
-                    current.push(c);
-                    col += cw;
-                }
-            }
+            col = push_first_word(&mut current, word, ww, max_width, out);
         } else if col + ww <= max_width {
             current.push_str(word);
             col += ww;
         } else {
             out.push(std::mem::take(&mut current));
-            col = 0;
-            // Skip leading space on new line
             let trimmed = word.trim_start();
-            let tw = display_width(trimmed);
-            if tw <= max_width {
-                current.push_str(trimmed);
-                col = tw;
-            } else {
-                for c in trimmed.chars() {
-                    let cw = char_width(c);
-                    if col + cw > max_width {
-                        out.push(std::mem::take(&mut current));
-                        col = 0;
-                    }
-                    current.push(c);
-                    col += cw;
-                }
-            }
+            col = push_first_word(&mut current, trimmed, display_width(trimmed), max_width, out);
         }
     }
     if !current.is_empty() || col == 0 {
         out.push(current);
     }
+}
+
+/// Push word to current line, force-breaking if too long. Returns new column.
+fn push_first_word(current: &mut String, word: &str, ww: usize, max_width: usize, out: &mut Vec<String>) -> usize {
+    if ww <= max_width {
+        current.push_str(word);
+        return ww;
+    }
+    let mut col = 0;
+    for c in word.chars() {
+        let cw = char_width(c);
+        if col + cw > max_width {
+            out.push(std::mem::take(current));
+            col = 0;
+        }
+        current.push(c);
+        col += cw;
+    }
+    col
 }
 
 /// Iterator that yields words with their trailing/leading whitespace attached.

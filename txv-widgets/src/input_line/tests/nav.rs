@@ -6,25 +6,11 @@ use txv_core::prelude::*;
 use crate::InputLine;
 
 fn key(code: KeyCode) -> Event {
-    Event::Key(KeyEvent {
-        code,
-        modifiers: KeyMod {
-            ctrl: false,
-            alt: false,
-            shift: false,
-        },
-    })
+    Event::Key(KeyEvent::new(code, KeyMod::NONE))
 }
 
 fn shift_key(code: KeyCode) -> Event {
-    Event::Key(KeyEvent {
-        code,
-        modifiers: KeyMod {
-            ctrl: false,
-            alt: false,
-            shift: true,
-        },
-    })
+    Event::Key(KeyEvent::new(code, KeyMod::SHIFT))
 }
 
 // === Selection: Right/Left at boundaries ===
@@ -213,8 +199,8 @@ fn cursor_returns_position_when_focused() {
     input.state.set_bounds(Rect::new(0, 0, 20, 1));
     input.handle_nav(false, 3);
     let req = input.cursor().unwrap();
-    assert_eq!(req.x, 3);
-    assert_eq!(req.y, 0);
+    assert_eq!(req.x(), 3);
+    assert_eq!(req.y(), 0);
 }
 
 // === Regression: cursor must not land on left-overflow '…' position (60c4a17) ===
@@ -223,8 +209,8 @@ fn cursor_returns_position_when_focused() {
 fn visible_start_cursor_not_on_left_overflow_position() {
     let mut input = InputLine::new().with_command(100);
     input.set_text("abcdefghijklmnop"); // 16 chars
-                                        // Move cursor to position 5, with width 5 — scroll would put cursor at start=1
-                                        // which means cursor (5) at position 5-1=4, OK.
+                                        // Move cursor to position 5, with width 5 — scroll would put
+                                        // cursor at start=1 which means cursor (5) at position 5-1=4, OK.
                                         // But if we go to position that would be exactly at `start`,
                                         // the fix ensures cursor doesn't land on the overflow indicator.
     input.handle_nav(false, 6);
@@ -250,7 +236,8 @@ fn visible_start_left_edge_scrolled_back() {
                                         // width=5, cursor=5 → start would be 5-5+1=1, cursor_pos=5-1=4=width-1
                                         // Right overflow: 1+5=6 < 16, so start→2, cursor_pos=3.
                                         // Now test cursor=2: start=2-5+1 < 0 → start=0, so no left overflow — safe.
-                                        // cursor=7: start=7-5+1=3, cursor_pos=7-3=4, right overflow (3+5=8<16) → start=4
+                                        // cursor=7: start=7-5+1=3, cursor_pos=7-3=4,
+                                        // right overflow (3+5=8<16) → start=4
                                         // Now cursor_pos=7-4=3. start=4>0, cursor=7≠4 ✓
     input.handle_nav(false, 7);
     let start = input.visible_start(5);

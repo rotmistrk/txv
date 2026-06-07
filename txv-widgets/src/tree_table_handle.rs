@@ -8,7 +8,7 @@ use crate::tree_table_source::TreeTableSource;
 impl<D: TreeTableSource> TreeTableView<D> {
     /// Handle vim-style and structural keys. Returns Consumed if handled.
     pub(super) fn handle_char_key(&mut self, key: &KeyEvent) -> HandleResult {
-        let KeyCode::Char(ch) = key.code else {
+        let KeyCode::Char(ch) = key.code() else {
             return self.handle_special_key(key);
         };
         match ch {
@@ -20,18 +20,8 @@ impl<D: TreeTableSource> TreeTableView<D> {
                 self.move_up();
                 HandleResult::Consumed
             }
-            'g' => {
-                self.cursor = 0;
-                self.sync_scroll();
-                self.state.mark_dirty();
-                HandleResult::Consumed
-            }
-            'G' => {
-                self.cursor = self.data.visible_count().saturating_sub(1);
-                self.sync_scroll();
-                self.state.mark_dirty();
-                HandleResult::Consumed
-            }
+            'g' => self.jump_to_start(),
+            'G' => self.jump_to_end(),
             ' ' | 'l' => {
                 self.handle_enter_right();
                 HandleResult::Consumed
@@ -58,8 +48,22 @@ impl<D: TreeTableSource> TreeTableView<D> {
         }
     }
 
+    fn jump_to_start(&mut self) -> HandleResult {
+        self.cursor = 0;
+        self.sync_scroll();
+        self.state.mark_dirty();
+        HandleResult::Consumed
+    }
+
+    fn jump_to_end(&mut self) -> HandleResult {
+        self.cursor = self.data.visible_count().saturating_sub(1);
+        self.sync_scroll();
+        self.state.mark_dirty();
+        HandleResult::Consumed
+    }
+
     fn handle_special_key(&mut self, key: &KeyEvent) -> HandleResult {
-        match key.code {
+        match key.code() {
             KeyCode::Tab => {
                 self.cycle_focused_col();
                 HandleResult::Consumed
@@ -76,7 +80,7 @@ impl<D: TreeTableSource> TreeTableView<D> {
                 self.state.mark_dirty();
                 HandleResult::Consumed
             }
-            KeyCode::Char('r') if key.modifiers.ctrl => {
+            KeyCode::Char('r') if key.modifiers().ctrl() => {
                 if self.data.redo() {
                     self.clamp_cursor();
                     self.state.mark_dirty();

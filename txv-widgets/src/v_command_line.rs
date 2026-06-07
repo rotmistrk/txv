@@ -20,12 +20,8 @@ pub struct CommandLineView {
 
 impl CommandLineView {
     pub fn new(keys: &[KeyEvent], command_id: CommandId) -> Self {
-        let mut state = ViewState::new(ViewOptions {
-            preprocess: true,
-            focusable: false,
-            ..ViewOptions::default()
-        });
-        state.set_bounds(Rect { x: 0, y: 0, w: 0, h: 1 });
+        let mut state = ViewState::new(ViewOptions::default().with_preprocess());
+        state.set_bounds(Rect::new(0, 0, 0, 1));
         Self {
             state,
             palette: None,
@@ -43,7 +39,7 @@ impl CommandLineView {
     fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
-            None => txv_core::palette::palette().style(id),
+            None => palette().style(id),
         }
     }
 
@@ -99,13 +95,8 @@ impl CommandLineView {
             label.len() as u16 + 2
         };
         let bounds = self.state.bounds();
-        if bounds.w != w {
-            self.state.set_bounds(Rect {
-                x: bounds.x,
-                y: bounds.y,
-                w,
-                h: 1,
-            });
+        if bounds.w() != w {
+            self.state.set_bounds(Rect::new(bounds.x(), bounds.y(), w, 1));
         }
     }
 
@@ -154,7 +145,7 @@ impl CommandLineView {
     }
 
     fn handle_active_key(&mut self, key: &KeyEvent) -> HandleResult {
-        match &key.code {
+        match key.code() {
             KeyCode::Esc => self.deactivate(),
             KeyCode::Enter => {
                 let cmd = self.text.clone();
@@ -168,7 +159,7 @@ impl CommandLineView {
             KeyCode::Left => self.move_cursor_left(),
             KeyCode::Right => self.move_cursor_right(),
             KeyCode::Char(ch) => {
-                self.text.insert(self.cursor, *ch);
+                self.text.insert(self.cursor, ch);
                 self.cursor += ch.len_utf8();
                 self.update_bounds();
                 self.state.mark_dirty();
@@ -219,12 +210,7 @@ impl View for CommandLineView {
     delegate_view_state!(state, override { options });
 
     fn options(&self) -> ViewOptions {
-        ViewOptions {
-            preprocess: true,
-            focusable: false,
-            modal: self.active,
-            ..ViewOptions::default()
-        }
+        ViewOptions::default().with_preprocess().with_modal_cond(self.active)
     }
 
     fn draw(&mut self) {

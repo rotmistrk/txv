@@ -140,10 +140,10 @@ impl Backend for CrosstermBackend {
         self.cursor_dirty = false;
         let mut out = io::stdout().lock();
         match req {
-            Some(c) if c.shape != CursorShape::Hidden => {
-                queue!(out, cursor::MoveTo(c.x, c.y), cursor::Show).ok();
+            Some(c) if c.shape() != CursorShape::Hidden => {
+                queue!(out, cursor::MoveTo(c.x(), c.y()), cursor::Show).ok();
                 if changed {
-                    let seq = match c.shape {
+                    let seq = match c.shape() {
                         CursorShape::Block => "\x1b[2 q",
                         CursorShape::Underline => "\x1b[4 q",
                         CursorShape::Bar => "\x1b[6 q",

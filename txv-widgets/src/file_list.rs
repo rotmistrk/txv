@@ -6,12 +6,8 @@ use std::path::{Path, PathBuf};
 use ignore::WalkBuilder;
 use txv_core::prelude::*;
 
+use crate::file_list_entry::FileEntry;
 use crate::list_view::ListData;
-
-struct FileEntry {
-    path: PathBuf,
-    display: String,
-}
 
 /// Flat file list data provider (recursive walk).
 pub struct FileListData {

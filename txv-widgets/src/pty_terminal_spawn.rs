@@ -1,5 +1,6 @@
 //! PtyTerminal constructors — spawn shell or command processes.
 
+use std::env;
 use std::path::Path;
 
 use txv_core::prelude::*;
@@ -16,8 +17,8 @@ impl PtyTerminal {
 
     /// Spawn the user's default shell with a custom scrollback limit.
     pub fn spawn_shell_with_scrollback(cols: u16, rows: u16, scrollback_limit: usize) -> std::io::Result<Self> {
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
-        let cwd = std::env::current_dir().unwrap_or_else(|_| "/".into());
+        let shell = env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
+        let cwd = env::current_dir().unwrap_or_else(|_| "/".into());
         let session = PtySession::spawn(&shell, &[], &cwd, cols, rows)?;
         Ok(Self {
             state: ViewState::default(),

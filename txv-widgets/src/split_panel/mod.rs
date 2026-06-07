@@ -26,10 +26,7 @@ pub struct SplitPanel {
 impl SplitPanel {
     pub fn new(direction: SplitDir) -> Self {
         Self {
-            group: GroupState::new(ViewOptions {
-                focusable: true,
-                ..ViewOptions::default()
-            }),
+            group: GroupState::new(ViewOptions::default().with_focusable()),
             proportions: Vec::new(),
             direction,
             chrome_row: false,
@@ -181,15 +178,15 @@ impl SplitPanel {
 
     fn relayout(&mut self) {
         let b = self.group.bounds();
-        if b.w == 0 || b.h == 0 || self.group.is_empty() {
+        if b.w() == 0 || b.h() == 0 || self.group.is_empty() {
             return;
         }
         self.normalize_proportions();
         let count = self.group.child_count();
         let dividers = count.saturating_sub(1) as u16;
         let total_size = match self.direction {
-            SplitDir::Horizontal => b.w.saturating_sub(dividers),
-            SplitDir::Vertical => b.h,
+            SplitDir::Horizontal => b.w().saturating_sub(dividers),
+            SplitDir::Vertical => b.h(),
         };
         let mut offset = 0u16;
         for i in 0..count {
@@ -202,9 +199,9 @@ impl SplitPanel {
             let rect = match self.direction {
                 SplitDir::Horizontal => {
                     let abs_offset = offset + i as u16;
-                    Rect::new(b.x + abs_offset, b.y, size, b.h)
+                    Rect::new(b.x() + abs_offset, b.y(), size, b.h())
                 }
-                SplitDir::Vertical => Rect::new(b.x, b.y + offset, b.w, size),
+                SplitDir::Vertical => Rect::new(b.x(), b.y() + offset, b.w(), size),
             };
             self.group.set_child_bounds(i, rect);
             offset += size;

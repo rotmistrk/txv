@@ -5,6 +5,7 @@
 
 mod view_impl;
 
+use crate::cell::Style;
 use crate::event::Event;
 use crate::view::{EventSink, HandleResult, ViewOptions, ViewState};
 
@@ -50,8 +51,8 @@ pub trait VisibleItem: Send {
         0
     }
     /// Style for rendering the label. Default is plain.
-    fn style(&self) -> crate::cell::Style {
-        crate::cell::Style::default()
+    fn style(&self) -> Style {
+        Style::default()
     }
     /// Position of a single highlighted character (animated). None = no highlight.
     fn highlight_offset(&self) -> Option<usize> {
@@ -207,11 +208,11 @@ impl StatusBar {
         }
     }
 
-    fn item_style(&self, idx: usize) -> crate::cell::Style {
+    fn item_style(&self, idx: usize) -> Style {
         match &self.items[idx] {
             ItemSlot::Full(item) => item.style(),
             ItemSlot::VisibleOnly(item) => item.style(),
-            ItemSlot::ActiveOnly(_) => crate::cell::Style::default(),
+            ItemSlot::ActiveOnly(_) => Style::default(),
         }
     }
 

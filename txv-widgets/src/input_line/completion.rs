@@ -4,7 +4,8 @@ use std::sync::{Arc, Mutex};
 
 use txv_core::prelude::*;
 
-use super::completion_list::{CompletionItem, CompletionList};
+use super::completion_item::CompletionItem;
+use super::completion_list::CompletionList;
 use super::InputLine;
 use crate::list_view::ListView;
 use crate::sidekick::{SidekickShow, CM_SIDEKICK_HIDE, CM_SIDEKICK_SHOW};

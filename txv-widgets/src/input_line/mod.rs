@@ -2,6 +2,7 @@
 
 mod completion;
 mod completion_frame;
+mod completion_item;
 mod completion_list;
 mod handle_key;
 mod history;
@@ -186,8 +187,8 @@ impl InputLine {
         self.state.mark_dirty();
         let w = (self.char_count() as u16).saturating_add(2).max(10);
         let b = self.state.bounds();
-        if b.w != w {
-            self.state.set_bounds(Rect::new(b.x, b.y, w, 1));
+        if b.w() != w {
+            self.state.set_bounds(Rect::new(b.x(), b.y(), w, 1));
         }
     }
 

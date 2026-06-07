@@ -14,9 +14,9 @@ pub enum FrameStyle {
 
 /// Common window state — embed in framed views.
 pub struct WindowState {
-    pub group: GroupState,
-    pub frame: FrameStyle,
-    pub shadow: bool,
+    pub(crate) group: GroupState,
+    pub(crate) frame: FrameStyle,
+    pub(crate) shadow: bool,
 }
 
 impl WindowState {
@@ -27,14 +27,35 @@ impl WindowState {
             shadow: false,
         }
     }
+
+    pub fn group(&self) -> &GroupState {
+        &self.group
+    }
+
+    pub fn group_mut(&mut self) -> &mut GroupState {
+        &mut self.group
+    }
+
+    pub fn frame(&self) -> FrameStyle {
+        self.frame
+    }
+
+    pub fn set_frame(&mut self, frame: FrameStyle) {
+        self.frame = frame;
+    }
+
+    pub fn shadow(&self) -> bool {
+        self.shadow
+    }
+
+    pub fn set_shadow(&mut self, shadow: bool) {
+        self.shadow = shadow;
+    }
 }
 
 impl Default for WindowState {
     fn default() -> Self {
-        Self::new(ViewOptions {
-            focusable: true,
-            ..ViewOptions::default()
-        })
+        Self::new(ViewOptions::default().with_focusable())
     }
 }
 

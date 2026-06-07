@@ -12,11 +12,13 @@
 pub mod commands;
 pub mod keymap;
 pub mod types;
+pub mod workspace_state;
 
 mod accessors;
 mod bindings;
 mod chrome;
 mod handle_cmd;
+mod handle_focus;
 mod layout;
 mod view_impl;
 
@@ -28,7 +30,7 @@ use txv_core::prelude::*;
 use crate::tab_panel::TabPanel;
 
 use keymap::WorkspaceKeymap;
-use types::{LayoutMode, PanelConfig, PanelId, SplitNode, WorkspaceState};
+use types::{LayoutMode, PanelConfig, PanelId, SplitNode};
 
 /// A key binding entry: (key, command_id, optional payload).
 pub type KeyBinding = (KeyEvent, CommandId, Option<Box<dyn Any + Send>>);
@@ -64,10 +66,7 @@ impl TiledWorkspace {
         wide_threshold: u16,
     ) -> Self {
         let panel_count = configs.len();
-        let mut group = GroupState::new(ViewOptions {
-            focusable: true,
-            ..ViewOptions::default()
-        });
+        let mut group = GroupState::new(ViewOptions::default().with_focusable());
         for cfg in &configs {
             let dir = match cfg.position {
                 types::PanelPosition::Right => types::SplitDir::Vertical,

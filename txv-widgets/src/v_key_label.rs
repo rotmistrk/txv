@@ -1,5 +1,6 @@
 //! KeyLabelView — a status bar item that shows a label and intercepts a key.
 
+use std::any::Any;
 use std::sync::Arc;
 
 use txv_core::prelude::*;
@@ -17,21 +18,16 @@ pub struct KeyLabelView {
 impl KeyLabelView {
     pub fn new(key: KeyEvent, command: CommandId, label: impl Into<String>) -> Self {
         let label_text = label.into();
-        let mods = key.modifiers;
-        let plain_char = !mods.ctrl && !mods.alt && !mods.shift;
-        // Display length excludes ~ markers (style toggles)
-        let display_len = display_width(&label_text, plain_char, key.code);
+        let mods = key.modifiers();
+        let plain_char = !mods.ctrl() && !mods.alt() && !mods.shift();
+        let display_len = display_width(&label_text, plain_char, key.code());
         let w = if display_len == 0 {
             0
         } else {
             display_len as u16 + 2
         };
-        let mut state = ViewState::new(ViewOptions {
-            preprocess: true,
-            focusable: false,
-            ..ViewOptions::default()
-        });
-        state.set_bounds(Rect { x: 0, y: 0, w, h: 1 });
+        let mut state = ViewState::new(ViewOptions::default().with_preprocess());
+        state.set_bounds(Rect::new(0, 0, w, 1));
         Self {
             state,
             key,
@@ -54,32 +50,30 @@ impl KeyLabelView {
     fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
-            None => txv_core::palette::palette().style(id),
+            None => palette().style(id),
         }
     }
 
-    /// Format string for display: "k:label" where k is the key character (plain keys only).
     fn display_text(&self) -> String {
         if self.label_text.is_empty() {
             return String::new();
         }
-        let mods = self.key.modifiers;
-        let plain = !mods.ctrl && !mods.alt && !mods.shift;
-        match self.key.code {
-            txv_core::event::KeyCode::Char(c) if plain => format!("~{c}~:{}", self.label_text),
+        let mods = self.key.modifiers();
+        let plain = !mods.ctrl() && !mods.alt() && !mods.shift();
+        match self.key.code() {
+            KeyCode::Char(c) if plain => format!("~{c}~:{}", self.label_text),
             _ => self.label_text.clone(),
         }
     }
 }
 
-/// Compute visible width of label, excluding ~ style markers.
-fn display_width(label: &str, plain_char: bool, code: txv_core::event::KeyCode) -> usize {
+fn display_width(label: &str, plain_char: bool, code: KeyCode) -> usize {
     if label.is_empty() {
         return 0;
     }
     let base = label.chars().filter(|c| *c != '~').count();
-    if matches!(code, txv_core::event::KeyCode::Char(_)) && plain_char {
-        base + 2 // "k:label"
+    if matches!(code, KeyCode::Char(_)) && plain_char {
+        base + 2
     } else {
         base
     }
@@ -94,49 +88,7 @@ impl View for KeyLabelView {
         let buf = self.state.buffer_mut();
         buf.fill(' ', style);
         if !text.is_empty() {
-            let key_style = Style {
-                attrs: Attrs {
-                    bold: true,
-                    ..style.attrs
-                },
-                ..style
-            };
-            // Render with ~ as style toggle: ~text~ renders in key_style
-            let mut x: u16 = 1;
-            let mut in_key = false;
-            let mut chars = text.chars().peekable();
-            while let Some(ch) = chars.next() {
-                if ch == '~' {
-                    if chars.peek() == Some(&'~') {
-                        chars.next();
-                        buf.put(
-                            x,
-                            0,
-                            '~',
-                            if in_key {
-                                key_style
-                            } else {
-                                style
-                            },
-                        );
-                        x += 1;
-                    } else {
-                        in_key = !in_key;
-                    }
-                } else {
-                    buf.put(
-                        x,
-                        0,
-                        ch,
-                        if in_key {
-                            key_style
-                        } else {
-                            style
-                        },
-                    );
-                    x += 1;
-                }
-            }
+            Self::render_styled_text(buf, &text, style);
         }
         self.state.mark_redrawn();
     }
@@ -148,11 +100,37 @@ impl View for KeyLabelView {
     fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Key(k) = event {
             if *k == self.key {
-                let payload = self.data.map(|d| Box::new(d) as Box<dyn std::any::Any + Send>);
+                let payload = self.data.map(|d| Box::new(d) as Box<dyn Any + Send>);
                 self.state.put_command(self.command, payload);
                 return HandleResult::Consumed;
             }
         }
         HandleResult::Ignored
+    }
+}
+
+impl KeyLabelView {
+    fn render_styled_text(buf: &mut Buffer, text: &str, style: Style) {
+        let bold = style.with_attrs(style.attrs().bold());
+        let mut x: u16 = 1;
+        let mut in_key = false;
+        let mut chars = text.chars().peekable();
+        while let Some(ch) = chars.next() {
+            if ch == '~' {
+                if chars.peek() == Some(&'~') {
+                    chars.next();
+                } else {
+                    in_key = !in_key;
+                    continue;
+                }
+            }
+            let s = if in_key {
+                bold
+            } else {
+                style
+            };
+            buf.put(x, 0, ch, s);
+            x += 1;
+        }
     }
 }

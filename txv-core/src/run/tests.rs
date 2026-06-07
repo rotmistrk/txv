@@ -36,7 +36,7 @@ impl View for QuitView {
 }
 
 #[test]
-fn run_quits_on_cm_quit() {
+fn run_quits_on_cm_quit() -> Result<(), Box<dyn std::error::Error>> {
     let mut view = QuitView::new();
     view.state.set_bounds(Rect::new(0, 0, 80, 24));
     let mut backend = MockBackend::new(80, 24);
@@ -45,8 +45,9 @@ fn run_quits_on_cm_quit() {
         modifiers: KeyMod::default(),
     }));
     run(&mut view, &mut backend);
-    let s = backend.buffer().expect("buffer should be flushed");
-    assert_eq!(s.cell(0, 0).ch, 'Q');
+    let s = backend.buffer().ok_or("buffer should be flushed")?;
+    assert_eq!(s.cell(0, 0).ch(), 'Q');
+    Ok(())
 }
 
 #[test]

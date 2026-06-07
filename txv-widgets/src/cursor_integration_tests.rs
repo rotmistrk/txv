@@ -14,10 +14,7 @@ struct Dummy {
 impl Dummy {
     fn new() -> Self {
         Self {
-            state: ViewState::new(ViewOptions {
-                focusable: false,
-                ..ViewOptions::default()
-            }),
+            state: ViewState::new(ViewOptions::default()),
         }
     }
 }
@@ -37,14 +34,7 @@ fn input_line_returns_cursor_when_focused() {
     il.set_text("hello");
 
     let req = il.cursor();
-    assert_eq!(
-        req,
-        Some(CursorRequest {
-            x: 5,
-            y: 0,
-            shape: CursorShape::Bar
-        })
-    );
+    assert_eq!(req, Some(CursorRequest::new(5, 0, CursorShape::Bar)));
 }
 
 #[test]
@@ -57,7 +47,7 @@ fn input_line_no_cursor_when_unfocused() {
 }
 
 #[test]
-fn cursor_propagates_through_split_pane() {
+fn cursor_propagates_through_split_pane() -> Result<(), Box<dyn std::error::Error>> {
     let mut il = InputLine::new();
     il.set_text("ab");
 
@@ -68,11 +58,11 @@ fn cursor_propagates_through_split_pane() {
 
     let req = sp.cursor();
     // InputLine cursor at x=2 within its own bounds, translated by its position in the split
-    assert!(req.is_some(), "cursor should propagate through SplitPane");
-    let r = req.unwrap();
-    assert_eq!(r.shape, CursorShape::Bar);
+    let r = req.ok_or("cursor should propagate through SplitPane")?;
+    assert_eq!(r.shape(), CursorShape::Bar);
     // x should be offset by the left pane width + separator
-    assert!(r.x >= 2, "cursor x={} should include child offset", r.x);
+    assert!(r.x() >= 2, "cursor x={} should include child offset", r.x());
+    Ok(())
 }
 
 #[test]
@@ -88,27 +78,20 @@ fn cursor_propagates_through_program_group() {
     group.set_child_bounds(0, Rect::new(5, 10, 40, 1));
 
     let req = group.cursor();
-    assert_eq!(
-        req,
-        Some(CursorRequest {
-            x: 5 + 3,
-            y: 10,
-            shape: CursorShape::Bar
-        })
-    );
+    assert_eq!(req, Some(CursorRequest::new(5 + 3, 10, CursorShape::Bar)));
 }
 
 #[test]
-fn cursor_propagates_through_input_dialog() {
+fn cursor_propagates_through_input_dialog() -> Result<(), Box<dyn std::error::Error>> {
     let mut dlg = InputDialog::new("Test");
     dlg.set_bounds(Rect::new(0, 0, 40, 5));
     dlg.select();
 
     let req = dlg.cursor();
     // InputLine is at offset (2, 2) inside the dialog, cursor at x=0
-    assert!(req.is_some(), "cursor should propagate through InputDialog");
-    let r = req.unwrap();
-    assert_eq!(r.shape, CursorShape::Bar);
-    assert_eq!(r.x, 2); // inner padding
-    assert_eq!(r.y, 2); // row 2 inside dialog
+    let r = req.ok_or("cursor should propagate through InputDialog")?;
+    assert_eq!(r.shape(), CursorShape::Bar);
+    assert_eq!(r.x(), 2); // inner padding
+    assert_eq!(r.y(), 2); // row 2 inside dialog
+    Ok(())
 }
