@@ -41,6 +41,7 @@ pub mod tab_panel;
 pub mod table;
 pub mod text_area;
 pub mod tiled_workspace;
+mod tree_node;
 pub mod tree_table_source;
 pub mod tree_table_view;
 pub mod tree_view;

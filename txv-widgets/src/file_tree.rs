@@ -1,21 +1,12 @@
 //! FileTreeData — TreeData implementation for filesystem navigation.
 //! Uses the `ignore` crate to respect .gitignore rules.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use txv_core::cell::Color;
 
-#[derive(Clone)]
-pub(crate) struct TreeNode {
-    pub(crate) path: PathBuf,
-    pub(crate) label: String,
-    pub(crate) depth: usize,
-    pub(crate) is_dir: bool,
-    pub(crate) expanded: bool,
-    pub(crate) parent: Option<usize>,
-    pub(crate) ignored: bool,
-}
+pub(crate) use crate::tree_node::TreeNode;
 
 /// Filesystem tree data provider.
 pub struct FileTreeData {
@@ -35,7 +26,7 @@ pub struct FileTreeData {
     /// Whether to show .gitignored files (dim, lazy-loaded).
     pub(crate) show_ignored: bool,
     /// Whether to show file/dir icons (Nerd Font).
-    pub show_icons: bool,
+    pub(crate) show_icons: bool,
     /// Active filter text (empty = no filter).
     pub(crate) filter: String,
     /// Indices of characters that matched in each node's label (node_id → positions).
@@ -85,7 +76,7 @@ impl FileTreeData {
             visible: Vec::new(),
             colors: HashMap::new(),
             root_badge_colors: Vec::new(),
-            open_files: std::collections::HashSet::new(),
+            open_files: HashSet::new(),
             show_hidden: true,
             show_ignored: true,
             show_icons: false,
@@ -115,6 +106,10 @@ impl FileTreeData {
     /// Whether this is a multi-root tree (roots shown as top-level nodes).
     pub fn is_multi_root(&self) -> bool {
         !self.extra_roots.is_empty()
+    }
+
+    pub fn set_show_icons(&mut self, on: bool) {
+        self.show_icons = on;
     }
 
     /// Replace the set of roots and rebuild the tree.
@@ -213,35 +208,25 @@ impl FileTreeData {
             let root = self.root.clone();
             self.load_children(root, None, 0);
         } else {
-            for root_path in &self.extra_roots.clone() {
-                self.nodes.push(Self::root_node(root_path));
-            }
-            // Expand root nodes that were previously expanded
-            for i in 0..self.nodes.len() {
-                if self.nodes[i].parent.is_none()
-                    && self.nodes[i].is_dir
-                    && expanded_paths.contains(&self.nodes[i].path)
-                {
-                    self.nodes[i].expanded = true;
-                    let depth = self.nodes[i].depth;
-                    let path = self.nodes[i].path.clone();
-                    self.load_children(path, Some(i), depth + 1);
-                }
-            }
+            self.refresh_multi_root(&expanded_paths);
         }
 
         // Re-expand previously expanded subdirectories
-        for path in &expanded_paths {
-            if let Some(idx) = self.nodes.iter().position(|n| n.path == *path) {
-                if self.nodes[idx].is_dir && !self.nodes[idx].expanded {
-                    self.nodes[idx].expanded = true;
-                    let depth = self.nodes[idx].depth;
-                    self.load_children(path.clone(), Some(idx), depth + 1);
-                }
+        self.expand_paths(&expanded_paths);
+    }
+
+    fn refresh_multi_root(&mut self, expanded_paths: &[PathBuf]) {
+        for root_path in &self.extra_roots.clone() {
+            self.nodes.push(Self::root_node(root_path));
+        }
+        for i in 0..self.nodes.len() {
+            if self.nodes[i].parent.is_none() && self.nodes[i].is_dir && expanded_paths.contains(&self.nodes[i].path) {
+                self.nodes[i].expanded = true;
+                let depth = self.nodes[i].depth;
+                let path = self.nodes[i].path.clone();
+                self.load_children(path, Some(i), depth + 1);
             }
         }
-
-        self.rebuild_visible();
     }
 
     /// Return paths of all currently expanded directories.
@@ -256,15 +241,17 @@ impl FileTreeData {
     /// Expand directories matching the given paths.
     pub fn expand_paths(&mut self, paths: &[PathBuf]) {
         for path in paths {
-            if let Some(idx) = self.nodes.iter().position(|n| n.path == *path) {
-                if self.nodes[idx].is_dir && !self.nodes[idx].expanded {
-                    self.nodes[idx].expanded = true;
-                    let depth = self.nodes[idx].depth;
-                    let has_children = self.nodes.iter().any(|n| n.parent == Some(idx));
-                    if !has_children {
-                        self.load_children(path.clone(), Some(idx), depth + 1);
-                    }
-                }
+            let Some(idx) = self.nodes.iter().position(|n| n.path == *path) else {
+                continue;
+            };
+            if !self.nodes[idx].is_dir || self.nodes[idx].expanded {
+                continue;
+            }
+            self.nodes[idx].expanded = true;
+            let depth = self.nodes[idx].depth;
+            let has_children = self.nodes.iter().any(|n| n.parent == Some(idx));
+            if !has_children {
+                self.load_children(path.clone(), Some(idx), depth + 1);
             }
         }
         self.rebuild_visible();
