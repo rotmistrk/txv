@@ -1,5 +1,7 @@
 //! TreeTableView — tree with extra columns rendered on the right.
 
+#[path = "tree_table_connectors.rs"]
+mod connectors;
 #[path = "tree_table_draw.rs"]
 mod draw;
 #[path = "tree_table_handle.rs"]
@@ -19,6 +21,7 @@ pub struct TreeTableView<D: TreeTableSource> {
     col_widths: Vec<u16>,
     focused_col: Option<usize>,
     pub(crate) h_scroll: u16,
+    pub show_connectors: bool,
 }
 
 impl<D: TreeTableSource> TreeTableView<D> {
@@ -31,6 +34,7 @@ impl<D: TreeTableSource> TreeTableView<D> {
             col_widths: col_widths.to_vec(),
             focused_col: None,
             h_scroll: 0,
+            show_connectors: true,
         }
     }
 

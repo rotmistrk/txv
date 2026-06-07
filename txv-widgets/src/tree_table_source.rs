@@ -64,6 +64,13 @@ pub trait TreeTableSource: Send + 'static {
     fn is_expandable(&self, row: usize) -> bool;
     fn is_expanded(&self, row: usize) -> bool;
     fn toggle(&mut self, row: usize);
+    /// Whether node at row is the last sibling (for connector lines).
+    fn is_last_sibling(&self, row: usize) -> bool {
+        if row + 1 >= self.visible_count() {
+            return true;
+        }
+        self.depth(row + 1) <= self.depth(row)
+    }
     fn style(&self, _row: usize) -> Style {
         Style::default()
     }

@@ -44,6 +44,15 @@ pub trait TreeData: Send + 'static {
     fn icon(&self, _id: usize) -> Option<&str> {
         None
     }
+    /// Whether node at visible index is the last sibling (for connector lines).
+    /// Default: checks if next visible node has depth <= this one.
+    fn is_last_sibling(&self, row: usize) -> bool {
+        let depth = self.depth(self.visible_id(row));
+        if row + 1 >= self.visible_count() {
+            return true;
+        }
+        self.depth(self.visible_id(row + 1)) <= depth
+    }
 }
 
 pub struct TreeView<D: TreeData> {
@@ -51,6 +60,7 @@ pub struct TreeView<D: TreeData> {
     pub data: D,
     pub cursor: usize,
     pub scroll: ScrollView,
+    pub show_connectors: bool,
 }
 
 impl<D: TreeData> TreeView<D> {
@@ -60,6 +70,7 @@ impl<D: TreeData> TreeView<D> {
             data,
             cursor: 0,
             scroll: ScrollView::new(),
+            show_connectors: false,
         }
     }
 
