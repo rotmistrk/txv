@@ -4,13 +4,16 @@
 //!
 //! ## Architecture
 //!
-//! - `EditorCore` — buffer (PieceTable), cursor, selections, undo/redo, motions, text operations
+//! - `Editor` — buffer (PieceTable), cursor, mode, registers, search, vi keymap
+//! - `EditorAction` — result enum emitted by editor after executing commands
+//! - `EditorCore` — lower-level buffer + cursor (may be unified with Editor later)
 //! - `KeymapHandler` — trait for pluggable keybinding schemes (vi, emacs, etc.)
-//! - `vi` — default KeymapHandler implementing modal vi editing
 //! - `EditorHost` — trait for app-specific integration (clipboard, :commands, completion)
-//! - `highlight` — syntax highlighting with extension/shebang/fragment autodetection
 
 pub mod buffer;
+pub mod editor;
 pub mod editor_core;
 pub mod editor_host;
 pub mod keymap;
+pub mod settings;
+pub mod shared_register;
