@@ -92,6 +92,12 @@ impl PieceTable {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+    pub fn file_path(&self) -> Option<&str> {
+        self.file_path.as_deref()
+    }
+    pub fn set_file_path(&mut self, path: Option<String>) {
+        self.file_path = path;
+    }
     pub fn line_count(&self) -> usize {
         self.line_index.line_count()
     }
