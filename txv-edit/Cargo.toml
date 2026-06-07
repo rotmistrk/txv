@@ -1,0 +1,7 @@
+[package]
+name = "txv-edit"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+txv-core = { path = "../txv-core" }
