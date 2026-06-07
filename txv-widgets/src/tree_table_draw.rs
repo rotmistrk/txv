@@ -139,7 +139,7 @@ impl<D: TreeTableSource> TreeTableView<D> {
         };
         let x = indent.min(tree_w.saturating_sub(1));
         if self.show_connectors && depth > 0 {
-            self.draw_tree_connectors(idx, depth, y, col_style, tree_w);
+            self.draw_tree_connectors(idx, depth, y, col_style);
         }
         self.state.buffer_mut().print(x, y, marker, col_style);
         let label = self.data.label(idx);

@@ -52,8 +52,10 @@ pub enum StyleId {
     // Table (CSV viewer)
     TableRowActive,
     TableRowInactive,
+    // Tree guides
+    TreeGuide,
 }
 
 impl StyleId {
-    pub const COUNT: usize = 43;
+    pub const COUNT: usize = 44;
 }

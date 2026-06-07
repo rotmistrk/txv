@@ -55,6 +55,7 @@ impl Palette for DarkPalette {
             StyleId::StatusHighlight => PaletteStyle::fg(ansi(15)).bold().to_style(),
             StyleId::TableRowActive => PaletteStyle::new().underline().to_style(),
             StyleId::TableRowInactive => PaletteStyle::fg(ansi(7)).underline().to_style(),
+            StyleId::TreeGuide => PaletteStyle::fg(ansi(8)).to_style(),
         }
     }
 }

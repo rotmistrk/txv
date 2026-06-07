@@ -158,30 +158,30 @@ impl<D: TreeData> TreeView<D> {
         }
     }
 
-    fn draw_connectors(&mut self, row: usize, depth: usize, y: u16, style: Style) {
-        // Draw vertical guides for each ancestor level
+    fn draw_connectors(&mut self, row: usize, depth: usize, y: u16, base: Style) {
+        let g = glyphs();
+        let guide_style = Style {
+            fg: palette().style(StyleId::TreeGuide).fg,
+            bg: base.bg,
+            ..Style::default()
+        };
         for level in 0..depth.saturating_sub(1) {
             let x = (level * 2) as u16;
-            // Check if ancestor at this level has more siblings below
-            let has_line = self.ancestor_has_more_siblings(row, level + 1);
-            if has_line {
-                self.state.buffer_mut().put(x, y, '│', style);
+            if self.ancestor_has_more_siblings(row, level + 1) {
+                self.state.buffer_mut().put(x, y, g.tree.pipe, guide_style);
             }
         }
-        // Draw connector at the node's own level
         let cx = ((depth - 1) * 2) as u16;
         let ch = if self.data.is_last_sibling(row) {
-            '└'
+            g.tree.last_branch
         } else {
-            '├'
+            g.tree.branch
         };
-        self.state.buffer_mut().put(cx, y, ch, style);
-        self.state.buffer_mut().put(cx + 1, y, '─', style);
+        self.state.buffer_mut().put(cx, y, ch, guide_style);
+        self.state.buffer_mut().put(cx + 1, y, g.tree.horizontal, guide_style);
     }
 
     fn ancestor_has_more_siblings(&self, row: usize, target_depth: usize) -> bool {
-        // Scan forward from row+1: if we find a node at target_depth before
-        // finding one at depth < target_depth, the ancestor has more siblings
         for i in (row + 1)..self.data.visible_count() {
             let d = self.data.depth(self.data.visible_id(i));
             if d < target_depth {

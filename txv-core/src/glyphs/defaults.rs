@@ -126,6 +126,7 @@ impl TreeGlyphs {
             branch: '+',
             last_branch: '`',
             pipe: '|',
+            horizontal: '-',
             open_indicator: "*",
         }
     }
@@ -137,6 +138,7 @@ impl TreeGlyphs {
             branch: '├',
             last_branch: '└',
             pipe: '│',
+            horizontal: '─',
             open_indicator: "◉",
         }
     }
@@ -148,6 +150,7 @@ impl TreeGlyphs {
             branch: '├',
             last_branch: '└',
             pipe: '│',
+            horizontal: '─',
             open_indicator: "\u{F06E}",
         }
     }

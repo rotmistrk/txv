@@ -52,6 +52,7 @@ pub struct TreeGlyphs {
     pub branch: char,
     pub last_branch: char,
     pub pipe: char,
+    pub horizontal: char,
     /// Indicator for files currently open in an editor tab.
     pub open_indicator: &'static str,
 }

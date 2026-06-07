@@ -53,6 +53,7 @@ impl Palette for LightPalette {
             StyleId::StatusHighlight => PaletteStyle::fg(ansi(0)).bold().to_style(),
             StyleId::TableRowActive => PaletteStyle::new().underline().to_style(),
             StyleId::TableRowInactive => PaletteStyle::fg(ansi(8)).underline().to_style(),
+            StyleId::TreeGuide => PaletteStyle::fg(ansi(7)).to_style(),
         }
     }
 }
