@@ -24,14 +24,25 @@ impl ExCompleter {
     /// Compute completions for a command buffer. Strips range prefix, completes command word.
     /// `extra_commands` are app-specific command names to include.
     pub fn complete(&mut self, buf: &str, extra_commands: &[&str]) -> Option<&str> {
-        let cmd_part = strip_range_prefix(buf);
-        if self.original == cmd_part && !self.matches.is_empty() {
+        // If we're already cycling (same full buffer as last completion result), advance
+        if !self.matches.is_empty() && self.is_cycling(buf) {
             return self.cycle_next();
         }
-        self.original = cmd_part.to_string();
+        // Fresh completion
+        let cmd_part = strip_range_prefix(buf);
+        self.original = buf.to_string();
         self.matches = collect_matches(cmd_part, extra_commands);
         self.index = 0;
         self.matches.first().map(|s| s.as_str())
+    }
+
+    /// Check if the current buffer matches what we last completed to.
+    fn is_cycling(&self, buf: &str) -> bool {
+        if self.matches.is_empty() {
+            return false;
+        }
+        let expected = self.build_result(&self.original, &self.matches[self.index]);
+        expected == buf
     }
 
     /// Cycle to next completion. Returns None if no completions.
