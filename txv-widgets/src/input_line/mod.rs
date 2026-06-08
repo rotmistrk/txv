@@ -36,6 +36,8 @@ pub struct InputLine {
     pub(crate) history_pos: Option<usize>,
     pub(crate) completer: Option<Box<dyn Completer>>,
     pub(crate) submit_command: CommandId,
+    /// Command ID that is allowed to set text content (prefill).
+    pub(crate) prefill_command: Option<CommandId>,
     pub(crate) palette: Option<Arc<dyn Palette>>,
     /// Shared completion popup (ListView held by SidekickManager).
     pub(crate) popup: Arc<Mutex<ListView<CompletionList>>>,
@@ -61,6 +63,7 @@ impl InputLine {
             history_pos: None,
             completer: None,
             submit_command: CM_OK,
+            prefill_command: None,
             palette: None,
             popup,
             popup_frame: Arc::new(Mutex::new(frame)),
@@ -71,6 +74,11 @@ impl InputLine {
 
     pub fn with_command(mut self, id: CommandId) -> Self {
         self.submit_command = id;
+        self
+    }
+
+    pub fn with_prefill_command(mut self, id: CommandId) -> Self {
+        self.prefill_command = Some(id);
         self
     }
 
@@ -233,22 +241,6 @@ impl InputLine {
         }
         self.cursor = new_cursor;
         self.state.mark_dirty();
-    }
-
-    pub(crate) fn handle_command(
-        &mut self,
-        id: CommandId,
-        data: &Option<Box<dyn std::any::Any + Send>>,
-    ) -> HandleResult {
-        // Only accept text-setting from known prefill commands
-        if id == CM_COPY_TO_CLIPBOARD || id == CM_PASTE_REQUEST {
-            return HandleResult::Ignored;
-        }
-        if let Some(text) = data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
-            self.set_text(text);
-            return HandleResult::Consumed;
-        }
-        HandleResult::Ignored
     }
 
     pub(crate) fn resolve_style(&self, id: StyleId) -> Style {

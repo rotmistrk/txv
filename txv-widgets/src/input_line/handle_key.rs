@@ -3,7 +3,7 @@
 use txv_core::message::Message;
 use txv_core::prelude::*;
 
-use super::{InputLine, CM_CLIPBOARD_PASTE, CM_PASTE_REQUEST};
+use super::{InputLine, CM_CLIPBOARD_PASTE, CM_COPY_TO_CLIPBOARD, CM_PASTE_REQUEST};
 use txv_core::commands::CM_CANCEL;
 
 impl InputLine {
@@ -19,6 +19,19 @@ impl InputLine {
         };
         let shift = key.modifiers().shift();
         self.dispatch_key(key, shift)
+    }
+
+    fn handle_command(&mut self, id: CommandId, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+        if id == CM_COPY_TO_CLIPBOARD || id == CM_PASTE_REQUEST {
+            return HandleResult::Ignored;
+        }
+        if Some(id) == self.prefill_command {
+            if let Some(text) = data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
+                self.set_text(text);
+                return HandleResult::Consumed;
+            }
+        }
+        HandleResult::Ignored
     }
 
     fn handle_paste(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
