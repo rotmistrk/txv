@@ -75,3 +75,8 @@ fn is_scope_header(trimmed: &str) -> bool {
         || trimmed.starts_with("func ")
         || trimmed.starts_with("type ")
 }
+
+/// Number of sticky header rows currently displayed.
+pub fn sticky_line_count(editor: &Editor) -> u16 {
+    compute_sticky_lines(editor, editor.viewport_scroll()).len() as u16
+}

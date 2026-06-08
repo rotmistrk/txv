@@ -14,6 +14,7 @@ use crate::editor::keymap::EditorMode;
 use crate::editor::Editor;
 use crate::highlight::{extension_from_path, HighlightCache, Highlighter};
 use crate::settings::CursorStyle;
+use crate::view::draw::sticky::sticky_line_count;
 
 /// Command IDs emitted by EditorView.
 pub const CM_EDITOR_SAVE: u16 = 180;
@@ -176,7 +177,8 @@ impl<D: EditorViewDelegate + 'static> View for EditorView<D> {
         if line < scroll {
             return None;
         }
-        let y = (line - scroll) as u16;
+        let sticky_h = sticky_line_count(&self.editor);
+        let y = (line - scroll) as u16 + sticky_h;
         let x = gw + (col.saturating_sub(h_scroll)) as u16;
 
         let opts = self.editor.options();
