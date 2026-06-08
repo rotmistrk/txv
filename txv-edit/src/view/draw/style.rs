@@ -17,12 +17,13 @@ pub fn compose_char_style<D: EditorViewDelegate>(
     byte_pos: usize,
     p: &DrawParams,
 ) -> Style {
-    let style = apply_highlights(editor, base, line_idx, char_idx, byte_pos, p);
+    let style = apply_highlights(editor, delegate, base, line_idx, char_idx, byte_pos, p);
     apply_delegate(delegate, style, line_idx, char_idx)
 }
 
-fn apply_highlights(
+fn apply_highlights<D: EditorViewDelegate>(
     editor: &Editor,
+    delegate: &D,
     base: Style,
     line_idx: usize,
     char_idx: usize,
@@ -35,23 +36,38 @@ fn apply_highlights(
     }
     if let Some(is_current) = editor.highlight().and_then(|h| h.match_at(byte_pos)) {
         return if is_current {
-            palette().style(StyleId::SearchMatch)
+            delegate.highlight_match_style()
         } else {
-            let bg = palette().style(StyleId::CursorUnfocused).bg();
-            Style::new(base.fg(), bg).with_attrs(base.attrs())
+            Style::new(base.fg(), delegate.highlight_other_bg()).with_attrs(base.attrs())
         };
     }
-    apply_decorations(editor, base, line_idx, char_idx, p)
+    apply_decorations(editor, delegate, base, line_idx, char_idx, p)
 }
 
-fn apply_decorations(editor: &Editor, mut style: Style, line_idx: usize, char_idx: usize, p: &DrawParams) -> Style {
+fn apply_decorations<D: EditorViewDelegate>(
+    editor: &Editor,
+    delegate: &D,
+    mut style: Style,
+    line_idx: usize,
+    char_idx: usize,
+    p: &DrawParams,
+) -> Style {
     if style.bg() == Color::Reset && editor.ephemeral().ranges().iter().any(|r| r.covers_line(line_idx)) {
-        let bg = palette().style(StyleId::SearchMatch).bg();
-        style = Style::new(style.fg(), bg).with_attrs(style.attrs());
+        style = Style::new(style.fg(), delegate.highlight_other_bg()).with_attrs(style.attrs());
     }
     if p.matchparen_pos == Some((line_idx, char_idx)) {
-        let mp = palette().style(StyleId::SearchMatch);
-        style = Style::new(mp.fg(), mp.bg()).with_attrs(style.attrs().bold());
+        let mp = delegate.matchparen_style();
+        let fg = if mp.fg() != Color::Reset {
+            mp.fg()
+        } else {
+            style.fg()
+        };
+        let bg = if mp.bg() != Color::Reset {
+            mp.bg()
+        } else {
+            style.bg()
+        };
+        style = Style::new(fg, bg).with_attrs(mp.attrs());
     }
     if editor.options().rainbow() {
         if let Some(map) = p.rainbow_maps.get(line_idx.saturating_sub(p.scroll)) {

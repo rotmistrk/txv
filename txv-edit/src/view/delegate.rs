@@ -1,6 +1,6 @@
 //! EditorViewDelegate — trait for app-specific extensions.
 
-use txv_core::prelude::{Buffer, Style};
+use txv_core::prelude::{palette, Buffer, Color, Style, StyleId};
 
 use crate::editor::{Editor, EditorAction};
 
@@ -25,6 +25,21 @@ pub trait EditorViewDelegate: Send {
     /// Gutter width addition (extra columns beyond line numbers).
     fn extra_gutter_width(&self) -> u16 {
         0
+    }
+
+    /// Style for current search match highlight.
+    fn highlight_match_style(&self) -> Style {
+        palette().style(StyleId::SearchMatch)
+    }
+
+    /// Background color for non-current search matches and ephemeral highlights.
+    fn highlight_other_bg(&self) -> Color {
+        palette().style(StyleId::CursorUnfocused).bg()
+    }
+
+    /// Style for matching parenthesis/bracket highlight.
+    fn matchparen_style(&self) -> Style {
+        palette().style(StyleId::SearchMatch)
     }
 }
 
