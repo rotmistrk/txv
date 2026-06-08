@@ -63,11 +63,14 @@ impl Editor {
 
     pub(super) fn insert_newline(&mut self) {
         let offset = self.buf().line_col_to_offset(self.cursor_line, self.cursor_col);
-        if let Some(offset) = offset {
-            self.buf().insert(offset, "\n");
-            self.cursor_line += 1;
-            self.cursor_col = 0;
-        }
+        let Some(offset) = offset else {
+            return;
+        };
+        let indent = self.current_line_indent();
+        let text = format!("\n{indent}");
+        self.buf().insert(offset, &text);
+        self.cursor_line += 1;
+        self.cursor_col = indent.len();
     }
 
     pub(super) fn delete_char_forward(&mut self) {
