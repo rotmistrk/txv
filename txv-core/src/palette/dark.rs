@@ -24,7 +24,7 @@ impl Palette for DarkPalette {
             StyleId::InputCursor => PaletteStyle::colors(ansi(0), ansi(7)).to_style(),
             StyleId::EditSelection => PaletteStyle::bg(ansi(2)).to_style(),
             StyleId::OverflowIndicator => PaletteStyle::fg(ansi(1)).to_style(),
-            StyleId::SearchMatch => PaletteStyle::bg(ansi(3)).to_style(),
+            StyleId::SearchMatch => PaletteStyle::bg(Color::Rgb(0x44, 0x44, 0x00)).to_style(),
             StyleId::VisualSelection => PaletteStyle::colors(ansi(15), ansi(4)).to_style(),
             StyleId::Disabled => PaletteStyle::fg(ansi(8)).to_style(),
             StyleId::ChromeBar => PaletteStyle::colors(ansi(7), ansi(0)).to_style(),
