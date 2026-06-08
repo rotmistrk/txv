@@ -126,7 +126,25 @@ pub fn find_char_back(buf: &PieceTable, line: usize, col: usize, target: char) -
 pub fn match_bracket(buf: &PieceTable, line: usize, col: usize) -> Option<(usize, usize)> {
     let text = buf.line(line).unwrap_or_default();
     let chars: Vec<char> = text.chars().collect();
-    let ch = *chars.get(col)?;
+    let ch = chars.get(col).copied().unwrap_or('\0');
+    // If cursor is on a bracket, match it directly
+    if is_bracket(ch) {
+        return match_from(buf, line, col, ch);
+    }
+    // Vim behavior: search forward on line for first bracket, then match
+    for (i, &c) in chars.iter().enumerate().skip(col + 1) {
+        if is_bracket(c) {
+            return match_from(buf, line, i, c);
+        }
+    }
+    None
+}
+
+fn is_bracket(ch: char) -> bool {
+    matches!(ch, '(' | ')' | '[' | ']' | '{' | '}')
+}
+
+fn match_from(buf: &PieceTable, line: usize, col: usize, ch: char) -> Option<(usize, usize)> {
     let (open, close, forward) = match ch {
         '(' => ('(', ')', true),
         ')' => ('(', ')', false),
@@ -254,4 +272,13 @@ mod tests {
         assert_eq!(match_bracket(&buf, 0, 5), None); // col past end
         assert_eq!(match_bracket(&buf, 99, 0), None); // line past end
     }
+}
+
+#[test]
+fn test_match_curly_braces() {
+    let buf = PieceTable::from_text("fn main() {\n    hello\n}");
+    // { at (0, 10) should match } at (2, 0)
+    assert_eq!(match_bracket(&buf, 0, 10), Some((2, 0)));
+    // } at (2, 0) should match { at (0, 10)
+    assert_eq!(match_bracket(&buf, 2, 0), Some((0, 10)));
 }
