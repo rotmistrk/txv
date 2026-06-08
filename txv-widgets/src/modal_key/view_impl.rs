@@ -135,19 +135,13 @@ impl ModalKey {
     }
 
     fn draw_children(&mut self, _bounds: Rect) {
-        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
                 if child.bounds().w() > 0 {
                     child.render();
                 }
             }
-            if let Some(child) = self.group.child(i) {
-                if child.bounds().w() > 0 {
-                    let (ox, oy) = self.group.child_origin(i);
-                    unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
-                }
-            }
+            self.group.blit_child(i);
         }
     }
 

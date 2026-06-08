@@ -5,7 +5,6 @@
 //!
 //! Follows the same pattern as ModalKey: manages own bounds via set_bounds.
 
-use txv_core::buffer::Buffer;
 use txv_core::event::Event;
 use txv_core::geometry::Rect;
 use txv_core::group::GroupState;
@@ -90,21 +89,29 @@ impl View for FocusGatedGroup {
         let style = palette().style(StyleId::StatusBar);
         self.group.buffer_mut().fill(' ', style);
         self.layout_children();
-        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
+    }
+
+    fn render(&mut self) -> bool {
+        let own_dirty = self.group.is_dirty();
+        let mut child_drew = false;
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
                 if child.bounds().w() > 0 {
-                    child.render();
-                }
-            }
-            if let Some(child) = self.group.child(i) {
-                if child.bounds().w() > 0 {
-                    let (ox, oy) = self.group.child_origin(i);
-                    unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
+                    child_drew |= child.render();
                 }
             }
         }
-        self.group.mark_redrawn();
+        if own_dirty {
+            self.draw();
+            self.group.mark_redrawn();
+        }
+        if own_dirty || child_drew {
+            for i in 0..self.group.child_count() {
+                self.group.blit_child(i);
+            }
+            return true;
+        }
+        false
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

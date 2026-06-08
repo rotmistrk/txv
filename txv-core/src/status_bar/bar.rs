@@ -4,7 +4,6 @@
 //! Layout assigns bounds based on priority, gravity, min/max size, and stretch.
 //! Items that don't fit (lowest priority) get zero-width bounds (hidden).
 
-use crate::buffer::Buffer;
 use crate::geometry::Rect;
 use crate::group::GroupState;
 use crate::palette::{palette, StyleId};
@@ -135,26 +134,28 @@ impl View for StatusBar {
 
         let bar_style = palette().style(StyleId::StatusBar);
         self.group.buffer_mut().fill(' ', bar_style);
+    }
 
-        // Draw children into their buffers
+    fn render(&mut self) -> bool {
+        let own_dirty = self.group.is_dirty();
+        let mut child_drew = false;
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
                 if child.bounds().w > 0 {
-                    child.render();
+                    child_drew |= child.render();
                 }
             }
         }
-
-        // Blit child buffers into group buffer
-        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
-        for i in 0..self.group.child_count() {
-            if let Some(child) = self.group.child(i) {
-                if child.bounds().w == 0 {
-                    continue;
-                }
-                let (ox, oy) = self.group.child_origin(i);
-                unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
-            }
+        if own_dirty {
+            self.draw();
+            self.group.mark_redrawn();
         }
+        if own_dirty || child_drew {
+            for i in 0..self.group.child_count() {
+                self.group.blit_child(i);
+            }
+            return true;
+        }
+        false
     }
 }

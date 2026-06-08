@@ -119,22 +119,6 @@ impl View for SplitPane {
             return;
         }
         self.group.buffer_mut().fill(' ', Style::default());
-
-        // Draw and blit children
-        for child in self.group.children_iter_mut() {
-            child.render();
-        }
-        // Blit children into own buffer.
-        // Safety: we borrow children (immutable) and view.buf (mutable) which are disjoint fields.
-        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
-        for i in 0..self.group.child_count() {
-            if let Some(child) = self.group.child(i) {
-                let (ox, oy) = self.group.child_origin(i);
-                unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
-            }
-        }
-
-        // Draw divider
         let dim = palette().style(StyleId::Dim);
         let g = glyphs();
         match self.direction {
@@ -147,6 +131,25 @@ impl View for SplitPane {
                 self.group.buffer_mut().hline(0, y, w, g.ui().separator_h(), dim);
             }
         }
+    }
+
+    fn render(&mut self) -> bool {
+        let own_dirty = self.group.is_dirty();
+        let mut child_drew = false;
+        for child in self.group.children_iter_mut() {
+            child_drew |= child.render();
+        }
+        if own_dirty {
+            self.draw();
+            self.group.mark_redrawn();
+        }
+        if own_dirty || child_drew {
+            for i in 0..self.group.child_count() {
+                self.group.blit_child(i);
+            }
+            return true;
+        }
+        false
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
