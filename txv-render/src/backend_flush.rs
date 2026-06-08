@@ -31,6 +31,10 @@ impl CrosstermBackend {
         }
 
         let mut out = io::stdout().lock();
+        // Hide cursor during flush to prevent flicker
+        if self.last_cursor.is_some() {
+            queue!(out, cursor::Hide).ok();
+        }
         if self.force_full {
             queue!(out, SetAttribute(Attribute::Reset)).ok();
             queue!(out, Clear(ClearType::All)).ok();
