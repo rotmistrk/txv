@@ -94,7 +94,7 @@ pub fn draw_editor<D: EditorViewDelegate>(
 
     let sticky_lines = sticky::compute_sticky_lines(editor, params.scroll);
     for (i, sl) in sticky_lines.iter().enumerate() {
-        sticky::draw_sticky_line(buf, sl, i as u16, w);
+        sticky::draw_sticky_line(buf, sl, i as u16, params.gutter_w, w);
     }
 
     let row = draw_viewport_lines(buf, editor, delegate, &params, &spans, sticky_lines.len(), viewport_end);

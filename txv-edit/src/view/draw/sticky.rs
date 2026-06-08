@@ -35,11 +35,12 @@ pub(crate) fn compute_sticky_lines(editor: &Editor, scroll: usize) -> Vec<Sticky
     result
 }
 
-pub(crate) fn draw_sticky_line(buf: &mut Buffer, sl: &StickyLine, y: u16, w: u16) {
+pub(crate) fn draw_sticky_line(buf: &mut Buffer, sl: &StickyLine, y: u16, gutter_w: u16, w: u16) {
     let style = palette().style(StyleId::Dim);
     buf.hline(0, y, w, ' ', style);
-    let text: String = sl.text.chars().take(w as usize).collect();
-    buf.print(0, y, &text, style);
+    let avail = w.saturating_sub(gutter_w) as usize;
+    let text: String = sl.text.chars().take(avail).collect();
+    buf.print(gutter_w, y, &text, style);
 }
 
 fn indent_of_line(editor: &Editor, line_idx: usize) -> usize {
