@@ -3,6 +3,7 @@
 mod accessors;
 mod clipboard;
 pub mod command;
+mod dispatch_complete;
 mod dispatch_edit;
 mod dispatch_search;
 mod dispatch_visual;
@@ -12,6 +13,7 @@ pub mod ephemeral;
 pub mod ephemeral_range;
 pub mod ex;
 pub mod ex_commands;
+pub mod ex_complete;
 mod ex_execute;
 mod ex_execute_range;
 mod execute;
@@ -33,6 +35,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::buffer::PieceTable;
+use crate::editor::ex_complete::ExCompleter;
 use crate::shared_register::RegisterHandle;
 use txv_core::clipboard_ring::ClipboardHandle;
 
@@ -108,6 +111,7 @@ pub struct Editor {
     pub(crate) command_history: Vec<String>,
     pub(crate) history_index: Option<usize>,
     pub(crate) history_prefix: String,
+    pub(crate) ex_completer: ex_complete::ExCompleter,
     pub(crate) last_find: Option<(char, char)>,
     pub(crate) last_command: Option<Command>,
     pub(crate) status: String,
@@ -198,6 +202,7 @@ impl Editor {
             command_history: Vec::new(),
             history_index: None,
             history_prefix: String::new(),
+            ex_completer: ExCompleter::new(),
             last_find: None,
             last_command: None,
             status: String::new(),
