@@ -99,7 +99,7 @@ impl View for PtyTerminal {
     }
 
     fn needs_redraw(&self) -> bool {
-        self.state.is_dirty() || self.session.is_some()
+        self.state.is_dirty()
     }
 
     fn set_bounds(&mut self, r: Rect) {

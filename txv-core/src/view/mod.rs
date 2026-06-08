@@ -58,7 +58,7 @@ pub trait View: Send {
         ""
     }
     fn needs_redraw(&self) -> bool {
-        true
+        false
     }
     fn mark_redrawn(&mut self) {}
 
