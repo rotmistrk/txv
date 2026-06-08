@@ -48,10 +48,16 @@ pub trait TreeData: Send + 'static {
     /// Default: checks if next visible node has depth <= this one.
     fn is_last_sibling(&self, row: usize) -> bool {
         let depth = self.depth(self.visible_id(row));
-        if row + 1 >= self.visible_count() {
-            return true;
+        for i in (row + 1)..self.visible_count() {
+            let d = self.depth(self.visible_id(i));
+            if d < depth {
+                return true;
+            }
+            if d == depth {
+                return false;
+            }
         }
-        self.depth(self.visible_id(row + 1)) <= depth
+        true
     }
 }
 
@@ -223,3 +229,7 @@ impl<D: TreeData> TreeView<D> {
         self.state.mark_dirty();
     }
 }
+
+#[cfg(test)]
+#[path = "tree_view_sibling_tests.rs"]
+mod sibling_tests;

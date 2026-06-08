@@ -66,10 +66,17 @@ pub trait TreeTableSource: Send + 'static {
     fn toggle(&mut self, row: usize);
     /// Whether node at row is the last sibling (for connector lines).
     fn is_last_sibling(&self, row: usize) -> bool {
-        if row + 1 >= self.visible_count() {
-            return true;
+        let depth = self.depth(row);
+        for i in (row + 1)..self.visible_count() {
+            let d = self.depth(i);
+            if d < depth {
+                return true;
+            }
+            if d == depth {
+                return false;
+            }
         }
-        self.depth(row + 1) <= self.depth(row)
+        true
     }
     fn style(&self, _row: usize) -> Style {
         Style::default()
