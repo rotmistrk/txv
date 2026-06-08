@@ -118,6 +118,9 @@ macro_rules! delegate_view_state {
                 self.$field.buffer()
             }
         });
+        $crate::__dvs_maybe!(cursor, [$($skip),*], {
+            fn cursor(&self) -> Option<$crate::cursor::CursorRequest> { None }
+        });
     };
 }
 
@@ -136,8 +139,8 @@ macro_rules! __dvs_maybe {
     (select, [select $(, $rest:ident)*], { $($body:tt)* }) => {};
     (unselect, [unselect $(, $rest:ident)*], { $($body:tt)* }) => {};
     (buffer, [buffer $(, $rest:ident)*], { $($body:tt)* }) => {};
-    (as_any_mut, [as_any_mut $(, $rest:ident)*], { $($body:tt)* }) => {};
     (cursor, [cursor $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (as_any_mut, [as_any_mut $(, $rest:ident)*], { $($body:tt)* }) => {};
     ($method:ident, [$head:ident $(, $rest:ident)*], { $($body:tt)* }) => {
         $crate::__dvs_maybe!($method, [$($rest),*], { $($body)* });
     };
@@ -187,6 +190,9 @@ macro_rules! delegate_view {
         });
         $crate::__dv_maybe!(buffer, [$($skip),*], {
             fn buffer(&self) -> &$crate::buffer::Buffer { self.$field.buffer() }
+        });
+        $crate::__dv_maybe!(cursor, [$($skip),*], {
+            fn cursor(&self) -> Option<$crate::cursor::CursorRequest> { self.$field.cursor() }
         });
     };
 }
