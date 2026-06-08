@@ -63,6 +63,7 @@ impl Program {
             if self.group.any_dirty() {
                 self.draw_and_flush(backend);
             }
+            backend.set_cursor(self.group.cursor());
 
             self.poll_and_dispatch(backend);
 
@@ -201,7 +202,6 @@ impl Program {
             child.mark_redrawn();
         }
         backend.flush(self.group.buffer());
-        backend.set_cursor(self.group.cursor());
     }
 
     /// Compute layout: desktop gets all but last row, status gets last row.
