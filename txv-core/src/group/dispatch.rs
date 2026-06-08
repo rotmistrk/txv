@@ -141,11 +141,9 @@ macro_rules! delegate_group_state {
                     child_drew |= child.render();
                 }
             }
-            if own_dirty {
+            if own_dirty || child_drew {
                 self.draw();
                 self.$field.mark_redrawn();
-            }
-            if own_dirty || child_drew {
                 for i in 0..self.$field.child_count() {
                     if !self.$field.is_child_visible(i) {
                         continue;
@@ -220,11 +218,9 @@ macro_rules! delegate_group_state {
                     child_drew |= child.render();
                 }
             }
-            if own_dirty {
+            if own_dirty || child_drew {
                 self.draw();
                 self.$field.mark_redrawn();
-            }
-            if own_dirty || child_drew {
                 for i in 0..self.$field.child_count() {
                     if !self.$field.is_child_visible(i) {
                         continue;
