@@ -28,13 +28,8 @@ pub fn draw_highlighted_text(
     max_x: u16,
     base_style: Style,
 ) {
-    let sm = palette().style(StyleId::SearchMatch);
-    let hl_fg = if sm.bg() != Color::Reset {
-        sm.bg()
-    } else {
-        sm.fg()
-    };
-    let hl_style = Style::new(hl_fg, base_style.bg()).with_attrs(base_style.attrs().bold());
+    let hl = palette().style(StyleId::StatusHighlight);
+    let hl_style = Style::new(hl.fg(), base_style.bg()).with_attrs(base_style.attrs().bold());
     for (ci, ch) in text.chars().enumerate() {
         let cx = x + ci as u16;
         if cx >= max_x {
