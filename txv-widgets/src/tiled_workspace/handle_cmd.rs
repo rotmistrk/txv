@@ -211,6 +211,7 @@ impl TiledWorkspace {
     pub fn show_panel(&mut self, id: usize) {
         if id < self.hidden.len() {
             self.hidden[id] = false;
+            self.group.set_child_visible(id, true);
             self.recompute_layout();
         }
     }
@@ -219,6 +220,7 @@ impl TiledWorkspace {
     pub fn hide_panel(&mut self, id: usize) {
         if id < self.configs.len() && self.configs[id].hideable {
             self.hidden[id] = true;
+            self.group.set_child_visible(id, false);
             if self.group.focused_index() == id {
                 self.focus_next_visible();
             }
@@ -229,12 +231,14 @@ impl TiledWorkspace {
     /// Zoom a specific panel.
     pub fn zoom_panel(&mut self, id: usize) {
         self.zoomed = Some(id);
+        self.sync_visibility();
         self.recompute_layout();
     }
 
     /// Exit zoom.
     pub fn unzoom(&mut self) {
         self.zoomed = None;
+        self.sync_visibility();
         self.recompute_layout();
     }
 }

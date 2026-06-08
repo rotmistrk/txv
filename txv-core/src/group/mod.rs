@@ -6,6 +6,7 @@
 //! 3. Postprocess: children with `options().postprocess` see event last
 
 mod dispatch;
+mod render;
 mod view_fwd;
 
 use std::collections::HashMap;
@@ -18,6 +19,8 @@ pub struct GroupState {
     pub(crate) children: Vec<Box<dyn View>>,
     /// Origin of each child in parent-local coordinates.
     pub(crate) origins: Vec<(u16, u16)>,
+    /// Visibility of each child (only visible children are rendered/blitted).
+    pub(crate) visible: Vec<bool>,
     pub(crate) focused: usize,
     /// Named children: name → index.
     named: HashMap<String, usize>,
@@ -29,6 +32,7 @@ impl GroupState {
             view: ViewState::new(options),
             children: Vec::new(),
             origins: Vec::new(),
+            visible: Vec::new(),
             focused: 0,
             named: HashMap::new(),
         }
@@ -37,6 +41,7 @@ impl GroupState {
     pub fn insert(&mut self, child: Box<dyn View>) {
         self.children.push(child);
         self.origins.push((0, 0));
+        self.visible.push(true);
         let idx = self.children.len() - 1;
         self.propagate_sink_to(idx);
         self.view.mark_dirty();
@@ -45,6 +50,7 @@ impl GroupState {
     pub fn insert_at(&mut self, index: usize, child: Box<dyn View>) {
         self.children.insert(index, child);
         self.origins.insert(index, (0, 0));
+        self.visible.insert(index, true);
         self.propagate_sink_to(index);
         self.view.mark_dirty();
     }
@@ -52,6 +58,7 @@ impl GroupState {
     pub fn remove(&mut self, index: usize) -> Box<dyn View> {
         let child = self.children.remove(index);
         self.origins.remove(index);
+        self.visible.remove(index);
         if self.focused >= self.children.len() && self.focused > 0 {
             self.focused -= 1;
         }
@@ -242,23 +249,6 @@ impl GroupState {
             self.focused = prev;
             self.children[prev].select();
             self.view.mark_dirty();
-        }
-    }
-
-    /// Blit a single child's buffer onto this group's buffer.
-    pub fn blit_child(&mut self, idx: usize) {
-        let (ox, oy) = self.child_origin(idx);
-        let buf_ptr = self.buffer_mut() as *mut crate::buffer::Buffer;
-        if let Some(child) = self.child(idx) {
-            let cb = child.buffer();
-            unsafe { (*buf_ptr).blit(cb, ox, oy) };
-        }
-    }
-
-    /// Blit all children's buffers onto this group's buffer.
-    pub fn blit_all_children(&mut self) {
-        for i in 0..self.children.len() {
-            self.blit_child(i);
         }
     }
 

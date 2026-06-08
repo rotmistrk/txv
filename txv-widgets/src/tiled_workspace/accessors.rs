@@ -57,6 +57,7 @@ impl TiledWorkspace {
     pub fn set_hidden(&mut self, id: PanelId, hidden: bool) {
         if id < self.hidden.len() {
             self.hidden[id] = hidden;
+            self.group.set_child_visible(id, !hidden);
             if hidden && self.group.focused_index() == id {
                 self.focus_next_visible();
             }
@@ -67,6 +68,7 @@ impl TiledWorkspace {
     /// Set zoom to follow a specific panel (or clear zoom).
     pub fn set_zoomed(&mut self, id: Option<PanelId>) {
         self.zoomed = id;
+        self.sync_visibility();
         self.recompute_layout();
     }
 

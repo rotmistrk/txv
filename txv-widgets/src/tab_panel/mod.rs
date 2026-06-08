@@ -53,8 +53,10 @@ impl TabPanel {
     pub fn insert_tab(&mut self, title: impl Into<String>, view: Box<dyn View>) {
         self.bar_mut().add_tab(title);
         self.group.insert(view);
-        let new_idx = self.group.child_count() - 1; // group index (1-based for tabs)
-        self.set_active(new_idx - 1); // tab index (0-based)
+        let new_idx = self.group.child_count() - 1;
+        // New tab starts hidden; set_active will make it visible
+        self.group.set_child_visible(new_idx, false);
+        self.set_active(new_idx - 1);
     }
 
     /// Remove a tab by index. Returns the removed view.
@@ -95,8 +97,10 @@ impl TabPanel {
                 if let Some(child) = self.group.child_mut(prev_gi) {
                     child.unselect();
                 }
+                self.group.set_child_visible(prev_gi, false);
             }
         }
+        self.group.set_child_visible(gi, true);
         self.bar_mut().set_active(idx);
         self.group.set_focused_index(gi);
         if self.group.is_focused() {
@@ -231,8 +235,10 @@ impl TabPanel {
             if let Some(child) = self.group.child_mut(prev_gi) {
                 child.unselect();
             }
+            self.group.set_child_visible(prev_gi, false);
         }
         let new_gi = new + 1;
+        self.group.set_child_visible(new_gi, true);
         self.group.set_focused_index(new_gi);
         if self.group.is_focused() {
             if let Some(child) = self.group.child_mut(new_gi) {

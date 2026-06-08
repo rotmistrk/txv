@@ -44,25 +44,6 @@ impl View for TabPanel {
         }
     }
 
-    fn render(&mut self) -> bool {
-        let own_dirty = self.group.is_dirty();
-        let bar_drew = self.group.child_mut(0).is_some_and(|b| b.render());
-        let active_gi = self.bar().active_index() + 1;
-        let content_drew = self.group.child_mut(active_gi).is_some_and(|c| c.render());
-
-        if own_dirty {
-            self.draw();
-            self.group.mark_redrawn();
-        }
-        if own_dirty || bar_drew {
-            self.group.blit_child(0);
-        }
-        if own_dirty || content_drew {
-            self.group.blit_child(active_gi);
-        }
-        own_dirty || bar_drew || content_drew
-    }
-
     fn handle(&mut self, event: &Event) -> HandleResult {
         if matches!(event, Event::Tick) {
             for i in 0..self.group.child_count() {

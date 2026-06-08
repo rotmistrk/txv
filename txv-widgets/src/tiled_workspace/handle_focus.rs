@@ -10,6 +10,7 @@ impl TiledWorkspace {
             self.focus_prev_visible();
         }
         self.zoomed = Some(self.group.focused_index());
+        self.sync_visibility();
         self.recompute_layout();
     }
 

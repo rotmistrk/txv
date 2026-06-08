@@ -130,6 +130,32 @@ macro_rules! delegate_group_state {
         fn group_state(&self) -> Option<&$crate::group::GroupState> {
             Some(&self.$field)
         }
+        fn render(&mut self) -> bool {
+            let own_dirty = self.$field.is_dirty();
+            let mut child_drew = false;
+            for i in 0..self.$field.child_count() {
+                if !self.$field.is_child_visible(i) {
+                    continue;
+                }
+                if let Some(child) = self.$field.child_mut(i) {
+                    child_drew |= child.render();
+                }
+            }
+            if own_dirty {
+                self.draw();
+                self.$field.mark_redrawn();
+            }
+            if own_dirty || child_drew {
+                for i in 0..self.$field.child_count() {
+                    if !self.$field.is_child_visible(i) {
+                        continue;
+                    }
+                    self.$field.blit_child(i);
+                }
+                return true;
+            }
+            false
+        }
     };
     ($field:ident, override { $($skip:ident),* $(,)? }) => {
         $crate::__dvs_maybe!(bounds, [$($skip),*], {
@@ -182,6 +208,32 @@ macro_rules! delegate_group_state {
         });
         fn group_state(&self) -> Option<&$crate::group::GroupState> {
             Some(&self.$field)
+        }
+        fn render(&mut self) -> bool {
+            let own_dirty = self.$field.is_dirty();
+            let mut child_drew = false;
+            for i in 0..self.$field.child_count() {
+                if !self.$field.is_child_visible(i) {
+                    continue;
+                }
+                if let Some(child) = self.$field.child_mut(i) {
+                    child_drew |= child.render();
+                }
+            }
+            if own_dirty {
+                self.draw();
+                self.$field.mark_redrawn();
+            }
+            if own_dirty || child_drew {
+                for i in 0..self.$field.child_count() {
+                    if !self.$field.is_child_visible(i) {
+                        continue;
+                    }
+                    self.$field.blit_child(i);
+                }
+                return true;
+            }
+            false
         }
     };
 }

@@ -150,9 +150,13 @@ impl TiledWorkspace {
         for h in &mut self.hidden {
             *h = false;
         }
+        for i in 0..self.hidden.len() {
+            self.group.set_child_visible(i, true);
+        }
         for &id in &state.hidden {
             if id < self.hidden.len() {
                 self.hidden[id] = true;
+                self.group.set_child_visible(id, false);
             }
         }
         self.recompute_layout();

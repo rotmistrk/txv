@@ -135,27 +135,4 @@ impl View for StatusBar {
         let bar_style = palette().style(StyleId::StatusBar);
         self.group.buffer_mut().fill(' ', bar_style);
     }
-
-    fn render(&mut self) -> bool {
-        let own_dirty = self.group.is_dirty();
-        let mut child_drew = false;
-        for i in 0..self.group.child_count() {
-            if let Some(child) = self.group.child_mut(i) {
-                if child.bounds().w > 0 {
-                    child_drew |= child.render();
-                }
-            }
-        }
-        if own_dirty {
-            self.draw();
-            self.group.mark_redrawn();
-        }
-        if own_dirty || child_drew {
-            for i in 0..self.group.child_count() {
-                self.group.blit_child(i);
-            }
-            return true;
-        }
-        false
-    }
 }

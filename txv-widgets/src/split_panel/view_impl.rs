@@ -25,27 +25,6 @@ impl View for SplitPanel {
         self.draw_dividers(b);
     }
 
-    fn render(&mut self) -> bool {
-        let own_dirty = self.group.is_dirty();
-        let mut child_drew = false;
-        for i in 0..self.group.child_count() {
-            if let Some(child) = self.group.child_mut(i) {
-                child_drew |= child.render();
-            }
-        }
-        if own_dirty || child_drew {
-            if own_dirty {
-                self.draw();
-                self.group.mark_redrawn();
-            }
-            for i in 0..self.group.child_count() {
-                self.group.blit_child(i);
-            }
-            return true;
-        }
-        false
-    }
-
     fn handle(&mut self, event: &Event) -> HandleResult {
         if matches!(event, Event::Tick) {
             for i in 0..self.group.child_count() {

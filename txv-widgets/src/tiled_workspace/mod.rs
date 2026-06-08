@@ -160,6 +160,7 @@ impl TiledWorkspace {
             return;
         }
         self.hidden[id] = !self.hidden[id];
+        self.group.set_child_visible(id, !self.hidden[id]);
         // If hiding the focused panel, move focus
         if self.hidden[id] && self.group.focused_index() == id {
             self.focus_next_visible();
@@ -174,7 +175,20 @@ impl TiledWorkspace {
         } else {
             Some(self.group.focused_index())
         };
+        self.sync_visibility();
         self.recompute_layout();
+    }
+
+    /// Sync group child visibility from hidden + zoomed state.
+    pub(crate) fn sync_visibility(&mut self) {
+        for i in 0..self.hidden.len() {
+            let vis = if let Some(z) = self.zoomed {
+                i == z
+            } else {
+                !self.hidden[i]
+            };
+            self.group.set_child_visible(i, vis);
+        }
     }
 
     /// Cycle layout mode: Auto → Wide → Narrow → Auto.
@@ -229,6 +243,7 @@ impl TiledWorkspace {
             self.group.switch_focus(id);
             if self.zoomed.is_some() {
                 self.zoomed = Some(id);
+                self.sync_visibility();
                 self.recompute_layout();
             }
         }

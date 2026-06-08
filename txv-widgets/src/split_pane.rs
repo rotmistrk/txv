@@ -133,25 +133,6 @@ impl View for SplitPane {
         }
     }
 
-    fn render(&mut self) -> bool {
-        let own_dirty = self.group.is_dirty();
-        let mut child_drew = false;
-        for child in self.group.children_iter_mut() {
-            child_drew |= child.render();
-        }
-        if own_dirty {
-            self.draw();
-            self.group.mark_redrawn();
-        }
-        if own_dirty || child_drew {
-            for i in 0..self.group.child_count() {
-                self.group.blit_child(i);
-            }
-            return true;
-        }
-        false
-    }
-
     fn handle(&mut self, event: &Event) -> HandleResult {
         self.group.dispatch(event)
     }

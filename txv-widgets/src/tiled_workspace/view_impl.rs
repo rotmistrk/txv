@@ -28,30 +28,6 @@ impl View for TiledWorkspace {
         self.draw_chrome();
     }
 
-    fn render(&mut self) -> bool {
-        let own_dirty = self.group.is_dirty();
-        let mut child_drew = false;
-        for i in 0..self.configs.len() {
-            if !self.is_panel_visible(i) {
-                continue;
-            }
-            if let Some(child) = self.group.child_mut(i) {
-                child_drew |= child.render();
-            }
-        }
-        if own_dirty {
-            self.draw();
-            self.blit_visible_children();
-            self.group.mark_redrawn();
-            return true;
-        }
-        if child_drew {
-            self.blit_visible_children();
-            return true;
-        }
-        false
-    }
-
     fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Command { id, data, .. } = event {
             if self.handle_command(*id, data) {
@@ -80,21 +56,6 @@ impl View for TiledWorkspace {
 }
 
 impl TiledWorkspace {
-    fn blit_visible_children(&mut self) {
-        for i in 0..self.configs.len() {
-            if !self.is_panel_visible(i) {
-                continue;
-            }
-            if let Some(child) = self.group.child(i) {
-                let cs = child.bounds();
-                if cs.w() == 0 || cs.h() == 0 {
-                    continue;
-                }
-            }
-            self.group.blit_child(i);
-        }
-    }
-
     fn dispatch_key(&mut self, key: &KeyEvent) -> Option<HandleResult> {
         let km = self.keymap.clone();
         if let Some(r) = self.dispatch_panel_keys(key, &km) {
@@ -217,16 +178,6 @@ impl TiledWorkspace {
 
     pub(crate) fn find_panel_by_position(&self, pos: PanelPosition) -> Option<usize> {
         self.configs.iter().position(|c| c.position == pos)
-    }
-
-    fn is_panel_visible(&self, i: usize) -> bool {
-        if self.hidden[i] && self.zoomed != Some(i) {
-            return false;
-        }
-        if self.zoomed.is_some() && self.zoomed != Some(i) {
-            return false;
-        }
-        true
     }
 
     /// Focus the panel in the given direction relative to current.
