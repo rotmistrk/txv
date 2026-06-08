@@ -186,6 +186,7 @@ impl Program {
     fn draw_and_flush(&mut self, backend: &mut dyn Backend) {
         for child in &mut self.group.children {
             child.draw();
+            child.mark_redrawn();
         }
         self.group.buffer_mut().fill(' ', Style::default());
         // Safety: children (immutable) and buffer (mutable) are disjoint fields of GroupState.
