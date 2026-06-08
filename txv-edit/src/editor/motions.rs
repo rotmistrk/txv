@@ -155,15 +155,16 @@ fn match_from(buf: &PieceTable, line: usize, col: usize, ch: char) -> Option<(us
         _ => return None,
     };
     let content = buf.content();
-    let offset = buf.line_col_to_offset(line, col)?;
-    let bytes: Vec<char> = content.chars().collect();
-    if offset >= bytes.len() {
+    let byte_offset = buf.line_col_to_offset(line, col)?;
+    let char_offset = content[..byte_offset].chars().count();
+    let chars: Vec<char> = content.chars().collect();
+    if char_offset >= chars.len() {
         return None;
     }
     if forward {
-        scan_forward(&bytes, offset, open, close, buf)
+        scan_forward(&chars, char_offset, open, close, buf)
     } else {
-        scan_backward(&bytes, offset, open, close, buf)
+        scan_backward(&chars, char_offset, open, close, buf)
     }
 }
 
@@ -222,63 +223,5 @@ fn is_word_char(c: char) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_word_forward() {
-        let buf = PieceTable::from_text("hello world foo");
-        assert_eq!(word_forward(&buf, 0, 0), (0, 6));
-        assert_eq!(word_forward(&buf, 0, 6), (0, 12));
-    }
-
-    #[test]
-    fn test_word_backward() {
-        let buf = PieceTable::from_text("hello world");
-        assert_eq!(word_backward(&buf, 0, 6), (0, 0));
-    }
-
-    #[test]
-    fn test_word_end() {
-        let buf = PieceTable::from_text("hello world");
-        assert_eq!(word_end(&buf, 0, 0), (0, 4));
-    }
-
-    #[test]
-    fn test_first_non_blank() {
-        let buf = PieceTable::from_text("    hello");
-        assert_eq!(first_non_blank(&buf, 0), 4);
-    }
-
-    #[test]
-    fn test_find_char() {
-        let buf = PieceTable::from_text("hello world");
-        assert_eq!(find_char(&buf, 0, 0, 'o'), Some(4));
-        assert_eq!(find_char_back(&buf, 0, 7, 'o'), Some(4));
-    }
-
-    #[test]
-    fn test_match_bracket() {
-        let buf = PieceTable::from_text("(hello)");
-        assert_eq!(match_bracket(&buf, 0, 0), Some((0, 6)));
-        assert_eq!(match_bracket(&buf, 0, 6), Some((0, 0)));
-    }
-
-    #[test]
-    fn test_match_bracket_offset_past_end() {
-        // Cursor col beyond content length should return None, not panic
-        let buf = PieceTable::from_text("(");
-        assert_eq!(match_bracket(&buf, 0, 0), None); // no matching close
-        assert_eq!(match_bracket(&buf, 0, 5), None); // col past end
-        assert_eq!(match_bracket(&buf, 99, 0), None); // line past end
-    }
-}
-
-#[test]
-fn test_match_curly_braces() {
-    let buf = PieceTable::from_text("fn main() {\n    hello\n}");
-    // { at (0, 10) should match } at (2, 0)
-    assert_eq!(match_bracket(&buf, 0, 10), Some((2, 0)));
-    // } at (2, 0) should match { at (0, 10)
-    assert_eq!(match_bracket(&buf, 2, 0), Some((0, 10)));
-}
+#[path = "motions_tests.rs"]
+mod tests;
