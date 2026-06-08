@@ -34,7 +34,7 @@ pub fn draw_line_chars<D: EditorViewDelegate>(
     };
 
     render_spans(&mut ctx, spans, &mut st);
-    draw_line_tail(ctx.buf, editor, line_idx, start_row, p, &st);
+    draw_line_tail(ctx.buf, editor, ctx.delegate, line_idx, start_row, p, &st);
     st.vis_row
 }
 
@@ -142,11 +142,19 @@ fn draw_char<D: EditorViewDelegate>(ctx: &mut DrawCtx<'_, D>, ch: char, span_sty
     st.byte_pos += ch.len_utf8();
 }
 
-fn draw_line_tail(buf: &mut Buffer, editor: &Editor, line_idx: usize, start_row: usize, p: &DrawParams, st: &LineDraw) {
+fn draw_line_tail<D: EditorViewDelegate>(
+    buf: &mut Buffer,
+    editor: &Editor,
+    delegate: &D,
+    line_idx: usize,
+    start_row: usize,
+    p: &DrawParams,
+    st: &LineDraw,
+) {
     let text_x = p.gutter_w;
     if st.vis_row < p.h as usize && st.col >= p.h_off {
         let fill_start = (st.col - p.h_off).min(p.avail);
-        let fill_style = ephemeral_bg(editor, line_idx);
+        let fill_style = ephemeral_bg(editor, delegate, line_idx);
         for fc in fill_start..p.avail {
             buf.put(text_x + fc as u16, st.vis_row as u16, ' ', fill_style);
         }
@@ -173,9 +181,9 @@ fn resolve_display(editor: &Editor, ch: char, style: Style) -> (char, Style) {
     }
 }
 
-fn ephemeral_bg(editor: &Editor, line_idx: usize) -> Style {
+fn ephemeral_bg<D: EditorViewDelegate>(editor: &Editor, delegate: &D, line_idx: usize) -> Style {
     if editor.ephemeral().ranges().iter().any(|r| r.covers_line(line_idx)) {
-        Style::default().with_bg(palette().style(StyleId::SearchMatch).bg())
+        Style::default().with_bg(delegate.highlight_other_bg())
     } else {
         Style::default()
     }
