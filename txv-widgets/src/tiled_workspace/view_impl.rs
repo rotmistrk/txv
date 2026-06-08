@@ -26,8 +26,30 @@ impl View for TiledWorkspace {
         }
         self.group.buffer_mut().fill(' ', Style::default());
         self.draw_chrome();
-        self.draw_visible_children();
-        self.blit_visible_children();
+    }
+
+    fn render(&mut self) -> bool {
+        let own_dirty = self.group.is_dirty();
+        let mut child_drew = false;
+        for i in 0..self.configs.len() {
+            if !self.is_panel_visible(i) {
+                continue;
+            }
+            if let Some(child) = self.group.child_mut(i) {
+                child_drew |= child.render();
+            }
+        }
+        if own_dirty {
+            self.draw();
+            self.blit_visible_children();
+            self.group.mark_redrawn();
+            return true;
+        }
+        if child_drew {
+            self.blit_visible_children();
+            return true;
+        }
+        false
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
@@ -58,17 +80,6 @@ impl View for TiledWorkspace {
 }
 
 impl TiledWorkspace {
-    fn draw_visible_children(&mut self) {
-        for i in 0..self.configs.len() {
-            if !self.is_panel_visible(i) {
-                continue;
-            }
-            if let Some(child) = self.group.child_mut(i) {
-                child.render();
-            }
-        }
-    }
-
     fn blit_visible_children(&mut self) {
         for i in 0..self.configs.len() {
             if !self.is_panel_visible(i) {

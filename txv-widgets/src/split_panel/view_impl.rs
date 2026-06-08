@@ -23,13 +23,27 @@ impl View for SplitPanel {
         let transparent = Style::new(Color::Transparent, Color::Transparent);
         self.group.buffer_mut().fill(' ', transparent);
         self.draw_dividers(b);
+    }
 
+    fn render(&mut self) -> bool {
+        let own_dirty = self.group.is_dirty();
+        let mut child_drew = false;
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
-                child.render();
+                child_drew |= child.render();
             }
-            self.group.blit_child(i);
         }
+        if own_dirty || child_drew {
+            if own_dirty {
+                self.draw();
+                self.group.mark_redrawn();
+            }
+            for i in 0..self.group.child_count() {
+                self.group.blit_child(i);
+            }
+            return true;
+        }
+        false
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

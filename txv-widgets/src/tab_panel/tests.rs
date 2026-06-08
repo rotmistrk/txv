@@ -85,7 +85,7 @@ fn draw_does_not_panic() {
     panel.insert_tab("Shell", Box::new(Dummy::new()));
     panel.insert_tab("Build", Box::new(Dummy::new()));
     panel.set_bounds(Rect::new(0, 0, 60, 20));
-    panel.draw();
+    panel.render();
 }
 
 #[test]
@@ -106,7 +106,7 @@ fn row_0_non_tab_cells_are_transparent() {
     let mut panel = TabPanel::new(TabBarMode::Single);
     panel.insert_tab("Hi", Box::new(Dummy::new()));
     panel.set_bounds(Rect::new(0, 0, 40, 10));
-    panel.draw();
+    panel.render();
 
     let buf = panel.buffer();
     // Check a position well past the tab content (should be transparent)
