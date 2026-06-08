@@ -108,7 +108,7 @@ impl View for Frame {
         // Draw and blit child
         if let Some(child) = self.group.child_mut(0) {
             if child.bounds().w() > 0 && child.bounds().h() > 0 {
-                child.draw();
+                child.render();
             }
         }
         self.group.blit_child(0);

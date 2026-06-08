@@ -94,7 +94,7 @@ impl View for FocusGatedGroup {
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
                 if child.bounds().w() > 0 {
-                    child.draw();
+                    child.render();
                 }
             }
             if let Some(child) = self.group.child(i) {

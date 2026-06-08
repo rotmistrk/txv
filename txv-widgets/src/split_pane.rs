@@ -122,7 +122,7 @@ impl View for SplitPane {
 
         // Draw and blit children
         for child in self.group.children_iter_mut() {
-            child.draw();
+            child.render();
         }
         // Blit children into own buffer.
         // Safety: we borrow children (immutable) and view.buf (mutable) which are disjoint fields.

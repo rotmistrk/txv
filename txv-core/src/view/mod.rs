@@ -61,6 +61,16 @@ pub trait View: Send {
         true
     }
     fn mark_redrawn(&mut self) {}
+
+    /// Check if redraw needed, draw if so, clear dirty. Returns true if drew.
+    fn render(&mut self) -> bool {
+        if !self.needs_redraw() {
+            return false;
+        }
+        self.draw();
+        self.mark_redrawn();
+        true
+    }
     /// Called before closing. Return Ok to allow, Denied to prevent.
     fn can_close(&self) -> CloseResult {
         CloseResult::Ok

@@ -61,7 +61,7 @@ impl View for SidekickManager {
         }
         if let Some(arc) = &self.child {
             if let Ok(mut child) = arc.lock() {
-                child.draw();
+                child.render();
                 child.mark_redrawn();
                 self.state.buffer_mut().blit(child.buffer(), 0, 0);
             }

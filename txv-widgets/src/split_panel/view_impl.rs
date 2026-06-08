@@ -26,7 +26,7 @@ impl View for SplitPanel {
 
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child_mut(i) {
-                child.draw();
+                child.render();
             }
             self.group.blit_child(i);
         }

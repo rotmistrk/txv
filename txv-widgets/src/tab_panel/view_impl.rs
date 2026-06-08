@@ -40,7 +40,7 @@ impl View for TabPanel {
         }
         self.fill_background(b);
         if let Some(bar) = self.group.child_mut(0) {
-            bar.draw();
+            bar.render();
         }
         self.group.blit_child(0);
         self.draw_active_content();
@@ -92,7 +92,7 @@ impl TabPanel {
     fn draw_active_content(&mut self) {
         let active_gi = self.bar().active_index() + 1;
         if let Some(child) = self.group.child_mut(active_gi) {
-            child.draw();
+            child.render();
         }
         self.group.blit_child(active_gi);
     }

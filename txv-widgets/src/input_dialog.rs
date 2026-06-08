@@ -89,7 +89,7 @@ impl InputDialog {
 
     fn draw_and_blit_child(&mut self) {
         if let Some(child) = self.group.child_mut(0) {
-            child.draw();
+            child.render();
         }
         self.group.blit_child(0);
     }

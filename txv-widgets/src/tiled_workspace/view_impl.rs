@@ -64,7 +64,7 @@ impl TiledWorkspace {
                 continue;
             }
             if let Some(child) = self.group.child_mut(i) {
-                child.draw();
+                child.render();
             }
         }
     }
