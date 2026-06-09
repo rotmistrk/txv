@@ -101,6 +101,7 @@ impl GroupState {
 #[macro_export]
 macro_rules! delegate_group_state {
     ($field:ident) => {
+        fn view_id(&self) -> $crate::view::ViewId { self.$field.view_id() }
         fn bounds(&self) -> $crate::geometry::Rect { self.$field.bounds() }
         fn set_bounds(&mut self, r: $crate::geometry::Rect) { self.$field.set_bounds(r); }
         fn set_sink(&mut self, sink: $crate::view::EventSink) { self.$field.set_sink(sink); }
@@ -156,6 +157,9 @@ macro_rules! delegate_group_state {
         }
     };
     ($field:ident, override { $($skip:ident),* $(,)? }) => {
+        $crate::__dvs_maybe!(view_id, [$($skip),*], {
+            fn view_id(&self) -> $crate::view::ViewId { self.$field.view_id() }
+        });
         $crate::__dvs_maybe!(bounds, [$($skip),*], {
             fn bounds(&self) -> $crate::geometry::Rect { self.$field.bounds() }
         });

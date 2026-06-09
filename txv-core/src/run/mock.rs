@@ -19,8 +19,10 @@ pub fn run_cycles(root: &mut dyn View, backend: &mut MockBackend, n: usize) {
         if pump_events(root, backend, &sink) {
             return;
         }
-        root.draw();
-        root.mark_redrawn();
+        if drain_sink(root, &sink) {
+            return;
+        }
+        root.render();
         backend.flush(root.buffer());
     }
 }
@@ -31,24 +33,27 @@ fn pump_events(root: &mut dyn View, backend: &mut MockBackend, sink: &EventSink)
             root.set_bounds(Rect::new(0, 0, *nw, *nh));
         }
         root.handle(&event);
-        if drain_sink_quit(root, backend, sink) {
+        if drain_sink(root, sink) {
             return true;
         }
     }
     false
 }
 
-fn drain_sink_quit(root: &mut dyn View, backend: &mut MockBackend, sink: &EventSink) -> bool {
-    let events = sink.drain();
-    for ev in events {
-        if let Event::Command { id: CM_QUIT, .. } = &ev {
-            root.draw();
-            backend.flush(root.buffer());
-            return true;
+/// Drain all pending sink events (may produce further events). Returns true on CM_QUIT.
+fn drain_sink(root: &mut dyn View, sink: &EventSink) -> bool {
+    loop {
+        let events = sink.drain();
+        if events.is_empty() {
+            return false;
         }
-        root.handle(&ev);
+        for ev in events {
+            if let Event::Command { id: CM_QUIT, .. } = &ev {
+                return true;
+            }
+            root.handle(&ev);
+        }
     }
-    false
 }
 
 /// Mock backend for testing without a terminal.

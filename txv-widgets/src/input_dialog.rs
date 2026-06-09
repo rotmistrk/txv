@@ -74,7 +74,6 @@ impl View for InputDialog {
             let title = format!(" {} ", self.title_text);
             self.group.buffer_mut().print(2, 0, &title, border);
         }
-        self.draw_and_blit_child();
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
@@ -85,12 +84,5 @@ impl View for InputDialog {
 impl InputDialog {
     fn draw_input_border(&mut self, w: u16, h: u16, border: Style) {
         self.group.buffer_mut().draw_box(0, 0, w, h, true, border);
-    }
-
-    fn draw_and_blit_child(&mut self) {
-        if let Some(child) = self.group.child_mut(0) {
-            child.render();
-        }
-        self.group.blit_child(0);
     }
 }

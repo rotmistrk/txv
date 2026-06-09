@@ -95,14 +95,6 @@ pub trait View: Send {
     fn group_state(&self) -> Option<&crate::group::GroupState> {
         None
     }
-    /// Desired width hint for layout. 0 = no preference (use natural/current).
-    fn desired_width(&self) -> u16 {
-        0
-    }
-    /// Desired height hint for layout. 0 = no preference (use natural/current).
-    fn desired_height(&self) -> u16 {
-        0
-    }
 }
 
 // View delegation macros are in view_macros.rs

@@ -1,0 +1,12 @@
+[package]
+name = "txv-gallery"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+txv-core = { path = "../txv-core" }
+txv-edit = { path = "../txv-edit" }
+txv-render = { path = "../txv-render" }
+txv-widgets = { path = "../txv-widgets" }
+
+[dev-dependencies]

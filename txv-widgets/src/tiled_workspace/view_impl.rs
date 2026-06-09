@@ -12,6 +12,10 @@ impl View for TiledWorkspace {
         Some(self)
     }
 
+    fn as_any(&self) -> Option<&dyn std::any::Any> {
+        Some(self)
+    }
+
     fn set_bounds(&mut self, r: Rect) {
         self.group.set_bounds(r);
         self.group.mark_dirty();

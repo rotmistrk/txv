@@ -39,8 +39,7 @@ pub fn run(root: &mut dyn View, backend: &mut dyn Backend) {
 
     loop {
         if root.needs_redraw() {
-            root.draw();
-            root.mark_redrawn();
+            root.render();
             backend.flush(root.buffer());
             backend.set_cursor(root.cursor());
         }

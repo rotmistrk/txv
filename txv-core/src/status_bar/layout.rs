@@ -1,4 +1,10 @@
 //! Priority-pack layout computation for StatusBar.
+//!
+//! Algorithm (runs after group.dispatch()):
+//! 1. Read each visible child's wanted width (bounds().w)
+//! 2. If total > available: hide lowest-priority items until fits
+//! 3. If total < available: distribute remaining to stretch items
+//! 4. Assign x positions: Left-gravity from left edge, Right-gravity from right edge
 
 use crate::geometry::Rect;
 
@@ -7,8 +13,7 @@ use super::gravity::Gravity;
 
 struct LayoutItem {
     idx: usize,
-    min_w: u16,
-    max_w: u16,
+    wanted: u16,
     stretch: u16,
     gravity: Gravity,
     priority: u8,
@@ -23,31 +28,49 @@ impl StatusBar {
             return;
         }
 
-        let mut items: Vec<LayoutItem> = self.collect_layout_items(bounds);
+        let mut items: Vec<LayoutItem> = self.collect_layout_items();
 
-        // Sort by priority descending, stable by insertion order
+        // Sort by priority descending (stable by insertion order)
         items.sort_by(|a, b| b.priority.cmp(&a.priority).then(a.idx.cmp(&b.idx)));
 
-        // Drop lowest-priority items until total min fits
+        // Hide lowest-priority items that don't fit
         Self::drop_overflow(&mut items, bounds.w);
 
-        // Allocate min_width
+        // Allocate wanted width, then distribute remaining to stretch
         for item in &mut items {
-            item.alloc = item.min_w;
+            item.alloc = item.wanted;
         }
-
-        // Distribute remaining space to stretch items
         Self::distribute_stretch(&mut items, bounds.w);
 
-        // Restore insertion order and assign positions
+        // Restore insertion order and assign x positions
         items.sort_by_key(|i| i.idx);
         self.assign_positions(&items, bounds);
     }
 
+    fn collect_layout_items(&self) -> Vec<LayoutItem> {
+        self.hint_iter()
+            .enumerate()
+            .filter_map(|(idx, (priority, stretch, gravity))| {
+                let wanted = self.child_wanted_width(idx);
+                if wanted == 0 {
+                    return None;
+                }
+                Some(LayoutItem {
+                    idx,
+                    wanted,
+                    stretch,
+                    gravity,
+                    priority,
+                    alloc: 0,
+                })
+            })
+            .collect()
+    }
+
     fn drop_overflow(items: &mut Vec<LayoutItem>, w: u16) {
-        let mut total: u16 = items.iter().map(|i| i.min_w).sum();
+        let mut total: u16 = items.iter().map(|i| i.wanted).sum();
         while total > w && !items.is_empty() {
-            total -= items.last().map(|i| i.min_w).unwrap_or(0);
+            total -= items.last().map(|i| i.wanted).unwrap_or(0);
             items.pop();
         }
     }
@@ -64,48 +87,8 @@ impl StatusBar {
         }
         for item in items.iter_mut().filter(|i| i.stretch > 0) {
             let share = (remaining as u32 * item.stretch as u32 / total_stretch as u32) as u16;
-            let capped = if item.max_w > 0 {
-                share.min(item.max_w.saturating_sub(item.alloc))
-            } else {
-                share
-            };
-            item.alloc += capped;
+            item.alloc += share;
         }
-    }
-
-    fn collect_layout_items(&self, _bounds: Rect) -> Vec<LayoutItem> {
-        self.hint_iter()
-            .enumerate()
-            .map(
-                |(idx, (priority, min_width, max_width, stretch, gravity, natural_width, last_alloc))| {
-                    let desired = self.child_desired_width(idx);
-                    let min_w = if min_width > 0 {
-                        min_width
-                    } else if desired > 0 {
-                        desired
-                    } else {
-                        let current = self.child_buffer_width(idx);
-                        if stretch > 0 && current == last_alloc {
-                            natural_width
-                        } else if current > 0 {
-                            current
-                        } else {
-                            natural_width
-                        }
-                    };
-                    LayoutItem {
-                        idx,
-                        min_w,
-                        max_w: max_width,
-                        stretch,
-                        gravity,
-                        priority,
-                        alloc: 0,
-                    }
-                },
-            )
-            .filter(|item| item.min_w > 0)
-            .collect()
     }
 
     fn assign_positions(&mut self, items: &[LayoutItem], bounds: Rect) {
@@ -134,13 +117,11 @@ impl StatusBar {
                     rx += item.alloc;
                 }
             }
-            self.set_last_alloc(item.idx, item.alloc);
         }
 
         for (idx, is_assigned) in assigned.iter().enumerate() {
             if !is_assigned {
                 self.set_child_rect(idx, Rect::new(0, 0, 0, bounds.h));
-                self.set_last_alloc(idx, 0);
             }
         }
     }

@@ -9,6 +9,10 @@ impl GroupState {
         self.view.bounds()
     }
 
+    pub fn view_id(&self) -> crate::view::ViewId {
+        self.view.id()
+    }
+
     pub fn set_bounds(&mut self, r: crate::geometry::Rect) {
         self.view.set_bounds(r);
     }

@@ -1,6 +1,10 @@
 //! Tests verifying widgets use palette colors (no hardcoded values).
+//!
+//! These tests mutate the global palette, so they must not run in parallel
+//! with other palette-dependent tests. We use a module-level mutex to
+//! serialize execution.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use txv_core::prelude::*;
 
@@ -8,12 +12,17 @@ use crate::input_line::InputLine;
 use crate::palette_test_helpers::Dummy;
 use crate::split_pane::{SplitDirection, SplitPane};
 
+static PALETTE_LOCK: Mutex<()> = Mutex::new(());
+
 #[test]
 fn palette_integration() {
     use txv_core::palette::dark::DarkPalette;
 
-    // --- input_line_selection_uses_palette ---
+    let _guard = PALETTE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     set_palette(Arc::new(DarkPalette));
+
+    // --- input_line_selection_uses_palette ---
     let pal = palette();
     let expected_bg = pal.style(StyleId::EditSelection).bg();
 
@@ -48,6 +57,8 @@ fn palette_change_affects_widget_rendering() {
 
     use crate::palette_custom_tests::CustomPalette;
 
+    let _guard = PALETTE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     set_palette(Arc::new(CustomPalette));
 
     let mut il = InputLine::new();
@@ -63,6 +74,6 @@ fn palette_change_affects_widget_rendering() {
         "widget should reflect updated palette"
     );
 
-    // Restore
+    // Restore default palette for other tests.
     set_palette(Arc::new(DarkPalette));
 }

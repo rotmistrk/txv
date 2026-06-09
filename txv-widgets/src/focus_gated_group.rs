@@ -49,6 +49,7 @@ impl FocusGatedGroup {
         self.active = true;
         let b = self.group.bounds();
         self.group.set_bounds(Rect::new(b.x(), b.y(), self.natural_width, 1));
+        self.layout_children();
         self.group.mark_dirty();
     }
 
@@ -86,7 +87,6 @@ impl View for FocusGatedGroup {
         }
         let style = palette().style(StyleId::StatusBar);
         self.group.buffer_mut().fill(' ', style);
-        self.layout_children();
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

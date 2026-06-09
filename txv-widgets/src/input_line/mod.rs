@@ -1,9 +1,9 @@
 //! InputLine — single-line text input with history, completion, and selection.
 
 mod completion;
-mod completion_frame;
+pub(crate) mod completion_frame;
 mod completion_item;
-mod completion_list;
+pub(crate) mod completion_list;
 mod handle_key;
 mod history;
 mod readline;
@@ -11,11 +11,10 @@ mod readline;
 mod tests;
 mod view_impl;
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use txv_core::prelude::*;
 
-use crate::list_view::ListView;
 pub use completion_list::CompletionList;
 
 /// Emitted by InputLine on Ctrl-C when selection exists. Data: `Box<String>`.
@@ -39,10 +38,6 @@ pub struct InputLine {
     /// Command ID that is allowed to set text content (prefill).
     pub(crate) prefill_command: Option<CommandId>,
     pub(crate) palette: Option<Arc<dyn Palette>>,
-    /// Shared completion popup (ListView held by SidekickManager).
-    pub(crate) popup: Arc<Mutex<ListView<CompletionList>>>,
-    /// Framed wrapper sent to SidekickManager.
-    pub(crate) popup_frame: Arc<Mutex<completion_frame::CompletionFrame>>,
     /// Whether popup is currently visible.
     pub(crate) sidekick_visible: bool,
     /// Shared clipboard ring (direct access, no events needed).
@@ -51,9 +46,6 @@ pub struct InputLine {
 
 impl InputLine {
     pub fn new() -> Self {
-        let list = ListView::new(CompletionList::new(Vec::new()));
-        let popup = Arc::new(Mutex::new(list));
-        let frame = completion_frame::CompletionFrame::new(Arc::clone(&popup));
         Self {
             state: ViewState::default(),
             text: String::new(),
@@ -65,8 +57,6 @@ impl InputLine {
             submit_command: CM_OK,
             prefill_command: None,
             palette: None,
-            popup,
-            popup_frame: Arc::new(Mutex::new(frame)),
             sidekick_visible: false,
             clipboard: None,
         }

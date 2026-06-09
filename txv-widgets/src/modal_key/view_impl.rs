@@ -7,20 +7,7 @@ use txv_core::prelude::*;
 use super::ModalKey;
 
 impl View for ModalKey {
-    delegate_group_state!(group, override { options, draw, handle, set_sink, desired_width });
-
-    fn desired_width(&self) -> u16 {
-        if !self.active {
-            return 0;
-        }
-        // prompt + left cap + right cap + child desired widths
-        let prompt_w = self.prompt.len() as u16 + 2;
-        let child_w: u16 = (0..self.group.child_count())
-            .filter_map(|i| self.group.child(i))
-            .map(|c| c.desired_width().max(c.bounds().w()))
-            .sum();
-        prompt_w + child_w
-    }
+    delegate_group_state!(group, override { options, draw, handle, set_sink });
 
     fn set_sink(&mut self, sink: EventSink) {
         self.group.set_own_sink(sink.clone());
@@ -71,13 +58,7 @@ impl ModalKey {
         self.group.buffer_mut().print(0, 0, "\u{e0b6}", cap_style);
         let prompt_style = modal_style.with_attrs(modal_style.attrs().bold());
         self.group.buffer_mut().print(1, 0, &self.prompt, prompt_style);
-        // Blit children between caps
-        for i in 0..self.group.child_count() {
-            if self.group.is_child_visible(i) {
-                self.group.blit_child(i);
-            }
-        }
-        // Right cap AFTER children blit (must not be overwritten)
+        // Right cap
         let bounds = self.group.bounds();
         let rw = bounds.w().saturating_sub(1);
         let rcap_style = Style::new(modal_bg, bar_style.bg());

@@ -1,7 +1,7 @@
 //! StatusBar — a Group with priority-based horizontal layout.
 //!
-//! Children are Views that draw and handle their own keys.
-//! Layout assigns bounds based on priority, gravity, min/max size, and stretch.
+//! Children self-size via their bounds().w(). Layout assigns positions
+//! based on priority, gravity, and stretch.
 //! Items that don't fit (lowest priority) get zero-width bounds (hidden).
 
 use crate::geometry::Rect;
@@ -33,17 +33,12 @@ impl StatusBar {
 
     /// Add a child view with layout hints from the slot builder.
     pub fn add(&mut self, slot: StatusSlot) {
-        let (view, priority, min_width, max_width, stretch, gravity) = slot.take_view();
-        let initial_w = view.bounds().w;
+        let (view, priority, stretch, gravity) = slot.take_view();
         self.group.insert(view);
         self.hints.push(Hints {
             priority,
-            min_width,
-            max_width,
             stretch,
             gravity,
-            natural_width: initial_w,
-            last_alloc: 0,
         });
     }
 
@@ -66,26 +61,13 @@ impl StatusBar {
         self.group.bounds()
     }
 
-    pub(super) fn hint_iter(&self) -> impl Iterator<Item = (u8, u16, u16, u16, Gravity, u16, u16)> + '_ {
-        self.hints.iter().map(|h| {
-            (
-                h.priority,
-                h.min_width,
-                h.max_width,
-                h.stretch,
-                h.gravity,
-                h.natural_width,
-                h.last_alloc,
-            )
-        })
+    pub(super) fn hint_iter(&self) -> impl Iterator<Item = (u8, u16, Gravity)> + '_ {
+        self.hints.iter().map(|h| (h.priority, h.stretch, h.gravity))
     }
 
-    pub(super) fn child_buffer_width(&self, idx: usize) -> u16 {
-        self.group.child(idx).map_or(0, |c| c.bounds().w)
-    }
-
-    pub(super) fn child_desired_width(&self, idx: usize) -> u16 {
-        self.group.child(idx).map_or(0, |c| c.desired_width())
+    /// Get a child's wanted width from its current bounds.
+    pub(super) fn child_wanted_width(&self, idx: usize) -> u16 {
+        self.group.child(idx).map_or(0, |c| c.bounds().w())
     }
 
     pub(super) fn child_count(&self) -> usize {
@@ -94,12 +76,6 @@ impl StatusBar {
 
     pub(super) fn set_child_rect(&mut self, idx: usize, rect: Rect) {
         self.group.set_child_bounds(idx, rect);
-    }
-
-    pub(super) fn set_last_alloc(&mut self, idx: usize, alloc: u16) {
-        if let Some(h) = self.hints.get_mut(idx) {
-            h.last_alloc = alloc;
-        }
     }
 }
 
@@ -123,14 +99,13 @@ impl View for StatusBar {
 
     fn handle(&mut self, event: &crate::event::Event) -> crate::view::HandleResult {
         let result = self.group.dispatch(event);
-        // Re-layout after dispatch: children may have changed desired_width
         self.recompute_layout();
         result
     }
 
     fn draw(&mut self) {
         let bounds = self.group.bounds();
-        if bounds.w == 0 || bounds.h == 0 {
+        if bounds.w() == 0 || bounds.h() == 0 {
             return;
         }
         let bar_style = palette().style(StyleId::StatusBar);

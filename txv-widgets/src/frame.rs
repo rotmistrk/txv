@@ -104,14 +104,6 @@ impl View for Frame {
         let bg = palette().style(StyleId::StatusBar);
         self.group.buffer_mut().fill(' ', bg);
         self.draw_border();
-
-        // Draw and blit child
-        if let Some(child) = self.group.child_mut(0) {
-            if child.bounds().w() > 0 && child.bounds().h() > 0 {
-                child.render();
-            }
-        }
-        self.group.blit_child(0);
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

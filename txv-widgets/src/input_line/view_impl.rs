@@ -8,11 +8,7 @@ use txv_core::prelude::*;
 use super::InputLine;
 
 impl View for InputLine {
-    delegate_view_state!(state, override { cursor, select, as_any_mut, desired_width });
-
-    fn desired_width(&self) -> u16 {
-        self.text.len() as u16 + 1
-    }
+    delegate_view_state!(state, override { cursor, select, as_any_mut });
 
     fn select(&mut self) {
         self.state.set_focused(true);
