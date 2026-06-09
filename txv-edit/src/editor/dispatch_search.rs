@@ -13,6 +13,13 @@ impl Editor {
                 self.command_buf.clear();
                 EditorAction::ModeChanged
             }
+            Command::EnterSearchBackward => {
+                self.incsearch_origin = Some((self.cursor_line, self.cursor_col));
+                self.search_direction_forward = false;
+                self.mode = EditorMode::Search;
+                self.command_buf.clear();
+                EditorAction::ModeChanged
+            }
             Command::SearchForward(ref pat) => {
                 self.search_forward(pat);
                 EditorAction::CursorMoved

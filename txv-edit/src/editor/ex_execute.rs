@@ -1,5 +1,9 @@
 //! Ex command execution — dispatches parsed ex commands to editor actions.
 
+#[cfg(test)]
+#[path = "ex_execute_tests.rs"]
+mod tests;
+
 use std::process::Command as ProcessCommand;
 
 use super::ex::{self, ExCommand};

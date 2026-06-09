@@ -101,6 +101,7 @@ pub enum Command {
     SearchWordForward,
     SearchWordBackward,
     EnterSearchMode,
+    EnterSearchBackward,
 
     // Ex / command mode
     EnterCommandMode,

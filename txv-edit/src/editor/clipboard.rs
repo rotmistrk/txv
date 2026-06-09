@@ -168,6 +168,14 @@ impl Editor {
             "nonumber" | "nonu" => self.options.number = false,
             "wrap" => self.options.wrap = true,
             "nowrap" => self.options.wrap = false,
+            "autoindent" | "ai" => self.options.autoindent = true,
+            "noautoindent" | "noai" => self.options.autoindent = false,
+            "paste" => self.options.paste = true,
+            "nopaste" => self.options.paste = false,
+            "expandtab" | "et" => self.options.expandtab = true,
+            "noexpandtab" | "noet" => self.options.expandtab = false,
+            "hlsearch" | "hls" => self.options.hlsearch = true,
+            "nohlsearch" | "nohls" => self.options.hlsearch = false,
             "incsearch" | "is" => self.options.incsearch = true,
             "noincsearch" | "nois" => self.options.incsearch = false,
             "matchparen" => self.options.matchparen = true,
@@ -181,6 +189,18 @@ impl Editor {
             _ => {
                 if let Some(n) = opt.strip_prefix("scrolloff=").and_then(|s| s.parse().ok()) {
                     self.options.scrolloff = n;
+                } else if let Some(n) = opt
+                    .strip_prefix("tabstop=")
+                    .or_else(|| opt.strip_prefix("ts="))
+                    .and_then(|s| s.parse().ok())
+                {
+                    self.options.tab_width = n;
+                } else if let Some(n) = opt
+                    .strip_prefix("shiftwidth=")
+                    .or_else(|| opt.strip_prefix("sw="))
+                    .and_then(|s| s.parse().ok())
+                {
+                    self.options.shiftwidth = n;
                 } else if let Some(style) = self.parse_cursor_set(opt) {
                     style
                 } else {

@@ -40,6 +40,7 @@ impl InputLine {
         };
         let first_line = text.lines().next().unwrap_or("");
         self.insert_text(first_line);
+        self.notify_change();
         let line_count = text.lines().count();
         if line_count > 1 {
             let msg = Message::warn("paste", format!("inserted only 1st of {} lines", line_count));
@@ -54,6 +55,7 @@ impl InputLine {
             KeyCode::Backspace => self.handle_backspace_key(key),
             KeyCode::Delete => {
                 self.handle_delete();
+                self.notify_change();
                 self.update_completions();
                 HandleResult::Consumed
             }
@@ -98,6 +100,7 @@ impl InputLine {
         } else {
             self.handle_backspace();
         }
+        self.notify_change();
         self.update_completions();
         HandleResult::Consumed
     }
@@ -167,6 +170,7 @@ impl InputLine {
                 if !killed.is_empty() {
                     self.clipboard_copy(&killed);
                 }
+                self.notify_change();
                 self.update_completions();
             }
             _ => return HandleResult::Ignored,
@@ -182,6 +186,7 @@ impl InputLine {
             'b' => self.handle_nav(shift, self.cursor.saturating_sub(1)),
             'd' => {
                 self.handle_delete();
+                self.notify_change();
                 self.update_completions();
             }
             'k' => self.kill_and_copy(Self::kill_to_end),
@@ -200,6 +205,7 @@ impl InputLine {
         if !killed.is_empty() {
             self.clipboard_copy(&killed);
         }
+        self.notify_change();
         self.update_completions();
     }
 
@@ -212,6 +218,7 @@ impl InputLine {
         if let Some(text) = text {
             let first_line = text.lines().next().unwrap_or("").to_string();
             self.insert_text(&first_line);
+            self.notify_change();
         } else {
             self.state.put_command(CM_PASTE_REQUEST, None);
         }

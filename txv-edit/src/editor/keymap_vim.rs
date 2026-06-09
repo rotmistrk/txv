@@ -136,6 +136,7 @@ impl VimKeymap {
             KeyCode::Char('v') => Command::EnterVisual,
             KeyCode::Char('V') => Command::EnterVisualLine,
             KeyCode::Char('/') => Command::EnterSearchMode,
+            KeyCode::Char('?') => Command::EnterSearchBackward,
             KeyCode::Char('n') => Command::SearchNext,
             KeyCode::Char('N') => Command::SearchPrev,
             KeyCode::Char('*') => Command::SearchWordForward,

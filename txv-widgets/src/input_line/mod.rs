@@ -35,6 +35,8 @@ pub struct InputLine {
     pub(crate) history_pos: Option<usize>,
     pub(crate) completer: Option<Box<dyn Completer>>,
     pub(crate) submit_command: CommandId,
+    /// Command emitted on every text change (None = silent).
+    pub(crate) change_command: Option<CommandId>,
     /// Command ID that is allowed to set text content (prefill).
     pub(crate) prefill_command: Option<CommandId>,
     pub(crate) palette: Option<Arc<dyn Palette>>,
@@ -55,6 +57,7 @@ impl InputLine {
             history_pos: None,
             completer: None,
             submit_command: CM_OK,
+            change_command: None,
             prefill_command: None,
             palette: None,
             sidekick_visible: false,
@@ -64,6 +67,11 @@ impl InputLine {
 
     pub fn with_command(mut self, id: CommandId) -> Self {
         self.submit_command = id;
+        self
+    }
+
+    pub fn with_change_command(mut self, id: CommandId) -> Self {
+        self.change_command = Some(id);
         self
     }
 
@@ -196,6 +204,7 @@ impl InputLine {
         self.text.insert(byte_pos, ch);
         self.cursor += 1;
         self.update_width();
+        self.notify_change();
     }
 
     pub(crate) fn handle_backspace(&mut self) {
@@ -262,5 +271,12 @@ impl InputLine {
             start -= 1;
         }
         start
+    }
+
+    /// Emit change_command if configured.
+    pub(crate) fn notify_change(&self) {
+        if let Some(id) = self.change_command {
+            self.state.put_command(id, None);
+        }
     }
 }

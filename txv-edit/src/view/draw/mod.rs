@@ -161,7 +161,7 @@ impl<D: EditorViewDelegate> EditorView<D> {
 
     pub(super) fn draw_impl(&mut self) {
         draw_editor(
-            self.state.buffer_mut(),
+            self.group.buffer_mut(),
             &self.editor,
             &self.delegate,
             &mut self.hl_cache,

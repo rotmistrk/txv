@@ -18,7 +18,36 @@ pub fn compose_char_style<D: EditorViewDelegate>(
     p: &DrawParams,
 ) -> Style {
     let style = apply_highlights(editor, delegate, base, line_idx, char_idx, byte_pos, p);
-    apply_delegate(delegate, style, line_idx, char_idx)
+    let style = apply_delegate(delegate, style, line_idx, char_idx);
+    apply_software_cursor(editor, style, line_idx, char_idx)
+}
+
+/// Flip fg/bg at cursor position for software cursor in Normal/Visual modes.
+fn apply_software_cursor(editor: &Editor, style: Style, line: usize, col: usize) -> Style {
+    use crate::editor::keymap::EditorMode;
+    let mode = editor.mode();
+    if !matches!(
+        mode,
+        EditorMode::Normal | EditorMode::Visual | EditorMode::VisualLine | EditorMode::VisualBlock
+    ) {
+        return style;
+    }
+    if line == editor.cursor_line() && col == editor.cursor_col() {
+        // Resolve Reset to concrete colors for visible inversion
+        let fg = if style.fg() == Color::Reset {
+            Color::Rgb(220, 220, 220)
+        } else {
+            style.fg()
+        };
+        let bg = if style.bg() == Color::Reset {
+            Color::Rgb(30, 30, 30)
+        } else {
+            style.bg()
+        };
+        Style::new(bg, fg).with_attrs(style.attrs())
+    } else {
+        style
+    }
 }
 
 fn apply_highlights<D: EditorViewDelegate>(

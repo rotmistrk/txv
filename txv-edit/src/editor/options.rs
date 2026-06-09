@@ -8,8 +8,13 @@ pub struct EditorOptions {
     pub(crate) list: bool,
     pub(crate) number: bool,
     pub(crate) wrap: bool,
+    pub(crate) autoindent: bool,
+    pub(crate) paste: bool,
+    pub(crate) expandtab: bool,
+    pub(crate) shiftwidth: usize,
     pub(crate) tab_width: usize,
     pub(crate) scrolloff: usize,
+    pub(crate) hlsearch: bool,
     pub(crate) incsearch: bool,
     pub(crate) matchparen: bool,
     pub(crate) rainbow: bool,
@@ -99,6 +104,36 @@ impl EditorOptions {
     pub fn set_cursor_command(&mut self, v: CursorStyle) {
         self.cursor_command = v;
     }
+    pub fn autoindent(&self) -> bool {
+        self.autoindent && !self.paste
+    }
+    pub fn set_autoindent(&mut self, v: bool) {
+        self.autoindent = v;
+    }
+    pub fn paste(&self) -> bool {
+        self.paste
+    }
+    pub fn set_paste(&mut self, v: bool) {
+        self.paste = v;
+    }
+    pub fn expandtab(&self) -> bool {
+        self.expandtab
+    }
+    pub fn set_expandtab(&mut self, v: bool) {
+        self.expandtab = v;
+    }
+    pub fn shiftwidth(&self) -> usize {
+        self.shiftwidth
+    }
+    pub fn set_shiftwidth(&mut self, v: usize) {
+        self.shiftwidth = v;
+    }
+    pub fn hlsearch(&self) -> bool {
+        self.hlsearch
+    }
+    pub fn set_hlsearch(&mut self, v: bool) {
+        self.hlsearch = v;
+    }
 }
 
 impl Default for EditorOptions {
@@ -107,8 +142,13 @@ impl Default for EditorOptions {
             list: false,
             number: true,
             wrap: true,
+            autoindent: true,
+            paste: false,
+            expandtab: true,
+            shiftwidth: 4,
             tab_width: 4,
             scrolloff: 3,
+            hlsearch: true,
             incsearch: true,
             matchparen: true,
             rainbow: false,

@@ -25,7 +25,11 @@ impl Editor {
     pub(super) fn open_line_below(&mut self) {
         self.buf().begin_group();
         self.mode = EditorMode::Insert;
-        let indent = self.current_line_indent();
+        let indent = if self.options.autoindent() {
+            self.current_line_indent()
+        } else {
+            String::new()
+        };
         let line_len = self.buf().line_len(self.cursor_line);
         let offset = self.buf().line_col_to_offset(self.cursor_line, line_len);
         if let Some(offset) = offset {
@@ -39,7 +43,11 @@ impl Editor {
     pub(super) fn open_line_above(&mut self) {
         self.buf().begin_group();
         self.mode = EditorMode::Insert;
-        let indent = self.current_line_indent();
+        let indent = if self.options.autoindent() {
+            self.current_line_indent()
+        } else {
+            String::new()
+        };
         let offset = self.buf().line_col_to_offset(self.cursor_line, 0);
         if let Some(offset) = offset {
             let text = format!("{indent}\n");
@@ -66,7 +74,11 @@ impl Editor {
         let Some(offset) = offset else {
             return;
         };
-        let indent = self.current_line_indent();
+        let indent = if self.options.autoindent() {
+            self.current_line_indent()
+        } else {
+            String::new()
+        };
         let text = format!("\n{indent}");
         self.buf().insert(offset, &text);
         self.cursor_line += 1;

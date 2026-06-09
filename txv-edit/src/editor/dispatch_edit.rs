@@ -34,7 +34,7 @@ impl Editor {
             | Command::VisualIndent | Command::VisualUnindent
             | Command::VisualExCommand | Command::BlockInsert | Command::BlockAppend
             | Command::BlockReplace(_) => self.dispatch_visual_ops(cmd),
-            Command::EnterSearchMode | Command::SearchForward(_)
+            Command::EnterSearchMode | Command::EnterSearchBackward | Command::SearchForward(_)
             | Command::SearchBackward(_) | Command::SearchNext | Command::SearchPrev
             | Command::SearchWordForward | Command::SearchWordBackward
             | Command::EnterCommandMode | Command::CompletionNext

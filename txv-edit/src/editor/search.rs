@@ -6,7 +6,7 @@ use super::Editor;
 
 // --- Search methods ---
 impl Editor {
-    pub(super) fn search_forward(&mut self, pattern: &str) {
+    pub fn search_forward(&mut self, pattern: &str) {
         if pattern.is_empty() {
             return;
         }
@@ -15,7 +15,7 @@ impl Editor {
         self.search_next();
     }
 
-    pub(super) fn search_backward(&mut self, pattern: &str) {
+    pub fn search_backward(&mut self, pattern: &str) {
         if pattern.is_empty() {
             return;
         }
