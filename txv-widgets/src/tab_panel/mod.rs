@@ -212,17 +212,18 @@ impl TabPanel {
         }
         // Bar gets row 0
         self.group.set_child_bounds(0, Rect::new(b.x(), b.y(), b.w(), 1));
-        // Active child gets content rect, others get zero
+        // Active child gets content rect and visibility, others get zero
         let cr = self.content_rect();
         let active = self.bar().active_index();
         for i in 0..self.tab_count() {
             let gi = i + 1;
-            let rect = if i == active {
-                cr
+            if i == active {
+                self.group.set_child_bounds(gi, cr);
+                self.group.set_child_visible(gi, true);
             } else {
-                Rect::default()
-            };
-            self.group.set_child_bounds(gi, rect);
+                self.group.set_child_bounds(gi, Rect::default());
+                self.group.set_child_visible(gi, false);
+            }
         }
         self.group.mark_dirty();
     }

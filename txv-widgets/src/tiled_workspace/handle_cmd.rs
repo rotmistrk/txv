@@ -102,7 +102,7 @@ impl TiledWorkspace {
         match id {
             CM_TW_TAB_DROPDOWN => {
                 if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                    panel.bar_mut().open_dropdown();
+                    panel.open_dropdown();
                 }
                 true
             }
@@ -116,7 +116,7 @@ impl TiledWorkspace {
             }
             CM_TW_TAB_DROPDOWN_CLOSE => {
                 if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                    panel.bar_mut().close_dropdown();
+                    panel.close_dropdown();
                 }
                 true
             }
@@ -192,7 +192,7 @@ impl TiledWorkspace {
         if panel.bar().dropdown_open() {
             panel.bar_mut().dropdown_move_up();
         } else if panel.tab_count() > 1 {
-            panel.bar_mut().open_dropdown();
+            panel.open_dropdown();
         }
     }
 
@@ -203,7 +203,7 @@ impl TiledWorkspace {
         if panel.bar().dropdown_open() {
             panel.bar_mut().dropdown_move_down();
         } else if panel.tab_count() > 1 {
-            panel.bar_mut().open_dropdown();
+            panel.open_dropdown();
         }
     }
 

@@ -2,15 +2,11 @@
 
 use txv_widgets::tree_table_source::{CellValidator, ColAlign, TreeTableSource};
 
+use super::demo_row::DemoRow;
+
 /// A simple flat tree source with sample data for the gallery demo.
 pub(crate) struct DemoTreeSource {
     rows: Vec<DemoRow>,
-}
-
-struct DemoRow {
-    label: String,
-    depth: usize,
-    cells: [String; 2],
 }
 
 impl DemoTreeSource {

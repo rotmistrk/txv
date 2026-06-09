@@ -55,9 +55,16 @@ impl View for TabPanel {
             return HandleResult::Ignored;
         }
         let prev_active = self.bar().active_index();
+        let was_dropdown = self.bar().dropdown_open();
         let result = self.group.dispatch(event);
         if self.bar().active_index() != prev_active {
             self.sync_focus_from_bar(prev_active);
+        }
+        // If dropdown just closed (by TabBar handling Esc/Enter), restore tab visibility
+        if was_dropdown && !self.bar().dropdown_open() {
+            let gi = self.bar().active_index() + 1;
+            self.group.set_child_visible(gi, true);
+            self.group.mark_dirty();
         }
         result
     }

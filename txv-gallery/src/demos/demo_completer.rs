@@ -2,25 +2,10 @@
 
 use txv_core::prelude::*;
 
+use super::demo_completion::DemoCompletion;
 use crate::widget_list::WIDGET_NAMES;
 
 pub(crate) struct DemoCompleter;
-
-struct DemoCompletion {
-    text: String,
-}
-
-impl Completion for DemoCompletion {
-    fn text(&self) -> &str {
-        &self.text
-    }
-    fn display(&self) -> &str {
-        &self.text
-    }
-    fn kind(&self) -> &str {
-        "widget"
-    }
-}
 
 impl Completer for DemoCompleter {
     fn complete(

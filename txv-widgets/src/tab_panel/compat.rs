@@ -74,6 +74,10 @@ impl TabPanel {
     /// Open the tab dropdown.
     pub fn open_dropdown(&mut self) {
         self.bar_mut().open_dropdown();
+        // Hide active tab content so dropdown is visible
+        let gi = self.bar().active_index() + 1;
+        self.group.set_child_visible(gi, false);
+        self.group.mark_dirty();
     }
 
     /// Close the tab dropdown.
@@ -81,6 +85,10 @@ impl TabPanel {
         self.bar_mut().dropdown_cursor = None;
         self.bar_mut().dropdown_filter.clear();
         self.bar_mut().state.mark_dirty();
+        // Show active tab content again
+        let gi = self.bar().active_index() + 1;
+        self.group.set_child_visible(gi, true);
+        self.group.mark_dirty();
     }
 
     /// Whether the dropdown is open.

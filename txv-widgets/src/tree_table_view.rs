@@ -186,7 +186,15 @@ impl<D: TreeTableSource> TreeTableView<D> {
 }
 
 impl<D: TreeTableSource> View for TreeTableView<D> {
-    delegate_view_state!(state);
+    delegate_view_state!(state, override { as_any_mut });
+
+    fn as_any(&self) -> Option<&dyn std::any::Any> {
+        Some(self)
+    }
+
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(self)
+    }
 
     fn draw(&mut self) {
         self.draw_tree_table();

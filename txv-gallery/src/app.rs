@@ -3,6 +3,7 @@
 use txv_core::prelude::*;
 use txv_core::status_bar::{StatusBar, StatusSlot};
 use txv_widgets::list_view::ListView;
+use txv_widgets::sidekick_manager::SidekickManager;
 use txv_widgets::text_area::TextArea;
 use txv_widgets::tiled_workspace::types::{PanelConfig, PanelPosition, SplitNode};
 use txv_widgets::tiled_workspace::TiledWorkspace;
@@ -36,7 +37,7 @@ impl Gallery {
         group.insert(Box::new(bar));
 
         // SidekickManager (child 2) — postprocess, draws over everything
-        let sk = txv_widgets::sidekick_manager::SidekickManager::new();
+        let sk = SidekickManager::new();
         group.insert(Box::new(sk));
 
         group.set_focused_index(0);
@@ -106,7 +107,7 @@ impl Gallery {
             .child_mut(0)
             .and_then(|v| v.as_any_mut())
             .and_then(|a| a.downcast_mut::<TiledWorkspace>())
-            .expect("child 0 is TiledWorkspace")
+            .unwrap_or_else(|| unreachable!())
     }
 
     fn list_cursor(&mut self) -> usize {

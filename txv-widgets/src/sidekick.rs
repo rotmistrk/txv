@@ -3,6 +3,8 @@
 //! The caller creates a View, sends CM_SIDEKICK_SHOW with ownership.
 //! SidekickManager positions and hosts it. CM_SIDEKICK_HIDE removes it.
 
+use std::sync::Mutex;
+
 use txv_core::prelude::*;
 
 use crate::tiled_workspace::commands::CM_TW_MAX;
@@ -31,7 +33,7 @@ pub struct SidekickRequest {
     /// Rect (width/height for the popup).
     pub(crate) rect: Rect,
     /// The view to display (ownership transferred via Mutex for interior mutability).
-    view: std::sync::Mutex<Option<Box<dyn View>>>,
+    view: Mutex<Option<Box<dyn View>>>,
     /// The view that emitted this (for coordinate translation).
     pub(crate) emitter_id: ViewId,
 }
@@ -40,7 +42,7 @@ impl SidekickRequest {
     pub fn new(view: Box<dyn View>, rect: Rect, emitter_id: ViewId) -> Self {
         Self {
             rect,
-            view: std::sync::Mutex::new(Some(view)),
+            view: Mutex::new(Some(view)),
             emitter_id,
         }
     }

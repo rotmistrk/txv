@@ -34,11 +34,13 @@ impl StatusBar {
     /// Add a child view with layout hints from the slot builder.
     pub fn add(&mut self, slot: StatusSlot) {
         let (view, priority, stretch, gravity) = slot.take_view();
+        let natural_width = view.bounds().w();
         self.group.insert(view);
         self.hints.push(Hints {
             priority,
             stretch,
             gravity,
+            natural_width,
         });
     }
 
@@ -61,13 +63,29 @@ impl StatusBar {
         self.group.bounds()
     }
 
-    pub(super) fn hint_iter(&self) -> impl Iterator<Item = (u8, u16, Gravity)> + '_ {
-        self.hints.iter().map(|h| (h.priority, h.stretch, h.gravity))
+    pub(super) fn hint_iter(&self) -> impl Iterator<Item = (u8, u16, Gravity, u16)> + '_ {
+        self.hints
+            .iter()
+            .map(|h| (h.priority, h.stretch, h.gravity, h.natural_width))
     }
 
-    /// Get a child's wanted width from its current bounds.
+    /// Get a child's wanted width for layout purposes.
+    /// Stretch items: use natural width only (stretch fills extra space separately).
+    /// Non-stretch items that self-resize: max of natural and current.
     pub(super) fn child_wanted_width(&self, idx: usize) -> u16 {
-        self.group.child(idx).map_or(0, |c| c.bounds().w())
+        let h = match self.hints.get(idx) {
+            Some(h) => h,
+            None => return 0,
+        };
+        if h.stretch > 0 {
+            return h.natural_width;
+        }
+        let current = self.group.child(idx).map_or(0, |c| c.bounds().w());
+        if current > h.natural_width {
+            current
+        } else {
+            h.natural_width
+        }
     }
 
     pub(super) fn child_count(&self) -> usize {

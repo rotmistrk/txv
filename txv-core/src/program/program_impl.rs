@@ -139,6 +139,7 @@ impl Program {
 
             // Draw and flush
             self.draw_and_flush(backend);
+            backend.set_cursor(self.group.cursor());
         }
     }
 

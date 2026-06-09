@@ -9,9 +9,13 @@ use txv_widgets::tab_panel::TabPanel;
 use txv_widgets::text_area::TextArea;
 use txv_widgets::tree_table_view::TreeTableView;
 
+use txv_widgets::v_key_label::KeyLabelView;
+
 use crate::widget_list::WidgetListData;
 
 mod demo_completer;
+mod demo_completion;
+mod demo_row;
 mod demo_tree_source;
 mod status_bar_demo;
 
@@ -103,8 +107,7 @@ fn make_tab_panel() -> Box<dyn View> {
 fn make_focus_gated_group() -> Box<dyn View> {
     use txv_widgets::focus_gated_group::FocusGatedGroup;
     let mut fgg = FocusGatedGroup::new(1);
-    let kl =
-        txv_widgets::v_key_label::KeyLabelView::new(KeyEvent::new(KeyCode::Char('a'), KeyMod::NONE), 100, "a Action");
+    let kl = KeyLabelView::new(KeyEvent::new(KeyCode::Char('a'), KeyMod::NONE), 100, "a Action");
     fgg.add_child(Box::new(kl));
     // Wrap in a frame to give it visible area
     let mut frame = Frame::new(Box::new(fgg));

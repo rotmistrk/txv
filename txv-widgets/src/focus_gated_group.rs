@@ -71,7 +71,14 @@ impl FocusGatedGroup {
 }
 
 impl View for FocusGatedGroup {
-    delegate_group_state!(group, override { draw, handle, set_sink });
+    delegate_group_state!(group, override { draw, handle, set_sink, set_bounds });
+
+    fn set_bounds(&mut self, r: Rect) {
+        self.group.set_bounds(r);
+        if self.active {
+            self.layout_children();
+        }
+    }
 
     fn set_sink(&mut self, sink: EventSink) {
         self.group.set_sink(sink);

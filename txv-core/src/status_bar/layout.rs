@@ -50,7 +50,7 @@ impl StatusBar {
     fn collect_layout_items(&self) -> Vec<LayoutItem> {
         self.hint_iter()
             .enumerate()
-            .filter_map(|(idx, (priority, stretch, gravity))| {
+            .filter_map(|(idx, (priority, stretch, gravity, _natural))| {
                 let wanted = self.child_wanted_width(idx);
                 if wanted == 0 {
                     return None;
