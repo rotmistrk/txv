@@ -37,7 +37,7 @@ fn activates_on_trigger_key() {
     let result = mk.handle(&Event::Key(ctrl_w()));
     assert_eq!(result, HandleResult::Consumed);
     // After activation, draw shows children (not just idle label)
-    mk.draw();
+    mk.render();
     let buf = mk.buffer();
     // Should show "C-w: " prompt (modal style)
     let modal_bg = palette().style(StyleId::StatusBarModal).bg();
@@ -104,7 +104,7 @@ fn activate_type_tab_and_read(mut mk: ModalKey) -> String {
     mk.handle(&Event::Key(key(KeyCode::Char('h'))));
     mk.handle(&Event::Key(key(KeyCode::Char('e'))));
     mk.handle(&Event::Key(key(KeyCode::Tab)));
-    mk.draw();
+    mk.render();
     let buf = mk.buffer();
     let mut text = String::new();
     for x in 0..buf.width() {
@@ -121,7 +121,7 @@ fn active_children_use_modal_background() {
 
     // Activate
     mk.handle(&Event::Key(ctrl_w()));
-    mk.draw();
+    mk.render();
 
     let modal_bg = palette().style(StyleId::StatusBarModal).bg();
     let buf = mk.buffer();
@@ -158,7 +158,7 @@ fn active_input_line_uses_modal_background() {
     // Type something so input has content beyond cursor
     mk.handle(&Event::Key(key(KeyCode::Char('h'))));
     mk.handle(&Event::Key(key(KeyCode::Char('i'))));
-    mk.draw();
+    mk.render();
 
     let modal_bg = palette().style(StyleId::StatusBarModal).bg();
     let buf = mk.buffer();
@@ -184,7 +184,7 @@ fn dormant_children_use_status_bar_background() {
     // Activate then deactivate
     mk.handle(&Event::Key(ctrl_w()));
     mk.handle(&Event::Key(key(KeyCode::Char('z')))); // cancel_on_miss
-    mk.draw();
+    mk.render();
 
     let bar_bg = palette().style(StyleId::StatusBar).bg();
     let buf = mk.buffer();

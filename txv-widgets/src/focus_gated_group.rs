@@ -78,12 +78,10 @@ impl View for FocusGatedGroup {
 
     fn draw(&mut self) {
         if !self.active {
-            self.group.mark_redrawn();
             return;
         }
         let bounds = self.group.bounds();
         if bounds.w() == 0 || bounds.h() == 0 {
-            self.group.mark_redrawn();
             return;
         }
         let style = palette().style(StyleId::StatusBar);

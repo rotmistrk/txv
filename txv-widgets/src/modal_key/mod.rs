@@ -92,6 +92,7 @@ impl ModalKey {
     pub fn add_child(mut self, child: Box<dyn View>) -> Self {
         self.group.insert(child);
         let idx = self.group.child_count() - 1;
+        self.group.set_child_visible(idx, false); // starts dormant
         self.propagate_child_sink(idx);
         self
     }
@@ -106,16 +107,12 @@ impl ModalKey {
         self.active = true;
         self.activated_at = Some(Instant::now());
         self.propagate_modal_palette();
+        self.layout_children_modal();
         for i in 0..self.group.child_count() {
+            self.group.set_child_visible(i, true);
             if let Some(child) = self.group.child_mut(i) {
                 child.select();
             }
-        }
-        // Request minimum active width so parent layout can drop lower-priority items
-        let b = self.group.bounds();
-        let min_active = self.active_min_width();
-        if b.w() < min_active {
-            self.group.set_bounds(Rect::new(b.x(), b.y(), min_active, b.h()));
         }
         self.group.mark_dirty();
     }
@@ -124,6 +121,7 @@ impl ModalKey {
         self.active = false;
         self.activated_at = None;
         for i in 0..self.group.child_count() {
+            self.group.set_child_visible(i, false);
             if let Some(child) = self.group.child_mut(i) {
                 child.unselect();
             }

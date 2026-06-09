@@ -122,7 +122,10 @@ impl View for StatusBar {
     fn unselect(&mut self) {}
 
     fn handle(&mut self, event: &crate::event::Event) -> crate::view::HandleResult {
-        self.group.dispatch(event)
+        let result = self.group.dispatch(event);
+        // Re-layout after dispatch: children may have changed desired_width
+        self.recompute_layout();
+        result
     }
 
     fn draw(&mut self) {
@@ -130,8 +133,6 @@ impl View for StatusBar {
         if bounds.w == 0 || bounds.h == 0 {
             return;
         }
-        self.recompute_layout();
-
         let bar_style = palette().style(StyleId::StatusBar);
         self.group.buffer_mut().fill(' ', bar_style);
     }

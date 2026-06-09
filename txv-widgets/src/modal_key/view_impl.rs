@@ -34,7 +34,6 @@ impl View for ModalKey {
     fn draw(&mut self) {
         let bounds = self.group.bounds();
         if bounds.w() == 0 || bounds.h() == 0 {
-            self.group.mark_redrawn();
             return;
         }
         let style = palette().style(StyleId::StatusBar);
@@ -47,7 +46,6 @@ impl View for ModalKey {
                 self.group.buffer_mut().print(1, 0, &self.idle_label, style);
             }
         }
-        self.group.mark_redrawn();
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
@@ -73,9 +71,14 @@ impl ModalKey {
         self.group.buffer_mut().print(0, 0, "\u{e0b6}", cap_style);
         let prompt_style = modal_style.with_attrs(modal_style.attrs().bold());
         self.group.buffer_mut().print(1, 0, &self.prompt, prompt_style);
-        self.layout_children_modal();
+        // Blit children between caps
+        for i in 0..self.group.child_count() {
+            if self.group.is_child_visible(i) {
+                self.group.blit_child(i);
+            }
+        }
+        // Right cap AFTER children blit (must not be overwritten)
         let bounds = self.group.bounds();
-        self.draw_children(bounds);
         let rw = bounds.w().saturating_sub(1);
         let rcap_style = Style::new(modal_bg, bar_style.bg());
         self.group.buffer_mut().print(rw, 0, "\u{e0b4}", rcap_style);
@@ -115,7 +118,7 @@ impl ModalKey {
         had_terminal
     }
 
-    fn layout_children_modal(&mut self) {
+    pub(crate) fn layout_children_modal(&mut self) {
         let prompt_w = self.prompt.len() as u16;
         // +1 for left power cap, +1 for right power cap
         let base_x = prompt_w + 1;
@@ -131,17 +134,6 @@ impl ModalKey {
             };
             self.group.set_child_bounds(i, Rect::new(x, 0, cw, 1));
             x += cw;
-        }
-    }
-
-    fn draw_children(&mut self, _bounds: Rect) {
-        for i in 0..self.group.child_count() {
-            if let Some(child) = self.group.child_mut(i) {
-                if child.bounds().w() > 0 {
-                    child.render();
-                }
-            }
-            self.group.blit_child(i);
         }
     }
 
