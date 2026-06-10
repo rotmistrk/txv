@@ -41,6 +41,7 @@ impl Gallery {
         group.insert(Box::new(sk));
 
         group.set_focused_index(0);
+        group.select_focused();
 
         Self { group, current_demo: 0 }
     }
