@@ -2,7 +2,7 @@
 
 use txv_core::prelude::Style;
 
-/// Data source for DropdownMenu. Provides items with filtering.
+/// Data source for DropdownMenu. Provides all items; filtering is done by the widget.
 pub trait DropdownSource: Send + 'static {
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool {
@@ -17,10 +17,4 @@ pub trait DropdownSource: Send + 'static {
     fn badge(&self, _idx: usize) -> Option<(char, Style)> {
         None
     }
-    /// Filter items by query. Called on every keystroke.
-    fn filter(&mut self, query: &str);
-    /// Number of visible items after filtering.
-    fn visible_len(&self) -> usize;
-    /// Map visible index to original index.
-    fn visible_index(&self, visible_idx: usize) -> usize;
 }

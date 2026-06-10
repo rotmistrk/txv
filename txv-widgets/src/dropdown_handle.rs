@@ -64,7 +64,7 @@ impl<D: DropdownSource> View for DropdownMenu<D> {
 
 impl<D: DropdownSource> DropdownMenu<D> {
     pub(crate) fn move_cursor(&mut self, delta: i32) -> HandleResult {
-        let len = self.source.visible_len();
+        let len = self.visible.len();
         if len == 0 {
             return HandleResult::Consumed;
         }
@@ -82,10 +82,10 @@ impl<D: DropdownSource> DropdownMenu<D> {
     }
 
     fn select_current(&mut self) -> HandleResult {
-        if self.source.visible_len() == 0 {
+        if self.visible.is_empty() {
             return HandleResult::Consumed;
         }
-        let orig = self.source.visible_index(self.cursor);
+        let orig = self.visible[self.cursor];
         self.state.put_command(CM_DROPDOWN_DONE, Some(Box::new(orig)));
         HandleResult::Consumed
     }
@@ -96,7 +96,7 @@ impl<D: DropdownSource> DropdownMenu<D> {
         }
         if self.filter_enabled && !ch.is_control() {
             self.filter.push(ch);
-            self.source.filter(&self.filter);
+            self.refilter();
             self.cursor = 0;
             self.state.mark_dirty();
             return HandleResult::Consumed;
@@ -110,8 +110,8 @@ impl<D: DropdownSource> DropdownMenu<D> {
             NumberMode::SkipFirst => n + 1,
             _ => n,
         };
-        if effective < self.source.visible_len() {
-            let orig = self.source.visible_index(effective);
+        if effective < self.visible.len() {
+            let orig = self.visible[effective];
             self.state.put_command(CM_DROPDOWN_DONE, Some(Box::new(orig)));
         }
         HandleResult::Consumed
@@ -125,7 +125,7 @@ impl<D: DropdownSource> DropdownMenu<D> {
             FilterMode::Subsequence => FilterMode::Prefix,
         };
         if !self.filter.is_empty() {
-            self.source.filter(&self.filter);
+            self.refilter();
             self.cursor = 0;
         }
         self.state.mark_dirty();
@@ -134,7 +134,7 @@ impl<D: DropdownSource> DropdownMenu<D> {
 
     fn handle_backspace(&mut self) -> HandleResult {
         if self.filter.pop().is_some() {
-            self.source.filter(&self.filter);
+            self.refilter();
             self.cursor = 0;
             self.state.mark_dirty();
         }
@@ -142,17 +142,13 @@ impl<D: DropdownSource> DropdownMenu<D> {
     }
 
     fn autocomplete_lcp(&mut self) -> HandleResult {
-        if !self.filter_enabled {
-            return HandleResult::Ignored;
-        }
-        let count = self.source.visible_len();
-        if count == 0 {
+        if !self.filter_enabled || self.visible.is_empty() {
             return HandleResult::Consumed;
         }
-        let first = self.source.label(self.source.visible_index(0)).to_string();
+        let first = self.source.label(self.visible[0]).to_string();
         let mut lcp_len = first.len();
-        for i in 1..count {
-            let label = self.source.label(self.source.visible_index(i));
+        for &idx in &self.visible[1..] {
+            let label = self.source.label(idx);
             lcp_len = first
                 .chars()
                 .zip(label.chars())
@@ -166,7 +162,7 @@ impl<D: DropdownSource> DropdownMenu<D> {
         let lcp: String = first.chars().take(lcp_len).collect();
         if lcp.len() > self.filter.len() {
             self.filter = lcp.to_lowercase();
-            self.source.filter(&self.filter);
+            self.refilter();
             self.cursor = 0;
             self.state.mark_dirty();
         }

@@ -52,7 +52,7 @@ impl<D: DropdownSource> DropdownMenu<D> {
 
         for row in 0..content_h {
             let vis_idx = self.scroll.offset + row;
-            if vis_idx >= self.source.visible_len() {
+            if vis_idx >= self.visible.len() {
                 break;
             }
             let y = top + row as u16;
@@ -66,7 +66,7 @@ impl<D: DropdownSource> DropdownMenu<D> {
                 self.state.buffer_mut().put(x, y, ' ', rs);
             }
             let x = self.draw_prefix(row, vis_idx, y, rs, ds);
-            let label = self.source.label(self.source.visible_index(vis_idx)).to_string();
+            let label = self.source.label(self.visible[vis_idx]).to_string();
             self.draw_label(&label, x, y, avail_w, rs, hl_fg);
             self.draw_secondary(vis_idx, y, w, rs, ds);
         }
@@ -96,7 +96,7 @@ impl<D: DropdownSource> DropdownMenu<D> {
     }
 
     fn draw_secondary(&mut self, vis_idx: usize, y: u16, w: u16, rs: Style, dim_s: Style) {
-        let orig_idx = self.source.visible_index(vis_idx);
+        let orig_idx = self.visible[vis_idx];
         let mut right_x = w - 2; // one space from right border
 
         // Badge (rightmost, 2-char wide)
@@ -160,7 +160,7 @@ impl<D: DropdownSource> DropdownMenu<D> {
             self.state.buffer_mut().put(left, y, indicator, style);
             left += 1;
         }
-        let count = format!("{}/{}", self.source.visible_len(), self.source.len());
+        let count = format!("{}/{}", self.visible.len(), self.source.len());
         let cx = w.saturating_sub(count.len() as u16 + 2);
         for (i, ch) in count.chars().enumerate() {
             self.state.buffer_mut().put(cx + i as u16, y, ch, style);

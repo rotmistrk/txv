@@ -46,12 +46,13 @@ fn dropdown_filter_narrows() {
     run_cycles(&mut app, &mut backend, 1);
     backend.inject_key(KeyCode::Right, KeyMod::CTRL.with_shift());
     run_cycles(&mut app, &mut backend, 1);
-    // Type "ru" to filter
+    // Type "ru" — prefix matches only "Rust"
     backend.inject_key(KeyCode::Char('r'), KeyMod::NONE);
     backend.inject_key(KeyCode::Char('u'), KeyMod::NONE);
     run_cycles(&mut app, &mut backend, 1);
-    assert!(backend.contains("Rust"), "Rust matches 'ru'");
+    assert!(backend.contains("Rust"), "Rust matches prefix 'ru'");
     assert!(!backend.contains("Python"), "Python filtered out");
+    assert!(!backend.contains("Elixir"), "Elixir filtered out (not prefix)");
 }
 
 #[test]
@@ -65,16 +66,16 @@ fn dropdown_backspace_widens() {
     run_cycles(&mut app, &mut backend, 1);
     backend.inject_key(KeyCode::Right, KeyMod::CTRL.with_shift());
     run_cycles(&mut app, &mut backend, 1);
-    // Filter to "rus"
+    // Filter to "rus" — only Rust
     backend.inject_str("rus");
     run_cycles(&mut app, &mut backend, 1);
     assert!(backend.contains("Rust"));
-    assert!(!backend.contains("Elixir"));
-    // Backspace twice → "r"
+    assert!(!backend.contains("Go"));
+    // Backspace to "r" — Rust still matches prefix
     backend.inject_key(KeyCode::Backspace, KeyMod::NONE);
     backend.inject_key(KeyCode::Backspace, KeyMod::NONE);
     run_cycles(&mut app, &mut backend, 1);
-    assert!(backend.contains("Elixir"), "Elixir contains 'r'");
+    assert!(backend.contains("Rust"), "Rust still matches 'r'");
 }
 
 #[test]

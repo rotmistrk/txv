@@ -27,23 +27,17 @@ pub enum OpenSide {
 pub enum NumberMode {
     #[default]
     None,
-    /// All items numbered ₁₂₃...₉
     All,
-    /// First item blank, rest numbered ₁₂₃...₈ (LRU tab bar style)
     SkipFirst,
 }
 
 /// Filter/search mode for the dropdown.
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub enum FilterMode {
-    /// No filtering. Plain digits are hotkeys.
     None,
-    /// Prefix match. Tab fills LCP.
     #[default]
     Prefix,
-    /// Substring match (contains anywhere).
     Substring,
-    /// Ordered subsequence (fuzzy).
     Subsequence,
 }
 
@@ -59,10 +53,12 @@ pub struct DropdownMenu<D: DropdownSource> {
     pub(crate) number_mode: NumberMode,
     pub(crate) max_visible: usize,
     pub(crate) open_side: OpenSide,
+    pub(crate) visible: Vec<usize>,
 }
 
 impl<D: DropdownSource> DropdownMenu<D> {
     pub fn new(source: D) -> Self {
+        let visible = (0..source.len()).collect();
         Self {
             state: ViewState::new(ViewOptions::default().with_focusable()),
             source,
@@ -74,6 +70,7 @@ impl<D: DropdownSource> DropdownMenu<D> {
             number_mode: NumberMode::None,
             max_visible: 12,
             open_side: OpenSide::None,
+            visible,
         }
     }
 
@@ -99,7 +96,7 @@ impl<D: DropdownSource> DropdownMenu<D> {
     }
 
     pub fn desired_size(&self, max_w: u16, max_h: u16) -> (u16, u16) {
-        let count = self.source.visible_len().min(self.max_visible);
+        let count = self.visible.len().min(self.max_visible);
         let border_h: u16 = match self.open_side {
             OpenSide::None => 2,
             _ => 1,
@@ -124,6 +121,14 @@ impl<D: DropdownSource> DropdownMenu<D> {
         self.filter_mode
     }
 
+    pub fn visible_len(&self) -> usize {
+        self.visible.len()
+    }
+
+    pub fn visible_index(&self, vis_idx: usize) -> usize {
+        self.visible.get(vis_idx).copied().unwrap_or(0)
+    }
+
     pub(crate) fn content_height(&self) -> u16 {
         let b = self.state.bounds();
         let border = match self.open_side {
@@ -136,7 +141,44 @@ impl<D: DropdownSource> DropdownMenu<D> {
     pub(crate) fn sync_scroll(&mut self) {
         let h = self.content_height() as usize;
         self.scroll.set_viewport(h);
-        self.scroll.set_total(self.source.visible_len());
+        self.scroll.set_total(self.visible.len());
         self.scroll.ensure_visible(self.cursor);
     }
+
+    /// Recompute visible indices based on filter and filter_mode.
+    pub(crate) fn refilter(&mut self) {
+        if self.filter.is_empty() {
+            self.visible = (0..self.source.len()).collect();
+            return;
+        }
+        let query = &self.filter;
+        self.visible = (0..self.source.len()).filter(|&i| self.matches(i, query)).collect();
+    }
+
+    fn matches(&self, idx: usize, query: &str) -> bool {
+        let label = self.source.label(idx);
+        match self.filter_mode {
+            FilterMode::None => true,
+            FilterMode::Prefix => label.get(..query.len()).is_some_and(|s| s.eq_ignore_ascii_case(query)),
+            FilterMode::Substring => label.to_lowercase().contains(&query.to_lowercase()),
+            FilterMode::Subsequence => subsequence_match(label, query),
+        }
+    }
+}
+
+fn subsequence_match(label: &str, query: &str) -> bool {
+    let mut qi = query.chars().map(|c| c.to_lowercase().next().unwrap_or(c));
+    let mut need = match qi.next() {
+        Some(c) => c,
+        None => return true,
+    };
+    for ch in label.chars().map(|c| c.to_lowercase().next().unwrap_or(c)) {
+        if ch == need {
+            need = match qi.next() {
+                Some(c) => c,
+                None => return true,
+            };
+        }
+    }
+    false
 }
