@@ -18,8 +18,8 @@ fn arrow_down_moves_list_selection() {
 
     // Demo should switch — snippet should now mention InputLine setup
     assert!(
-        backend.contains("set_text"),
-        "InputLine demo snippet should contain set_text"
+        backend.contains("with_command"),
+        "InputLine demo snippet should contain with_command"
     );
 }
 
@@ -35,7 +35,10 @@ fn arrow_up_from_second_returns_to_first() {
     run_cycles(&mut app, &mut backend, 1);
 
     // Verify we switched to InputLine
-    assert!(backend.contains("set_text"), "should show InputLine snippet after Down");
+    assert!(
+        backend.contains("with_command"),
+        "should show InputLine snippet after Down"
+    );
 
     backend.inject_key(KeyCode::Up, KeyMod::NONE);
     run_cycles(&mut app, &mut backend, 1);

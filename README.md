@@ -10,6 +10,8 @@ three-phase event dispatch, dirty tracking, and diff-flush rendering.
 | `txv-core` | Pure logic. View trait, GroupState, EventQueue, Surface, geometry. Zero I/O. |
 | `txv-render` | Terminal backend (crossterm). TermBuf, VTE parsing, diff flush. |
 | `txv-widgets` | Concrete views: TabGroup, PtyTerminal, TextArea, TreeView, StatusBar, etc. |
+| `txv-edit` | Vi-style text editor with syntax highlighting, :commands, search. |
+| `txv-gallery` | Widget gallery demo + integration test harness (56+ scenario tests). |
 
 ## Quick Start
 
@@ -19,6 +21,26 @@ txv-core = { git = "https://github.com/rotmistrk/txv.git" }
 txv-render = { git = "https://github.com/rotmistrk/txv.git" }
 txv-widgets = { git = "https://github.com/rotmistrk/txv.git" }
 ```
+
+## Gallery Demo
+
+Run the interactive widget gallery:
+
+```sh
+cargo run -p txv-gallery
+```
+
+Navigate with ↑↓, switch panels with Tab or Ctrl+Shift+Arrows,
+resize with Alt+Shift+Arrows. The gallery demonstrates all widgets
+with live instances and setup code.
+
+Run the integration tests:
+
+```sh
+cargo test -p txv-gallery
+```
+
+## Creating a View
 
 ```rust
 use txv_core::prelude::*;
