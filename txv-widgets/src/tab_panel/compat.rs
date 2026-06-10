@@ -2,7 +2,10 @@
 
 use txv_core::prelude::*;
 
+use super::tab_dropdown_source::TabDropdownSource;
 use super::TabPanel;
+use crate::dropdown_menu::{DropdownMenu, FilterMode, NumberMode, OpenSide};
+use crate::tab_bar::TabBarMode;
 
 impl TabPanel {
     /// Insert a tab at a specific index.
@@ -73,53 +76,51 @@ impl TabPanel {
 
     /// Open the tab dropdown.
     pub fn open_dropdown(&mut self) {
-        self.bar_mut().open_dropdown();
-        // Hide active tab content so dropdown is visible
-        let gi = self.bar().active_index() + 1;
-        self.group.set_child_visible(gi, false);
+        if self.dropdown_active {
+            return;
+        }
+        let titles = self.bar().titles.clone();
+        let dirty = self.bar().dirty.clone();
+        let source = TabDropdownSource::from_parts(&titles, &dirty);
+        let number_mode = match self.bar().mode {
+            TabBarMode::Static | TabBarMode::Single => NumberMode::All,
+            TabBarMode::Lru => NumberMode::SkipFirst,
+        };
+        let menu = DropdownMenu::new(source)
+            .with_numbers(number_mode)
+            .with_filter(FilterMode::Prefix)
+            .with_open_side(OpenSide::Top);
+        let cr = self.content_rect();
+        // Width: border(2) + digit(1) + space(1) + longest_title + space(1) + badge(1) + space(1)
+        let max_title = titles.iter().map(|t| t.chars().count()).max().unwrap_or(4);
+        let w = ((max_title + 7) as u16 + 2).min(cr.w());
+        // Height: items + 1 (bottom border; top is open)
+        let h = (titles.len() as u16 + 1).min(cr.h());
+        self.group.insert(Box::new(menu));
+        let idx = self.group.child_count() - 1;
+        self.group.set_child_bounds(idx, Rect::new(cr.x() + 1, cr.y(), w, h));
+        self.group.set_focused_index(idx);
+        self.bar_mut().set_handle_keys(false);
         self.group.mark_dirty();
+        self.dropdown_active = true;
     }
 
-    /// Close the tab dropdown.
+    /// Close the tab dropdown (remove from group).
     pub fn close_dropdown(&mut self) {
-        self.bar_mut().dropdown_cursor = None;
-        self.bar_mut().dropdown_filter.clear();
-        self.bar_mut().state.mark_dirty();
-        // Show active tab content again
-        let gi = self.bar().active_index() + 1;
-        self.group.set_child_visible(gi, true);
-        self.group.mark_dirty();
+        if self.dropdown_active {
+            let idx = self.group.child_count() - 1;
+            self.group.remove(idx);
+            let gi = self.bar().active_index() + 1;
+            self.group.set_focused_index(gi);
+            self.bar_mut().set_handle_keys(true);
+            self.group.mark_dirty();
+            self.dropdown_active = false;
+        }
     }
 
     /// Whether the dropdown is open.
     pub fn dropdown_open(&self) -> bool {
-        self.bar().dropdown_open()
-    }
-
-    /// Move dropdown cursor up.
-    pub fn dropdown_move_up(&mut self) {
-        if let Some(cursor) = self.bar().dropdown_cursor {
-            let count = self.bar().dropdown_entries().len();
-            if count > 0 {
-                self.bar_mut().dropdown_cursor = Some(if cursor == 0 {
-                    count - 1
-                } else {
-                    cursor - 1
-                });
-                self.bar_mut().state.mark_dirty();
-            }
-        }
-    }
-
-    /// Move dropdown cursor down.
-    pub fn dropdown_move_down(&mut self) {
-        if let Some(cursor) = self.bar().dropdown_cursor {
-            let count = self.bar().dropdown_entries().len();
-            if count > 0 {
-                self.bar_mut().dropdown_cursor = Some((cursor + 1) % count);
-                self.bar_mut().state.mark_dirty();
-            }
-        }
+        self.dropdown_active
     }
 
     // --- By-ID APIs ---

@@ -71,33 +71,29 @@ fn draw_single_does_not_panic() {
 }
 
 #[test]
-fn dropdown_entries_lru_active_no_number() {
+fn activate_by_number_lru() {
     let mut bar = TabBar::new(TabBarMode::Lru);
     bar.add_tab("a.rs");
     bar.add_tab("b.rs");
     bar.add_tab("c.rs");
     bar.set_active(1);
 
-    let entries = bar.dropdown_entries();
-    // Active entry has no "N:" prefix
-    assert!(!entries[0].1.contains(':'), "active should have no number prefix");
-    // Others have "N:" prefix
-    assert!(entries[1].1.contains(':'));
+    // M-1 should activate the first LRU entry (not active)
+    bar.activate_by_number(1);
+    // After activation, the first non-active in LRU order becomes active
+    assert_ne!(bar.active_index(), 1);
 }
 
 #[test]
-fn dropdown_filter_narrows_results() {
-    let mut bar = TabBar::new(TabBarMode::Static);
-    bar.add_tab("main.rs");
-    bar.add_tab("lib.rs");
-    bar.add_tab("test.rs");
-    bar.set_active(0);
+fn lru_display_order_active_first() {
+    let mut bar = TabBar::new(TabBarMode::Lru);
+    bar.add_tab("a.rs");
+    bar.add_tab("b.rs");
+    bar.add_tab("c.rs");
+    bar.set_active(1);
 
-    bar.open_dropdown();
-    bar.dropdown_filter = "lib".to_string();
-    let entries = bar.dropdown_entries();
-    assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].0, 1);
+    let order = bar.display_order();
+    assert_eq!(order[0], 1, "active should be first in LRU display");
 }
 
 #[test]

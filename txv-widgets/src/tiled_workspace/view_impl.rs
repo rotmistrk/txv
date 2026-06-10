@@ -62,16 +62,17 @@ impl View for TiledWorkspace {
 impl TiledWorkspace {
     fn dispatch_key(&mut self, key: &KeyEvent) -> Option<HandleResult> {
         let km = self.keymap.clone();
+        // Tab dropdown keys checked first — they may need to override focus keys
+        if let Some(r) = self.dispatch_tab_keys(key, &km) {
+            return Some(r);
+        }
         if let Some(r) = self.dispatch_panel_keys(key, &km) {
             return Some(r);
         }
         if let Some(r) = self.dispatch_resize_keys(key, &km) {
             return Some(r);
         }
-        if let Some(r) = self.dispatch_tab_keys(key, &km) {
-            return Some(r);
-        }
-        self.dispatch_alt_digit(key)
+        None
     }
 
     fn dispatch_panel_keys(&mut self, key: &KeyEvent, km: &super::keymap::WorkspaceKeymap) -> Option<HandleResult> {
@@ -94,21 +95,27 @@ impl TiledWorkspace {
             self.toggle_zoom();
             return Some(HandleResult::Consumed);
         }
-        if km.matches(key, &km.focus_left) {
-            self.focus_direction(-1, 0);
-            return Some(HandleResult::Consumed);
-        }
-        if km.matches(key, &km.focus_right) {
-            self.focus_direction(1, 0);
-            return Some(HandleResult::Consumed);
-        }
-        if km.matches(key, &km.focus_up) {
-            self.focus_direction(0, -1);
-            return Some(HandleResult::Consumed);
-        }
-        if km.matches(key, &km.focus_down) {
-            self.focus_direction(0, 1);
-            return Some(HandleResult::Consumed);
+        // Skip focus navigation when panel has dropdown open
+        let dd_open = self
+            .panel(self.group.focused_index())
+            .is_some_and(|p| p.dropdown_open());
+        if !dd_open {
+            if km.matches(key, &km.focus_left) {
+                self.focus_direction(-1, 0);
+                return Some(HandleResult::Consumed);
+            }
+            if km.matches(key, &km.focus_right) {
+                self.focus_direction(1, 0);
+                return Some(HandleResult::Consumed);
+            }
+            if km.matches(key, &km.focus_up) {
+                self.focus_direction(0, -1);
+                return Some(HandleResult::Consumed);
+            }
+            if km.matches(key, &km.focus_down) {
+                self.focus_direction(0, 1);
+                return Some(HandleResult::Consumed);
+            }
         }
         None
     }
@@ -136,9 +143,21 @@ impl TiledWorkspace {
     fn dispatch_tab_keys(&mut self, key: &KeyEvent, km: &super::keymap::WorkspaceKeymap) -> Option<HandleResult> {
         if km.matches(key, &km.tab_dropdown) {
             if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                panel.bar_mut().open_dropdown();
+                if panel.tab_count() > 1 {
+                    panel.open_dropdown();
+                    return Some(HandleResult::Consumed);
+                }
             }
-            return Some(HandleResult::Consumed);
+            return None;
+        }
+        if km.matches(key, &km.tab_dropdown_down) || km.matches(key, &km.tab_dropdown_up) {
+            if let Some(panel) = self.panel_mut(self.group.focused_index()) {
+                if panel.tab_count() > 1 && !panel.dropdown_open() {
+                    panel.open_dropdown();
+                    return Some(HandleResult::Consumed);
+                }
+            }
+            return None;
         }
         if km.matches(key, &km.layout_cycle) {
             self.cycle_layout();
@@ -161,23 +180,6 @@ impl TiledWorkspace {
             return Some(HandleResult::Consumed);
         }
         None
-    }
-
-    fn dispatch_alt_digit(&mut self, key: &KeyEvent) -> Option<HandleResult> {
-        if !key.modifiers().alt() || key.modifiers().ctrl() || key.modifiers().shift() {
-            return None;
-        }
-        let KeyCode::Char(c) = key.code() else {
-            return None;
-        };
-        let n = c.to_digit(10)?;
-        if n < 1 {
-            return None;
-        }
-        if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-            panel.activate_by_label(n as usize);
-        }
-        Some(HandleResult::Consumed)
     }
 
     pub(crate) fn find_panel_by_position(&self, pos: PanelPosition) -> Option<usize> {

@@ -14,6 +14,7 @@ pub(crate) fn snippet_for(index: usize) -> &'static str {
         8 => FOCUS_GATED_GROUP,
         9 => EDITOR,
         10 => DROPDOWN_MENU,
+        11 => TAB_DROPDOWN,
         _ => "",
     }
 }
@@ -186,3 +187,20 @@ let dd = DropdownMenu::new(source)
 // Numbers 1-9 select directly
 // Emits: CM_DROPDOWN_DONE (original idx)
 //        CM_DROPDOWN_CANCELLED (Esc)"#;
+
+const TAB_DROPDOWN: &str = r#"// TabPanel with DropdownMenu integration
+// Alt-0 opens the tab dropdown
+// DropdownMenu handles all keys internally
+
+let mut tp = TabPanel::new(TabBarMode::Static);
+tp.insert_tab("Main", Box::new(content));
+tp.insert_tab("Tests", Box::new(tests));
+tp.insert_tab("Build", Box::new(build));
+tp.set_dirty(2, true); // badge on Build
+
+// Opening:
+tp.open_dropdown();
+// NumberMode::All for Static, SkipFirst for LRU
+// FilterMode::Prefix — type to narrow
+// Emits CM_DROPDOWN_DONE(tab_index) on Enter
+// Emits CM_DROPDOWN_CANCELLED on Esc"#;

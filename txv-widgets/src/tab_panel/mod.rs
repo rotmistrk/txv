@@ -10,8 +10,7 @@ use txv_core::prelude::*;
 use crate::tab_bar::{TabBar, TabBarMode};
 
 mod compat;
-mod dd_ctx;
-mod dropdown;
+mod tab_dropdown_source;
 mod view_impl;
 
 /// A tabbed panel: TabBar on top, stacked children below.
@@ -21,6 +20,7 @@ mod view_impl;
 /// Focused index = active_tab + 1.
 pub struct TabPanel {
     group: GroupState,
+    dropdown_active: bool,
 }
 
 impl TabPanel {
@@ -30,7 +30,10 @@ impl TabPanel {
         bar.state.set_preprocess(true);
         group.insert(Box::new(bar));
         // No content children yet; focused stays at 0 (bar) until a tab is added
-        Self { group }
+        Self {
+            group,
+            dropdown_active: false,
+        }
     }
 
     pub fn bar(&self) -> &TabBar {
@@ -138,7 +141,8 @@ impl TabPanel {
 
     /// Number of tabs.
     pub fn tab_count(&self) -> usize {
-        self.group.child_count().saturating_sub(1) // exclude bar
+        let extra = u8::from(self.dropdown_active) as usize;
+        self.group.child_count().saturating_sub(1 + extra) // exclude bar + dropdown
     }
 
     /// Set dirty flag on a tab.
@@ -224,6 +228,14 @@ impl TabPanel {
                 self.group.set_child_bounds(gi, Rect::default());
                 self.group.set_child_visible(gi, false);
             }
+        }
+        // Reposition dropdown overlay if active
+        if self.dropdown_active {
+            let dd_idx = self.group.child_count() - 1;
+            let max_title = self.bar().titles.iter().map(|t| t.chars().count()).max().unwrap_or(4);
+            let w = ((max_title + 7) as u16 + 2).min(cr.w());
+            let h = (self.tab_count() as u16 + 1).min(cr.h());
+            self.group.set_child_bounds(dd_idx, Rect::new(cr.x() + 1, cr.y(), w, h));
         }
         self.group.mark_dirty();
     }

@@ -43,9 +43,6 @@ pub struct TabBar {
     pub(crate) focused: bool,
     pub(crate) scroll_offset: usize,
     pub(crate) handle_keys: bool,
-    /// Dropdown state: Some(cursor) when open.
-    pub(crate) dropdown_cursor: Option<usize>,
-    pub(crate) dropdown_filter: String,
 }
 
 impl TabBar {
@@ -64,8 +61,6 @@ impl TabBar {
             focused: false,
             scroll_offset: 0,
             handle_keys: true,
-            dropdown_cursor: None,
-            dropdown_filter: String::new(),
         }
     }
 
@@ -177,11 +172,6 @@ impl TabBar {
         if changed {
             self.state.mark_dirty();
         }
-    }
-
-    /// Current dropdown filter text (for rendering search indicator).
-    pub fn dropdown_filter(&self) -> &str {
-        &self.dropdown_filter
     }
 
     fn touch_lru(&mut self, idx: usize) {

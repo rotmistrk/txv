@@ -117,6 +117,9 @@ impl<D: ListData> View for ListView<D> {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
+        if key.modifiers().ctrl() || key.modifiers().alt() || key.modifiers().shift() {
+            return HandleResult::Ignored;
+        }
         match key.code() {
             KeyCode::Up => {
                 self.select_prev();

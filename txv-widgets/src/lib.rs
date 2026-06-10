@@ -141,4 +141,7 @@ mod modal_key_test_completion;
 mod modal_key_tests;
 
 #[cfg(test)]
+mod dropdown_tab_panel_tests;
+
+#[cfg(test)]
 mod tree_table_view_tests;

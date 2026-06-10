@@ -102,28 +102,36 @@ impl TiledWorkspace {
         match id {
             CM_TW_TAB_DROPDOWN => {
                 if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                    panel.open_dropdown();
-                }
-                true
-            }
-            CM_TW_TAB_DROPDOWN_UP => {
-                self.handle_dropdown_up();
-                true
-            }
-            CM_TW_TAB_DROPDOWN_DOWN => {
-                self.handle_dropdown_down();
-                true
-            }
-            CM_TW_TAB_DROPDOWN_CLOSE => {
-                if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                    panel.close_dropdown();
+                    if panel.tab_count() > 1 {
+                        panel.open_dropdown();
+                    } else if let Some(inner) = panel.active_child_mut() {
+                        if let Some(tp) = inner
+                            .as_any_mut()
+                            .and_then(|a| a.downcast_mut::<crate::tab_panel::TabPanel>())
+                        {
+                            tp.open_dropdown();
+                        }
+                    }
                 }
                 true
             }
             CM_TW_ACTIVATE_TAB => {
                 if let Some(idx) = extract_usize(data) {
                     if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                        panel.activate_by_label(idx + 1);
+                        if panel.dropdown_open() {
+                            panel.close_dropdown();
+                            panel.activate_by_label(idx + 1);
+                        } else if panel.tab_count() > 1 {
+                            panel.activate_by_label(idx + 1);
+                        } else if let Some(inner) = panel.active_child_mut() {
+                            if let Some(tp) = inner
+                                .as_any_mut()
+                                .and_then(|a| a.downcast_mut::<crate::tab_panel::TabPanel>())
+                            {
+                                tp.close_dropdown();
+                                tp.set_active(idx);
+                            }
+                        }
                     }
                 }
                 true
@@ -182,28 +190,6 @@ impl TiledWorkspace {
                 true
             }
             _ => false,
-        }
-    }
-
-    fn handle_dropdown_up(&mut self) {
-        let Some(panel) = self.panel_mut(self.group.focused_index()) else {
-            return;
-        };
-        if panel.bar().dropdown_open() {
-            panel.bar_mut().dropdown_move_up();
-        } else if panel.tab_count() > 1 {
-            panel.open_dropdown();
-        }
-    }
-
-    fn handle_dropdown_down(&mut self) {
-        let Some(panel) = self.panel_mut(self.group.focused_index()) else {
-            return;
-        };
-        if panel.bar().dropdown_open() {
-            panel.bar_mut().dropdown_move_down();
-        } else if panel.tab_count() > 1 {
-            panel.open_dropdown();
         }
     }
 

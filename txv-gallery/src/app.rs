@@ -82,12 +82,37 @@ impl Gallery {
     }
 
     fn make_status_bar() -> StatusBar {
+        use txv_widgets::tiled_workspace::commands::{CM_TW_ACTIVATE_TAB, CM_TW_TAB_DROPDOWN};
         let mut bar = StatusBar::new();
         let kl = KeyLabelView::new(KeyEvent::new(KeyCode::Char('q'), KeyMod::NONE), CM_QUIT, "q Quit");
         bar.add(StatusSlot::new(Box::new(kl)).priority(9));
+        // Tab dropdown: Alt-0 + macOS º
+        let dd = KeyLabelView::new(
+            KeyEvent::new(KeyCode::Char('0'), KeyMod::ALT),
+            CM_TW_TAB_DROPDOWN,
+            "M-0 ▾",
+        );
+        bar.add(StatusSlot::new(Box::new(dd)).priority(7));
+        let dd_mac = KeyLabelView::new(KeyEvent::new(KeyCode::Char('º'), KeyMod::NONE), CM_TW_TAB_DROPDOWN, "");
+        bar.add(StatusSlot::new(Box::new(dd_mac)).priority(1));
+        // Tab switching: Alt-1..9 + macOS Option chars
+        let mac_chars: &[char] = &['¡', '™', '£', '¢', '∞', '§', '¶', '•', 'ª'];
+        for n in 1u16..=9 {
+            let ch = char::from(b'0' + n as u8);
+            let kl = KeyLabelView::new(KeyEvent::new(KeyCode::Char(ch), KeyMod::ALT), CM_TW_ACTIVATE_TAB, "")
+                .with_data(n - 1);
+            bar.add(StatusSlot::new(Box::new(kl)).priority(1));
+            let mac_kl = KeyLabelView::new(
+                KeyEvent::new(KeyCode::Char(mac_chars[(n - 1) as usize]), KeyMod::NONE),
+                CM_TW_ACTIVATE_TAB,
+                "",
+            )
+            .with_data(n - 1);
+            bar.add(StatusSlot::new(Box::new(mac_kl)).priority(1));
+        }
         let nav = KeyLabelView::new(KeyEvent::new(KeyCode::F(0), KeyMod::NONE), 0, "↑↓ Navigate");
         bar.add(StatusSlot::new(Box::new(nav)).priority(5));
-        let tab = KeyLabelView::new(KeyEvent::new(KeyCode::F(0), KeyMod::NONE), 0, "C-S-←→ Panel");
+        let tab = KeyLabelView::new(KeyEvent::new(KeyCode::F(0), KeyMod::NONE), 0, "C-S-↓ Tabs");
         bar.add(StatusSlot::new(Box::new(tab)).priority(5));
         bar
     }

@@ -3,6 +3,7 @@
 use txv_core::prelude::*;
 
 use super::TabPanel;
+use crate::dropdown_menu::{CM_DROPDOWN_CANCELLED, CM_DROPDOWN_DONE};
 
 impl View for TabPanel {
     delegate_group_state!(group, override { set_bounds, draw, handle, select, unselect, as_any_mut });
@@ -26,7 +27,7 @@ impl View for TabPanel {
         self.group.set_focused(false);
         self.group.mark_dirty();
         self.bar_mut().set_focused(false);
-        self.bar_mut().close_dropdown();
+        self.close_dropdown();
         let gi = self.bar().active_index() + 1;
         if let Some(child) = self.group.child_mut(gi) {
             child.unselect();
@@ -39,12 +40,43 @@ impl View for TabPanel {
             return;
         }
         self.fill_background(b);
-        if self.bar().dropdown_open() {
-            self.draw_dropdown();
-        }
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
+        // Intercept dropdown commands only if our dropdown is active.
+        if let Event::Command { id, data, .. } = event {
+            if self.dropdown_active {
+                if *id == CM_DROPDOWN_DONE {
+                    let idx = data
+                        .as_ref()
+                        .and_then(|d| d.downcast_ref::<usize>())
+                        .copied()
+                        .unwrap_or(0);
+                    self.close_dropdown();
+                    self.set_active(idx);
+                    return HandleResult::Consumed;
+                }
+                if *id == CM_DROPDOWN_CANCELLED {
+                    self.close_dropdown();
+                    return HandleResult::Consumed;
+                }
+            }
+        }
+        // Open dropdown on Alt-0, Alt-Down, Alt-Up, Ctrl+Shift+Down, Ctrl+Shift+Up
+        if let Event::Key(key) = event {
+            if !self.dropdown_active && self.tab_count() > 1 {
+                let alt_open = key.modifiers().alt()
+                    && !key.modifiers().ctrl()
+                    && matches!(key.code(), KeyCode::Char('0') | KeyCode::Down | KeyCode::Up);
+                let cs_open = key.modifiers().ctrl()
+                    && key.modifiers().shift()
+                    && matches!(key.code(), KeyCode::Down | KeyCode::Up);
+                if alt_open || cs_open {
+                    self.open_dropdown();
+                    return HandleResult::Consumed;
+                }
+            }
+        }
         if matches!(event, Event::Tick) {
             for i in 0..self.group.child_count() {
                 if let Some(child) = self.group.child_mut(i) {
@@ -55,16 +87,9 @@ impl View for TabPanel {
             return HandleResult::Ignored;
         }
         let prev_active = self.bar().active_index();
-        let was_dropdown = self.bar().dropdown_open();
         let result = self.group.dispatch(event);
         if self.bar().active_index() != prev_active {
             self.sync_focus_from_bar(prev_active);
-        }
-        // If dropdown just closed (by TabBar handling Esc/Enter), restore tab visibility
-        if was_dropdown && !self.bar().dropdown_open() {
-            let gi = self.bar().active_index() + 1;
-            self.group.set_child_visible(gi, true);
-            self.group.mark_dirty();
         }
         result
     }

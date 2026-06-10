@@ -22,8 +22,6 @@ impl TiledWorkspace {
             (km.resize_up, CM_TW_SHRINK_V, None),
             (km.resize_down, CM_TW_GROW_V, None),
             (km.tab_dropdown, CM_TW_TAB_DROPDOWN, None),
-            (km.tab_dropdown_up, CM_TW_TAB_DROPDOWN_UP, None),
-            (km.tab_dropdown_down, CM_TW_TAB_DROPDOWN_DOWN, None),
             (km.tab_next, CM_TW_TAB_NEXT, None),
             (km.tab_prev, CM_TW_TAB_PREV, None),
             (km.tab_close, CM_TW_TAB_CLOSE, None),

@@ -37,6 +37,7 @@ pub(crate) fn make_demo(index: usize) -> Box<dyn View> {
         8 => make_focus_gated_group(),
         9 => make_editor(),
         10 => make_dropdown(),
+        11 => make_tab_dropdown(),
         _ => make_placeholder(),
     }
 }
@@ -148,4 +149,24 @@ fn make_placeholder() -> Box<dyn View> {
 
 fn make_dropdown() -> Box<dyn View> {
     dropdown_demo::make()
+}
+
+fn make_tab_dropdown() -> Box<dyn View> {
+    use txv_widgets::tab_bar::TabBarMode;
+    let mut tp = TabPanel::new(TabBarMode::Static);
+    let mut t1 = TextArea::new();
+    t1.set_content("Main tab content here.");
+    t1.show_line_numbers(false);
+    tp.insert_tab("Main", Box::new(t1));
+    let mut t2 = TextArea::new();
+    t2.set_content("Second tab content.");
+    t2.show_line_numbers(false);
+    tp.insert_tab("Tests", Box::new(t2));
+    let mut t3 = TextArea::new();
+    t3.set_content("Third tab — modified.");
+    t3.show_line_numbers(false);
+    tp.insert_tab("Build", Box::new(t3));
+    tp.set_dirty(2, true);
+    tp.set_active(0);
+    Box::new(tp)
 }
