@@ -1,7 +1,6 @@
 //! Draw helpers for DropdownMenu.
 
 use txv_core::prelude::*;
-use txv_core::text::display_char_width;
 
 use super::dropdown_menu::{DropdownMenu, OpenSide};
 use super::dropdown_source::DropdownSource;
@@ -97,22 +96,20 @@ impl<D: DropdownSource> DropdownMenu<D> {
     }
     fn draw_secondary(&mut self, vis_idx: usize, y: u16, w: u16, rs: Style, dim_s: Style) {
         let orig_idx = self.visible[vis_idx];
-        // right_x: last usable column inside frame (border at w-1)
-        let mut right_x = w.saturating_sub(3);
+        // Layout from right: │ [space] [badge 1ch] [space] [secondary] ...
+        // Badge always 1 char (single-width only), pad with space on each side.
+        let badge_col = w.saturating_sub(3); // 1 char inside border
 
-        // Badge (rightmost inside frame, 2-cell slot)
         if let Some((badge_ch, badge_s)) = self.source.badge(orig_idx) {
             let bs = Style::new(badge_s.fg(), rs.bg());
-            let bw = display_char_width(badge_ch);
-            let bx = right_x + 1 - bw;
-            self.state.buffer_mut().put(bx, y, badge_ch, bs);
-            right_x = bx.saturating_sub(1);
+            self.state.buffer_mut().put(badge_col, y, badge_ch, bs);
         }
 
-        // Secondary text (left of badge)
+        // Secondary text right-aligned ending at badge_col - 2 (space gap)
         let sec = self.source.secondary(orig_idx).to_string();
         if !sec.is_empty() {
-            let sec_x = (right_x + 1).saturating_sub(sec.len() as u16);
+            let end_x = badge_col.saturating_sub(2);
+            let sec_x = (end_x + 1).saturating_sub(sec.len() as u16);
             for (i, ch) in sec.chars().enumerate() {
                 self.state.buffer_mut().put(sec_x + i as u16, y, ch, dim_s);
             }
