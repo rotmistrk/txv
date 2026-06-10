@@ -95,27 +95,24 @@ impl<D: DropdownSource> DropdownMenu<D> {
         let _ = vis_idx;
         x
     }
-
     fn draw_secondary(&mut self, vis_idx: usize, y: u16, w: u16, rs: Style, dim_s: Style) {
         let orig_idx = self.visible[vis_idx];
-        let mut right_x = w - 2; // one space from right border
+        // right_x: last usable column inside frame (border at w-1)
+        let mut right_x = w.saturating_sub(3);
 
-        // Badge (rightmost, 2-char slot)
+        // Badge (rightmost inside frame, 2-cell slot)
         if let Some((badge_ch, badge_s)) = self.source.badge(orig_idx) {
             let bs = Style::new(badge_s.fg(), rs.bg());
             let bw = display_char_width(badge_ch);
             let bx = right_x + 1 - bw;
             self.state.buffer_mut().put(bx, y, badge_ch, bs);
-            if bw == 1 {
-                self.state.buffer_mut().put(bx + 1, y, ' ', rs);
-            }
-            right_x = bx.saturating_sub(2);
+            right_x = bx.saturating_sub(1);
         }
 
-        // Secondary text (before badge)
+        // Secondary text (left of badge)
         let sec = self.source.secondary(orig_idx).to_string();
         if !sec.is_empty() {
-            let sec_x = right_x.saturating_sub(sec.len() as u16);
+            let sec_x = (right_x + 1).saturating_sub(sec.len() as u16);
             for (i, ch) in sec.chars().enumerate() {
                 self.state.buffer_mut().put(sec_x + i as u16, y, ch, dim_s);
             }
