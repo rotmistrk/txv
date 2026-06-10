@@ -17,6 +17,7 @@ mod demo_completer;
 mod demo_completion;
 mod demo_row;
 mod demo_tree_source;
+mod dropdown_demo;
 mod status_bar_demo;
 
 use demo_completer::DemoCompleter;
@@ -35,6 +36,7 @@ pub(crate) fn make_demo(index: usize) -> Box<dyn View> {
         7 => make_tab_panel(),
         8 => make_focus_gated_group(),
         9 => make_editor(),
+        10 => make_dropdown(),
         _ => make_placeholder(),
     }
 }
@@ -142,4 +144,8 @@ fn make_placeholder() -> Box<dyn View> {
     ta.set_content("(no demo)");
     ta.show_line_numbers(false);
     Box::new(ta)
+}
+
+fn make_dropdown() -> Box<dyn View> {
+    dropdown_demo::make()
 }

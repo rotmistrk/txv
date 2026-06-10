@@ -13,6 +13,7 @@ pub(crate) fn snippet_for(index: usize) -> &'static str {
         7 => TAB_PANEL,
         8 => FOCUS_GATED_GROUP,
         9 => EDITOR,
+        10 => DROPDOWN_MENU,
         _ => "",
     }
 }
@@ -173,3 +174,15 @@ ev.set_content(src, "rs"); // syntax hl
 // Visual: v V C-v  Yank: yy p P
 // Undo: u  Redo: C-r
 // Software cursor (fg/bg flip)"#;
+
+const DROPDOWN_MENU: &str = r#"// DropdownMenu: filterable popup list
+let dd = DropdownMenu::new(source)
+    .with_numbers(true)   // 1-9 hotkeys
+    .with_filter(true)    // type to filter
+    .with_max_visible(12)
+    .with_open_side(OpenSide::Top);
+
+// Try: type to filter, Up/Down, Enter/Esc
+// Numbers 1-9 select directly
+// Emits: CM_DROPDOWN_DONE (original idx)
+//        CM_DROPDOWN_CANCELLED (Esc)"#;
