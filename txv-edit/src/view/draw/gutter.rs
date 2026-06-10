@@ -21,7 +21,9 @@ pub fn draw_gutter<D: EditorViewDelegate>(
     let num_w = p.gutter_w - extra_gw;
 
     if extra_gw > 0 {
-        delegate.draw_gutter_sign(buf, line_idx, 0, y);
+        if let Some((ch, style)) = delegate.gutter_sign(line_idx) {
+            buf.put(0, y, ch, style);
+        }
     }
 
     if editor.options().number() && num_w > 0 {

@@ -3,9 +3,11 @@
 //! Uses GroupState to host an InputLine for command/search mode.
 //! Child 0 (when present): InputLine for `:` or `/` input.
 
+mod cursor;
 pub mod delegate;
 pub mod draw;
 mod handle;
+mod handle_cmdline;
 
 use std::path::{Path, PathBuf};
 
@@ -16,8 +18,6 @@ pub use delegate::{EditorViewDelegate, NullDelegate};
 use crate::editor::keymap::EditorMode;
 use crate::editor::Editor;
 use crate::highlight::{extension_from_path, HighlightCache, Highlighter};
-use crate::settings::CursorStyle;
-use crate::view::draw::sticky::sticky_line_count;
 
 /// Command IDs emitted by EditorView.
 pub const CM_EDITOR_SAVE: u16 = 180;
@@ -41,6 +41,8 @@ pub struct EditorView<D: EditorViewDelegate = NullDelegate> {
     cmdline_prefix: char,
     /// Number of search matches (updated during incsearch).
     match_count: usize,
+    /// Tick counter for delegate.on_tick().
+    tick_count: u64,
 }
 
 impl Default for EditorView<NullDelegate> {
@@ -76,6 +78,7 @@ impl EditorView<NullDelegate> {
             cmdline_active: false,
             cmdline_prefix: ':',
             match_count: 0,
+            tick_count: 0,
         };
         view.group.set_title(file_title(path));
         Ok(view)
@@ -95,6 +98,7 @@ impl<D: EditorViewDelegate> EditorView<D> {
             cmdline_active: false,
             cmdline_prefix: ':',
             match_count: 0,
+            tick_count: 0,
         }
     }
 
@@ -165,10 +169,40 @@ impl<D: EditorViewDelegate> EditorView<D> {
 }
 
 impl<D: EditorViewDelegate + 'static> View for EditorView<D> {
-    delegate_group_state!(group, override { set_bounds, draw, handle, cursor, title, select, unselect });
+    delegate_group_state!(group, override { set_bounds, draw, handle, cursor, title, select, unselect, needs_redraw });
 
     fn title(&self) -> &str {
+        if let Some(t) = self.delegate.title(&self.editor) {
+            return t;
+        }
         self.group.title()
+    }
+
+    fn as_any(&self) -> Option<&dyn std::any::Any> {
+        Some(self)
+    }
+
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        if D::supports_downcast() {
+            Some(self)
+        } else {
+            None
+        }
+    }
+
+    fn needs_redraw(&self) -> bool {
+        self.group.any_dirty() || self.delegate.needs_redraw(&self.editor)
+    }
+
+    fn can_close(&self) -> CloseResult {
+        if let Some(result) = self.delegate.can_close(&self.editor) {
+            return result;
+        }
+        if self.editor.buf().is_modified() {
+            CloseResult::Denied("unsaved changes".to_string())
+        } else {
+            CloseResult::Ok
+        }
     }
 
     fn select(&mut self) {
@@ -209,52 +243,7 @@ impl<D: EditorViewDelegate + 'static> View for EditorView<D> {
     }
 
     fn cursor(&self) -> Option<CursorRequest> {
-        let mode = self.editor.mode();
-
-        // Command/Search: delegate to InputLine child cursor
-        if self.cmdline_active {
-            if let Some(child) = self.group.focused_child() {
-                if let Some(req) = child.cursor() {
-                    let (ox, oy) = self.group.child_origin(self.group.focused_index());
-                    let x = req.x().saturating_add(ox);
-                    let y = req.y().saturating_add(oy);
-                    return Some(CursorRequest::new(x, y, req.shape()));
-                }
-            }
-            // Fallback: bar cursor at end of prompt
-            let h = self.group.bounds().h();
-            let y = h.saturating_sub(1);
-            return Some(CursorRequest::new(1, y, CursorShape::Bar));
-        }
-
-        let gw = self.gutter_width();
-        let line = self.editor.cursor_line();
-        let col = self.editor.cursor_col();
-        let scroll = self.editor.viewport_scroll();
-        let h_scroll = self.editor.h_scroll();
-
-        if line < scroll {
-            return None;
-        }
-        let sticky_h = sticky_line_count(&self.editor);
-        let y = (line - scroll) as u16 + sticky_h;
-        let x = gw + (col.saturating_sub(h_scroll)) as u16;
-
-        let opts = self.editor.options();
-        let cursor_style = match mode {
-            EditorMode::Insert => opts.cursor_insert(),
-            _ => opts.cursor_normal(),
-        };
-        if cursor_style == CursorStyle::Software {
-            return None;
-        }
-        let shape = match cursor_style {
-            CursorStyle::Bar => CursorShape::Bar,
-            CursorStyle::Block => CursorShape::Block,
-            CursorStyle::Underline => CursorShape::Underline,
-            CursorStyle::Software => return None,
-        };
-        Some(CursorRequest::new(x, y, shape))
+        self.cursor_impl()
     }
 }
 

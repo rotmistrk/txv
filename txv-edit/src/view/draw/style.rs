@@ -5,7 +5,7 @@ use txv_core::prelude::*;
 use super::DrawParams;
 use crate::editor::keymap::EditorMode;
 use crate::editor::Editor;
-use crate::view::delegate::EditorViewDelegate;
+use crate::view::delegate::{CursorRender, DecorationStyle, EditorViewDelegate};
 
 /// Compose the final style for a character, applying all highlight layers.
 pub fn compose_char_style<D: EditorViewDelegate>(
@@ -19,12 +19,15 @@ pub fn compose_char_style<D: EditorViewDelegate>(
 ) -> Style {
     let style = apply_highlights(editor, delegate, base, line_idx, char_idx, byte_pos, p);
     let style = apply_delegate(delegate, style, line_idx, char_idx);
-    apply_software_cursor(editor, style, line_idx, char_idx)
+    let style = apply_delegate_ranges(delegate, style, line_idx, char_idx);
+    let style = apply_delegate_decorations(delegate, style, line_idx, char_idx);
+    apply_cursor(editor, delegate, style, line_idx, char_idx)
 }
 
-/// Flip fg/bg at cursor position for software cursor in Normal/Visual modes.
-fn apply_software_cursor(editor: &Editor, style: Style, line: usize, col: usize) -> Style {
-    use crate::editor::keymap::EditorMode;
+fn apply_cursor<D: EditorViewDelegate>(editor: &Editor, delegate: &D, style: Style, line: usize, col: usize) -> Style {
+    if line != editor.cursor_line() || col != editor.cursor_col() {
+        return style;
+    }
     let mode = editor.mode();
     if !matches!(
         mode,
@@ -32,22 +35,56 @@ fn apply_software_cursor(editor: &Editor, style: Style, line: usize, col: usize)
     ) {
         return style;
     }
-    if line == editor.cursor_line() && col == editor.cursor_col() {
-        // Resolve Reset to concrete colors for visible inversion
-        let fg = if style.fg() == Color::Reset {
-            Color::Rgb(220, 220, 220)
-        } else {
-            style.fg()
-        };
-        let bg = if style.bg() == Color::Reset {
-            Color::Rgb(30, 30, 30)
-        } else {
-            style.bg()
-        };
-        Style::new(bg, fg).with_attrs(style.attrs())
-    } else {
-        style
+    match delegate.cursor_render(mode) {
+        CursorRender::Software(cs) => cs,
+        CursorRender::Hardware | CursorRender::None => {
+            // Default software cursor: invert fg/bg
+            let fg = if style.fg() == Color::Reset {
+                Color::Rgb(220, 220, 220)
+            } else {
+                style.fg()
+            };
+            let bg = if style.bg() == Color::Reset {
+                Color::Rgb(30, 30, 30)
+            } else {
+                style.bg()
+            };
+            Style::new(bg, fg).with_attrs(style.attrs())
+        }
     }
+}
+
+fn apply_delegate_ranges<D: EditorViewDelegate>(delegate: &D, style: Style, line: usize, col: usize) -> Style {
+    for hr in delegate.highlight_ranges(line) {
+        if col >= hr.col_start && col < hr.col_end {
+            let fg = if hr.style.fg() != Color::Reset {
+                hr.style.fg()
+            } else {
+                style.fg()
+            };
+            let bg = if hr.style.bg() != Color::Reset {
+                hr.style.bg()
+            } else {
+                style.bg()
+            };
+            return Style::new(fg, bg).with_attrs(style.attrs());
+        }
+    }
+    style
+}
+
+fn apply_delegate_decorations<D: EditorViewDelegate>(delegate: &D, style: Style, line: usize, col: usize) -> Style {
+    for dec in delegate.line_decorations(line) {
+        if col >= dec.col_start && col < dec.col_end {
+            return match &dec.style {
+                DecorationStyle::Underline(_) | DecorationStyle::Squiggly(_) => {
+                    style.with_attrs(style.attrs().underline())
+                }
+                DecorationStyle::Background(c) => Style::new(style.fg(), *c).with_attrs(style.attrs()),
+            };
+        }
+    }
+    style
 }
 
 fn apply_highlights<D: EditorViewDelegate>(
@@ -70,10 +107,10 @@ fn apply_highlights<D: EditorViewDelegate>(
             Style::new(base.fg(), delegate.highlight_other_bg()).with_attrs(base.attrs())
         };
     }
-    apply_decorations(editor, delegate, base, line_idx, char_idx, p)
+    apply_editor_decorations(editor, delegate, base, line_idx, char_idx, p)
 }
 
-fn apply_decorations<D: EditorViewDelegate>(
+fn apply_editor_decorations<D: EditorViewDelegate>(
     editor: &Editor,
     delegate: &D,
     mut style: Style,

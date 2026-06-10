@@ -123,25 +123,14 @@ impl InputLine {
     }
 
     fn handle_up_key(&mut self) {
-        if self.sidekick_visible {
-            self.sidekick_select_prev();
-        } else {
-            self.handle_history_up();
-        }
+        self.handle_history_up();
     }
 
     fn handle_down_key(&mut self) {
-        if self.sidekick_visible {
-            self.sidekick_select_next();
-        } else {
-            self.handle_history_down();
-        }
+        self.handle_history_down();
     }
 
     fn handle_enter_key(&mut self) -> HandleResult {
-        if self.sidekick_visible {
-            self.apply_sidekick_selection();
-        }
         self.hide_sidekick();
         self.push_history();
         self.state

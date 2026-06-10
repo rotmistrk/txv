@@ -2,14 +2,15 @@
 //!
 //! On CM_SIDEKICK_SHOW: takes ownership of view as child 0, emits CM_REPOSITION.
 //! On CM_SIDEKICK_HIDE: removes child 0, repositions to 0×0.
-//! Forwards CM_SIDEKICK_NEXT/PREV/APPLY to the child.
+//! On CM_DROPDOWN_DONE: extracts selected text, emits CM_SIDEKICK_RESULT, hides.
+//! On CM_DROPDOWN_CANCELLED: hides.
 
 use txv_core::commands::{RepositionRequest, CM_REPOSITION};
 use txv_core::prelude::*;
 
-use crate::sidekick::{
-    SidekickRequest, CM_SIDEKICK_APPLY, CM_SIDEKICK_HIDE, CM_SIDEKICK_NEXT, CM_SIDEKICK_PREV, CM_SIDEKICK_SHOW,
-};
+use crate::dropdown_menu::{DropdownMenu, CM_DROPDOWN_CANCELLED, CM_DROPDOWN_DONE};
+use crate::input_line::completion_source::CompletionSource;
+use crate::sidekick::{SidekickRequest, CM_SIDEKICK_HIDE, CM_SIDEKICK_RESULT, CM_SIDEKICK_SHOW};
 
 pub struct SidekickManager {
     group: GroupState,
@@ -20,6 +21,14 @@ impl SidekickManager {
         Self {
             group: GroupState::new(ViewOptions::default().with_postprocess()),
         }
+    }
+
+    fn hide(&mut self) {
+        if self.group.child_count() > 0 {
+            self.group.remove(0);
+        }
+        self.group.mark_dirty();
+        self.request_reposition(0, 0, 0, 0, None);
     }
 
     fn request_reposition(&self, width: u16, height: u16, offset_x: i16, offset_y: i16, relative_to: Option<ViewId>) {
@@ -62,18 +71,29 @@ impl View for SidekickManager {
                 HandleResult::Consumed
             }
             CM_SIDEKICK_HIDE => {
-                if self.group.child_count() > 0 {
-                    self.group.remove(0);
-                }
-                self.group.mark_dirty();
-                self.request_reposition(0, 0, 0, 0, None);
+                self.hide();
                 HandleResult::Consumed
             }
-            CM_SIDEKICK_NEXT | CM_SIDEKICK_PREV | CM_SIDEKICK_APPLY => {
-                // Forward to child
-                if self.group.child_count() > 0 {
-                    self.group.dispatch(event);
+            CM_DROPDOWN_DONE => {
+                let idx = data
+                    .as_ref()
+                    .and_then(|d| d.downcast_ref::<usize>())
+                    .copied()
+                    .unwrap_or(0);
+                let text = self
+                    .group
+                    .child_mut(0)
+                    .and_then(|c| c.as_any_mut())
+                    .and_then(|a| a.downcast_mut::<DropdownMenu<CompletionSource>>())
+                    .and_then(|dd| dd.source().text_at(idx).map(String::from));
+                if let Some(t) = text {
+                    self.group.put_command(CM_SIDEKICK_RESULT, Some(Box::new(t)));
                 }
+                self.hide();
+                HandleResult::Consumed
+            }
+            CM_DROPDOWN_CANCELLED => {
+                self.hide();
                 HandleResult::Consumed
             }
             _ => HandleResult::Ignored,

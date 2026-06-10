@@ -100,7 +100,6 @@ pub fn draw_editor<D: EditorViewDelegate>(
     let row = draw_viewport_lines(buf, editor, delegate, &params, &spans, sticky_lines.len(), viewport_end);
     draw_tilde_fill(buf, row, h);
     prompt::draw_prompt(buf, editor, w, h);
-    delegate.post_draw(buf, editor);
 }
 
 fn draw_viewport_lines<D: EditorViewDelegate>(

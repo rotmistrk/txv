@@ -2,12 +2,11 @@
 
 use txv_core::prelude::*;
 
-use super::completion_frame::CompletionFrame;
 use super::completion_item::CompletionItem;
-use super::completion_list::CompletionList;
+use super::completion_source::CompletionSource;
 use super::InputLine;
-use crate::list_view::ListView;
-use crate::sidekick::{SidekickRequest, CM_SIDEKICK_HIDE, CM_SIDEKICK_NEXT, CM_SIDEKICK_PREV, CM_SIDEKICK_SHOW};
+use crate::dropdown_menu::{DropdownMenu, FilterMode, NumberMode, OpenSide};
+use crate::sidekick::{SidekickRequest, CM_SIDEKICK_HIDE, CM_SIDEKICK_SHOW};
 
 impl InputLine {
     pub(crate) fn try_complete(&mut self) {
@@ -21,7 +20,7 @@ impl InputLine {
             Ok(items.len() < 20)
         });
         match items.len() {
-            0 => self.show_sidekick(items),
+            0 => self.hide_sidekick(),
             1 => {
                 self.text = items.remove(0).text().to_string();
                 self.cursor = self.char_count();
@@ -69,14 +68,16 @@ impl InputLine {
     fn show_sidekick(&mut self, items: Vec<CompletionItem>) {
         let count = items.len();
         let max_w = items.iter().map(|i| i.display().len()).max().unwrap_or(0);
-        let list = CompletionList::new(items);
-        let lv = ListView::new(list);
-        let frame = CompletionFrame::new(lv, count);
+        let source = CompletionSource::new(items);
+        let menu = DropdownMenu::new(source)
+            .with_numbers(NumberMode::None)
+            .with_filter(FilterMode::None)
+            .with_open_side(OpenSide::None);
         let content_h = count.min(8) as u16;
         let h = content_h + 2;
         let w = (max_w as u16 + 4).clamp(14, 42);
         let rect = Rect::new(0, 0, w, h);
-        let data = SidekickRequest::new(Box::new(frame), rect, self.state.id());
+        let data = SidekickRequest::new(Box::new(menu), rect, self.state.id());
         self.state.put_command(CM_SIDEKICK_SHOW, Some(Box::new(data)));
         self.sidekick_visible = true;
     }
@@ -86,19 +87,6 @@ impl InputLine {
             self.sidekick_visible = false;
             self.state.put_command(CM_SIDEKICK_HIDE, None);
         }
-    }
-
-    pub(crate) fn sidekick_select_next(&mut self) {
-        self.state.put_command(CM_SIDEKICK_NEXT, None);
-    }
-
-    pub(crate) fn sidekick_select_prev(&mut self) {
-        self.state.put_command(CM_SIDEKICK_PREV, None);
-    }
-
-    pub(crate) fn apply_sidekick_selection(&mut self) {
-        // For now, hide and let the result come back via CM_SIDEKICK_RESULT
-        self.hide_sidekick();
     }
 
     fn longest_common_prefix(items: &[CompletionItem]) -> String {

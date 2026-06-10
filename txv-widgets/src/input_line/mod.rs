@@ -1,9 +1,8 @@
 //! InputLine — single-line text input with history, completion, and selection.
 
 mod completion;
-pub(crate) mod completion_frame;
 mod completion_item;
-pub(crate) mod completion_list;
+pub(crate) mod completion_source;
 mod handle_key;
 mod history;
 mod readline;
@@ -14,8 +13,6 @@ mod view_impl;
 use std::sync::Arc;
 
 use txv_core::prelude::*;
-
-pub use completion_list::CompletionList;
 
 /// Emitted by InputLine on Ctrl-C when selection exists. Data: `Box<String>`.
 pub const CM_COPY_TO_CLIPBOARD: CommandId = 150;
