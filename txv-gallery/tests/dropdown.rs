@@ -202,7 +202,29 @@ fn dropdown_badge_on_right() {
     run_cycles(&mut app, &mut backend, 1);
     // Badges (●, λ, ⚡) should appear
     assert!(
-        backend.contains("●") || backend.contains("λ") || backend.contains("»"),
+        backend.contains("●") || backend.contains("λ") || backend.contains("⚡"),
         "badges should be visible"
     );
+}
+
+#[test]
+fn dropdown_wide_badge_visible_on_cursor_row() {
+    let mut app = txv_gallery::build_app();
+    let mut backend = MockBackend::new(100, 30);
+    app.set_bounds(Rect::new(0, 0, 100, 30));
+    for _ in 0..10 {
+        backend.inject_key(KeyCode::Down, KeyMod::NONE);
+    }
+    run_cycles(&mut app, &mut backend, 1);
+    backend.inject_key(KeyCode::Right, KeyMod::CTRL.with_shift());
+    run_cycles(&mut app, &mut backend, 1);
+
+    // Move cursor to a scripting item (Python = index 2)
+    backend.inject_key(KeyCode::Down, KeyMod::NONE);
+    backend.inject_key(KeyCode::Down, KeyMod::NONE);
+    run_cycles(&mut app, &mut backend, 1);
+
+    // Python is a "scripting" item with ⚡ badge — it should still be visible
+    assert!(backend.contains("⚡"), "wide badge ⚡ should be visible on cursor row");
+    assert!(backend.contains("Python"), "Python should be visible");
 }

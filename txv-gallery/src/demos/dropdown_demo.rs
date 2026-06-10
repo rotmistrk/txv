@@ -41,7 +41,7 @@ impl DropdownSource for LangSource {
         let (ch, color) = match self.items[idx].1 {
             "systems" => ('●', Color::Ansi(1)),
             "functional" => ('λ', Color::Ansi(5)),
-            "scripting" => ('»', Color::Ansi(3)),
+            "scripting" => ('⚡', Color::Ansi(3)),
             _ => return None,
         };
         Some((ch, Style::default().with_fg(color)))
