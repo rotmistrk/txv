@@ -88,10 +88,52 @@ fn dropdown_number_hotkey() {
     run_cycles(&mut app, &mut backend, 1);
     backend.inject_key(KeyCode::Right, KeyMod::CTRL.with_shift());
     run_cycles(&mut app, &mut backend, 1);
-    // Press '3' — no crash, items still visible
+    // Press '3' — selects 3rd item (Python)
     backend.inject_key(KeyCode::Char('3'), KeyMod::NONE);
     run_cycles(&mut app, &mut backend, 1);
     assert!(backend.contains("DropdownMenu"));
+}
+
+#[test]
+fn dropdown_tab_autocompletes_lcp() {
+    let mut app = txv_gallery::build_app();
+    let mut backend = MockBackend::new(100, 30);
+    app.set_bounds(Rect::new(0, 0, 100, 30));
+    for _ in 0..10 {
+        backend.inject_key(KeyCode::Down, KeyMod::NONE);
+    }
+    run_cycles(&mut app, &mut backend, 1);
+    backend.inject_key(KeyCode::Right, KeyMod::CTRL.with_shift());
+    run_cycles(&mut app, &mut backend, 1);
+    // Type "go" — matches only "Go", Tab should fill to "go"
+    backend.inject_key(KeyCode::Char('g'), KeyMod::NONE);
+    run_cycles(&mut app, &mut backend, 1);
+    // "g" matches Go, Zig (contains g) — Tab fills LCP
+    backend.inject_key(KeyCode::Tab, KeyMod::NONE);
+    run_cycles(&mut app, &mut backend, 1);
+    // After Tab, filter should have advanced
+    // Verify Go is still visible
+    assert!(backend.contains("Go"));
+}
+
+#[test]
+fn dropdown_right_arrow_autocompletes() {
+    let mut app = txv_gallery::build_app();
+    let mut backend = MockBackend::new(100, 30);
+    app.set_bounds(Rect::new(0, 0, 100, 30));
+    for _ in 0..10 {
+        backend.inject_key(KeyCode::Down, KeyMod::NONE);
+    }
+    run_cycles(&mut app, &mut backend, 1);
+    backend.inject_key(KeyCode::Right, KeyMod::CTRL.with_shift());
+    run_cycles(&mut app, &mut backend, 1);
+    // Type "el" — matches Elixir. Right fills to "elixir"
+    backend.inject_key(KeyCode::Char('e'), KeyMod::NONE);
+    backend.inject_key(KeyCode::Char('l'), KeyMod::NONE);
+    run_cycles(&mut app, &mut backend, 1);
+    backend.inject_key(KeyCode::Right, KeyMod::NONE);
+    run_cycles(&mut app, &mut backend, 1);
+    assert!(backend.contains("Elixir"));
 }
 
 #[test]

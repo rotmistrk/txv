@@ -73,9 +73,20 @@ impl<D: DropdownSource> DropdownMenu<D> {
     }
 
     fn draw_prefix(&mut self, row: usize, vis_idx: usize, y: u16, rs: Style, ds: Style) -> u16 {
+        use super::dropdown_menu::NumberMode;
         let mut x: u16 = 2;
-        if self.numbers_enabled {
-            let ch = SUBSCRIPTS.get(row).copied().unwrap_or(' ');
+        if self.number_mode != NumberMode::None {
+            let ch = match self.number_mode {
+                NumberMode::All => SUBSCRIPTS.get(row).copied().unwrap_or(' '),
+                NumberMode::SkipFirst => {
+                    if row == 0 {
+                        ' '
+                    } else {
+                        SUBSCRIPTS.get(row - 1).copied().unwrap_or(' ')
+                    }
+                }
+                NumberMode::None => ' ',
+            };
             self.state.buffer_mut().put(x, y, ch, ds);
             x += 1;
         }

@@ -22,6 +22,17 @@ pub enum OpenSide {
     Bottom,
 }
 
+/// Numbering mode for dropdown items.
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+pub enum NumberMode {
+    #[default]
+    None,
+    /// All items numbered ₁₂₃...₉
+    All,
+    /// First item blank, rest numbered ₁₂₃...₈ (LRU tab bar style)
+    SkipFirst,
+}
+
 /// DropdownMenu widget — a leaf View rendering a filterable list.
 pub struct DropdownMenu<D: DropdownSource> {
     pub(crate) state: ViewState,
@@ -30,7 +41,7 @@ pub struct DropdownMenu<D: DropdownSource> {
     pub(crate) scroll: ScrollView,
     pub(crate) filter: String,
     pub(crate) filter_enabled: bool,
-    pub(crate) numbers_enabled: bool,
+    pub(crate) number_mode: NumberMode,
     pub(crate) max_visible: usize,
     pub(crate) open_side: OpenSide,
 }
@@ -44,7 +55,7 @@ impl<D: DropdownSource> DropdownMenu<D> {
             scroll: ScrollView::new(),
             filter: String::new(),
             filter_enabled: true,
-            numbers_enabled: false,
+            number_mode: NumberMode::None,
             max_visible: 12,
             open_side: OpenSide::None,
         }
@@ -55,8 +66,8 @@ impl<D: DropdownSource> DropdownMenu<D> {
         self
     }
 
-    pub fn with_numbers(mut self, enabled: bool) -> Self {
-        self.numbers_enabled = enabled;
+    pub fn with_numbers(mut self, mode: NumberMode) -> Self {
+        self.number_mode = mode;
         self
     }
 
@@ -136,10 +147,14 @@ impl<D: DropdownSource> DropdownMenu<D> {
     }
 
     fn handle_char(&mut self, ch: char) -> HandleResult {
-        if self.numbers_enabled && ch.is_ascii_digit() && ch != '0' {
+        if self.number_mode != NumberMode::None && ch.is_ascii_digit() && ch != '0' {
             let n = (ch as usize) - ('1' as usize);
-            if n < self.source.visible_len() {
-                let orig = self.source.visible_index(n);
+            let effective = match self.number_mode {
+                NumberMode::SkipFirst => n + 1,
+                _ => n,
+            };
+            if effective < self.source.visible_len() {
+                let orig = self.source.visible_index(effective);
                 self.state.put_command(CM_DROPDOWN_DONE, Some(Box::new(orig)));
             }
             return HandleResult::Consumed;
@@ -156,6 +171,39 @@ impl<D: DropdownSource> DropdownMenu<D> {
 
     fn handle_backspace(&mut self) -> HandleResult {
         if self.filter.pop().is_some() {
+            self.source.filter(&self.filter);
+            self.cursor = 0;
+            self.state.mark_dirty();
+        }
+        HandleResult::Consumed
+    }
+
+    fn autocomplete_lcp(&mut self) -> HandleResult {
+        if !self.filter_enabled {
+            return HandleResult::Ignored;
+        }
+        let count = self.source.visible_len();
+        if count == 0 {
+            return HandleResult::Consumed;
+        }
+        // Compute LCP of all visible labels
+        let first = self.source.label(self.source.visible_index(0)).to_string();
+        let mut lcp_len = first.len();
+        for i in 1..count {
+            let label = self.source.label(self.source.visible_index(i));
+            lcp_len = first
+                .chars()
+                .zip(label.chars())
+                .take(lcp_len)
+                .take_while(|(a, b)| a.to_lowercase().eq(b.to_lowercase()))
+                .count();
+            if lcp_len == 0 {
+                break;
+            }
+        }
+        let lcp: String = first.chars().take(lcp_len).collect();
+        if lcp.len() > self.filter.len() {
+            self.filter = lcp.to_lowercase();
             self.source.filter(&self.filter);
             self.cursor = 0;
             self.state.mark_dirty();
@@ -197,6 +245,7 @@ impl<D: DropdownSource> View for DropdownMenu<D> {
                 self.state.put_command(CM_DROPDOWN_CANCELLED, None);
                 HandleResult::Consumed
             }
+            KeyCode::Tab | KeyCode::Right if self.filter_enabled => self.autocomplete_lcp(),
             KeyCode::Backspace if self.filter_enabled => self.handle_backspace(),
             KeyCode::Char(ch) => self.handle_char(ch),
             _ => HandleResult::Ignored,

@@ -75,7 +75,9 @@ pub(crate) mod prefix_binding;
 
 pub use command_item::CommandItem;
 pub use dialog::Dialog;
-pub use dropdown_menu::{DropdownMenu, OpenSide, CM_DROPDOWN_CANCELLED, CM_DROPDOWN_CHANGED, CM_DROPDOWN_DONE};
+pub use dropdown_menu::{
+    DropdownMenu, NumberMode, OpenSide, CM_DROPDOWN_CANCELLED, CM_DROPDOWN_CHANGED, CM_DROPDOWN_DONE,
+};
 pub use dropdown_source::DropdownSource;
 pub use file_list::FileListData;
 pub use file_tree::FileTreeData;

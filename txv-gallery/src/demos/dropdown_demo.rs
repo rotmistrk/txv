@@ -66,7 +66,8 @@ impl DropdownSource for LangSource {
 }
 
 pub(crate) fn make() -> Box<dyn View> {
+    use txv_widgets::dropdown_menu::NumberMode;
     let source = LangSource::new();
-    let dd = DropdownMenu::new(source).with_numbers(true);
+    let dd = DropdownMenu::new(source).with_numbers(NumberMode::All);
     Box::new(dd)
 }
