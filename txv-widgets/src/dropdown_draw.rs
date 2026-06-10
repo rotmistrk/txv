@@ -5,6 +5,8 @@ use txv_core::prelude::*;
 use super::dropdown_menu::{DropdownMenu, OpenSide};
 use super::dropdown_source::DropdownSource;
 
+const SUBSCRIPTS: [char; 9] = ['₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
+
 impl<D: DropdownSource> DropdownMenu<D> {
     pub(crate) fn draw_frame(&mut self, w: u16, h: u16, style: Style) {
         let buf = self.state.buffer_mut();
@@ -25,11 +27,7 @@ impl<D: DropdownSource> DropdownMenu<D> {
             }
             buf.put(w - 1, y, '┘', style);
         }
-        let top_row = if draw_top {
-            1
-        } else {
-            0
-        };
+        let top_row = u16::from(draw_top);
         let bot_row = if draw_bottom {
             h - 1
         } else {
@@ -48,72 +46,100 @@ impl<D: DropdownSource> DropdownMenu<D> {
             1
         };
         let content_h = self.content_height() as usize;
-        let avail_w = w.saturating_sub(3) as usize;
+        let avail_w = w.saturating_sub(4) as usize;
+        let hl_fg = palette().style(StyleId::SearchMatch).fg();
+        let dim_fg = dim.fg();
+
         for row in 0..content_h {
             let vis_idx = self.scroll.offset + row;
             if vis_idx >= self.source.visible_len() {
                 break;
             }
             let y = top + row as u16;
-            let style = if vis_idx == self.cursor {
+            let rs = if vis_idx == self.cursor {
                 selected
             } else {
                 bg
             };
+            let ds = Style::new(dim_fg, rs.bg());
             for x in 1..w - 1 {
-                self.state.buffer_mut().put(x, y, ' ', style);
+                self.state.buffer_mut().put(x, y, ' ', rs);
             }
-            let mut x: u16 = 2;
-            if self.numbers_enabled && row < 9 {
-                let ch = char::from_digit((row + 1) as u32, 10).unwrap_or(' ');
-                self.state.buffer_mut().put(x, y, ch, dim);
-                x += 1;
-            }
-            let orig_idx = self.source.visible_index(vis_idx);
-            if let Some((badge_ch, badge_style)) = self.source.badge(orig_idx) {
-                self.state.buffer_mut().put(x, y, badge_ch, badge_style);
-                x += 1;
-            }
-            let label = self.source.label(orig_idx);
-            for ch in label.chars().take(avail_w) {
-                self.state.buffer_mut().put(x, y, ch, style);
-                x += 1;
-            }
-            let sec = self.source.secondary(orig_idx);
-            if !sec.is_empty() {
-                let sec_x = (w - 2).saturating_sub(sec.len() as u16);
-                if sec_x > x {
-                    for (i, ch) in sec.chars().enumerate() {
-                        self.state.buffer_mut().put(sec_x + i as u16, y, ch, dim);
-                    }
-                }
+            let x = self.draw_prefix(row, vis_idx, y, rs, ds);
+            let label = self.source.label(self.source.visible_index(vis_idx)).to_string();
+            self.draw_label(&label, x, y, avail_w, rs, hl_fg);
+            self.draw_secondary(vis_idx, y, w, ds);
+        }
+    }
+
+    fn draw_prefix(&mut self, row: usize, vis_idx: usize, y: u16, rs: Style, ds: Style) -> u16 {
+        let mut x: u16 = 2;
+        if self.numbers_enabled {
+            let ch = SUBSCRIPTS.get(row).copied().unwrap_or(' ');
+            self.state.buffer_mut().put(x, y, ch, ds);
+            x += 1;
+        }
+        let orig_idx = self.source.visible_index(vis_idx);
+        if let Some((badge_ch, badge_s)) = self.source.badge(orig_idx) {
+            let bs = Style::new(badge_s.fg(), rs.bg());
+            self.state.buffer_mut().put(x, y, badge_ch, bs);
+            x += 1;
+        }
+        x
+    }
+
+    fn draw_secondary(&mut self, vis_idx: usize, y: u16, w: u16, ds: Style) {
+        let orig_idx = self.source.visible_index(vis_idx);
+        let sec = self.source.secondary(orig_idx).to_string();
+        if !sec.is_empty() {
+            let sec_x = (w - 2).saturating_sub(sec.len() as u16);
+            for (i, ch) in sec.chars().enumerate() {
+                self.state.buffer_mut().put(sec_x + i as u16, y, ch, ds);
             }
         }
     }
 
-    pub(crate) fn draw_filter_label(&mut self, w: u16, h: u16, style: Style) {
-        if !self.filter_enabled || self.filter.is_empty() {
-            let count = format!("{}/{}", self.source.visible_len(), self.source.len());
-            let x = w.saturating_sub(count.len() as u16 + 2);
-            let y = if self.open_side == OpenSide::Bottom {
-                0
-            } else {
-                h - 1
-            };
-            for (i, ch) in count.chars().enumerate() {
-                self.state.buffer_mut().put(x + i as u16, y, ch, style);
+    fn draw_label(&mut self, label: &str, x: u16, y: u16, avail: usize, base: Style, hl_fg: Color) {
+        if self.filter.is_empty() {
+            for (i, ch) in label.chars().take(avail).enumerate() {
+                self.state.buffer_mut().put(x + i as u16, y, ch, base);
             }
             return;
         }
+        let filter_lc: Vec<char> = self
+            .filter
+            .chars()
+            .map(|c| c.to_lowercase().next().unwrap_or(c))
+            .collect();
+        let mut fi = 0;
+        for (i, ch) in label.chars().take(avail).enumerate() {
+            let lc = ch.to_lowercase().next().unwrap_or(ch);
+            let style = if fi < filter_lc.len() && lc == filter_lc[fi] {
+                fi += 1;
+                Style::new(hl_fg, base.bg()).with_attrs(base.attrs())
+            } else {
+                base
+            };
+            self.state.buffer_mut().put(x + i as u16, y, ch, style);
+        }
+    }
+
+    pub(crate) fn draw_filter_label(&mut self, w: u16, h: u16, style: Style) {
         let y = if self.open_side == OpenSide::Bottom {
             0
         } else {
             h - 1
         };
-        let label = format!(" {} ", self.filter);
-        let x: u16 = 2;
-        for (i, ch) in label.chars().enumerate().take((w - 4) as usize) {
-            self.state.buffer_mut().put(x + i as u16, y, ch, style);
+        let count = format!("{}/{}", self.source.visible_len(), self.source.len());
+        let cx = w.saturating_sub(count.len() as u16 + 2);
+        for (i, ch) in count.chars().enumerate() {
+            self.state.buffer_mut().put(cx + i as u16, y, ch, style);
+        }
+        if self.filter_enabled && !self.filter.is_empty() {
+            let label = format!(" {} ", self.filter);
+            for (i, ch) in label.chars().enumerate().take((w - 4) as usize) {
+                self.state.buffer_mut().put(2 + i as u16, y, ch, style);
+            }
         }
     }
 }
