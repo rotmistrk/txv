@@ -40,6 +40,12 @@ impl<D: DropdownSource> View for DropdownMenu<D> {
             }
             return HandleResult::Ignored;
         }
+        if key.modifiers().ctrl() {
+            if let KeyCode::Char('f') = key.code() {
+                return self.cycle_filter_mode();
+            }
+            return HandleResult::Ignored;
+        }
         match key.code() {
             KeyCode::Up => self.move_cursor(-1),
             KeyCode::Down => self.move_cursor(1),
@@ -48,7 +54,6 @@ impl<D: DropdownSource> View for DropdownMenu<D> {
                 self.state.put_command(CM_DROPDOWN_CANCELLED, None);
                 HandleResult::Consumed
             }
-            KeyCode::Char('f') if key.modifiers().ctrl() => self.cycle_filter_mode(),
             KeyCode::Tab | KeyCode::Right if self.filter_enabled => self.autocomplete_lcp(),
             KeyCode::Backspace if self.filter_enabled => self.handle_backspace(),
             KeyCode::Char(ch) => self.handle_char(ch),

@@ -97,23 +97,23 @@ impl<D: DropdownSource> DropdownMenu<D> {
 
     fn draw_secondary(&mut self, vis_idx: usize, y: u16, w: u16, rs: Style, dim_s: Style) {
         let orig_idx = self.source.visible_index(vis_idx);
-        let mut right_x = w - 2;
-        // Secondary text (rightmost)
+        let mut right_x = w - 2; // one space from right border
+
+        // Badge (rightmost, 2-char wide)
+        if let Some((badge_ch, badge_s)) = self.source.badge(orig_idx) {
+            let bs = Style::new(badge_s.fg(), rs.bg());
+            self.state.buffer_mut().put(right_x - 1, y, badge_ch, bs);
+            self.state.buffer_mut().put(right_x, y, ' ', rs);
+            right_x = right_x.saturating_sub(3);
+        }
+
+        // Secondary text (before badge)
         let sec = self.source.secondary(orig_idx).to_string();
         if !sec.is_empty() {
             let sec_x = right_x.saturating_sub(sec.len() as u16);
             for (i, ch) in sec.chars().enumerate() {
                 self.state.buffer_mut().put(sec_x + i as u16, y, ch, dim_s);
             }
-            right_x = sec_x.saturating_sub(1);
-        }
-        // Badge (2-char wide, before secondary)
-        if let Some((badge_ch, badge_s)) = self.source.badge(orig_idx) {
-            let bs = Style::new(badge_s.fg(), rs.bg());
-            let bx = right_x.saturating_sub(1);
-            self.state.buffer_mut().put(bx, y, badge_ch, bs);
-            // Second position is space (for wide chars)
-            self.state.buffer_mut().put(bx + 1, y, ' ', rs);
         }
     }
 
