@@ -12,6 +12,9 @@ pub mod command_item;
 pub mod confirm_item;
 pub mod cursor_pos;
 pub mod dialog;
+mod dropdown_draw;
+pub mod dropdown_menu;
+pub mod dropdown_source;
 pub mod file_list;
 pub(crate) mod file_list_entry;
 pub mod file_tree;
@@ -72,6 +75,8 @@ pub(crate) mod prefix_binding;
 
 pub use command_item::CommandItem;
 pub use dialog::Dialog;
+pub use dropdown_menu::{DropdownMenu, OpenSide, CM_DROPDOWN_CANCELLED, CM_DROPDOWN_CHANGED, CM_DROPDOWN_DONE};
+pub use dropdown_source::DropdownSource;
 pub use file_list::FileListData;
 pub use file_tree::FileTreeData;
 pub use file_tree_filter::fuzzy_match_positions;
