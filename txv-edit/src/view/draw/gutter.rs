@@ -22,7 +22,7 @@ pub fn draw_gutter<D: EditorViewDelegate>(
 
     if extra_gw > 0 {
         if let Some((ch, style)) = delegate.gutter_sign(line_idx) {
-            buf.put(0, y, ch, style);
+            buf.put(p.gutter_w - 1, y, ch, style);
         }
     }
 

@@ -91,9 +91,15 @@ impl TabPanel {
             .with_filter(FilterMode::Prefix)
             .with_open_side(OpenSide::Top);
         let cr = self.content_rect();
-        // Width: border(2) + digit(1) + space(1) + longest_title + space(1) + badge(1) + space(1)
+        // Width: border(2) + digit(1) + longest_title + badge_space
         let max_title = titles.iter().map(|t| t.chars().count()).max().unwrap_or(4);
-        let w = ((max_title + 7) as u16 + 2).min(cr.w());
+        let has_badge = dirty.iter().any(|d| *d);
+        let badge_w: usize = if has_badge {
+            2
+        } else {
+            0
+        };
+        let w = ((max_title + 3 + badge_w) as u16 + 2).min(cr.w());
         // Height: items + 1 (bottom border; top is open)
         let h = (titles.len() as u16 + 1).min(cr.h());
         self.group.insert(Box::new(menu));

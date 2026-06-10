@@ -63,6 +63,8 @@ fn dark_remaining(id: StyleId) -> Style {
         StyleId::TableRowActive => PaletteStyle::new().underline().to_style(),
         StyleId::TableRowInactive => PaletteStyle::fg(ansi(7)).underline().to_style(),
         StyleId::TreeGuide => PaletteStyle::fg(ansi(8)).to_style(),
+        StyleId::DropdownNumber => PaletteStyle::fg(ansi(11)).to_style(),
+        StyleId::TabNumber => PaletteStyle::fg(ansi(11)).to_style(),
         _ => Style::default(),
     }
 }

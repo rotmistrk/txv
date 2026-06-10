@@ -2,7 +2,7 @@
 
 use txv_core::prelude::*;
 
-use super::dropdown_menu::{DropdownMenu, OpenSide};
+use super::dropdown_menu::{DropdownMenu, NumberMode, OpenSide};
 use super::dropdown_source::DropdownSource;
 
 const SUBSCRIPTS: [char; 9] = ['₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
@@ -41,14 +41,14 @@ impl<D: DropdownSource> DropdownMenu<D> {
 
     pub(crate) fn draw_items(&mut self, w: u16, bg: Style, selected: Style, dim: Style) {
         let top = if self.open_side == OpenSide::Top {
-            0
+            0u16
         } else {
             1
         };
         let content_h = self.content_height() as usize;
-        let avail_w = w.saturating_sub(4) as usize;
         let hl_fg = palette().style(StyleId::SearchMatch).fg();
         let dim_fg = dim.fg();
+        let avail_w = self.compute_avail_w(w, content_h);
 
         for row in 0..content_h {
             let vis_idx = self.scroll.offset + row;
@@ -72,8 +72,25 @@ impl<D: DropdownSource> DropdownMenu<D> {
         }
     }
 
+    fn compute_avail_w(&self, w: u16, content_h: usize) -> usize {
+        let has_badge = (0..content_h).any(|row| {
+            let vi = self.scroll.offset + row;
+            vi < self.visible.len() && self.source.badge(self.visible[vi]).is_some()
+        });
+        let right_pad: u16 = if has_badge {
+            2
+        } else {
+            0
+        };
+        let prefix_w: u16 = if self.number_mode != NumberMode::None {
+            1
+        } else {
+            0
+        };
+        w.saturating_sub(3 + prefix_w + right_pad) as usize
+    }
+
     fn draw_prefix(&mut self, row: usize, vis_idx: usize, y: u16, _rs: Style, ds: Style) -> u16 {
-        use super::dropdown_menu::NumberMode;
         let mut x: u16 = 2;
         if self.number_mode != NumberMode::None {
             let ch = match self.number_mode {
@@ -87,7 +104,8 @@ impl<D: DropdownSource> DropdownMenu<D> {
                 }
                 NumberMode::None => ' ',
             };
-            self.state.buffer_mut().put(x, y, ch, ds);
+            let ns = Style::new(palette().style(StyleId::DropdownNumber).fg(), ds.bg());
+            self.state.buffer_mut().put(x, y, ch, ns);
             x += 1;
         }
         // Badge moved to right side — not drawn here
@@ -96,19 +114,30 @@ impl<D: DropdownSource> DropdownMenu<D> {
     }
     fn draw_secondary(&mut self, vis_idx: usize, y: u16, w: u16, rs: Style, dim_s: Style) {
         let orig_idx = self.visible[vis_idx];
-        // Layout from right: │ [space] [badge 1ch] [space] [secondary] ...
-        // Badge always 1 char (single-width only), pad with space on each side.
-        let badge_col = w.saturating_sub(3); // 1 char inside border
+        let badge = self.source.badge(orig_idx);
+        let sec = self.source.secondary(orig_idx);
 
-        if let Some((badge_ch, badge_s)) = self.source.badge(orig_idx) {
-            let bs = Style::new(badge_s.fg(), rs.bg());
-            self.state.buffer_mut().put(badge_col, y, badge_ch, bs);
+        if badge.is_none() && sec.is_empty() {
+            return;
         }
 
-        // Secondary text right-aligned ending at badge_col - 2 (space gap)
-        let sec = self.source.secondary(orig_idx).to_string();
-        if !sec.is_empty() {
-            let end_x = badge_col.saturating_sub(2);
+        // Badge at rightmost content position (1 char inside right border)
+        if let Some((badge_ch, badge_s)) = badge {
+            let badge_col = w.saturating_sub(3);
+            let bs = Style::new(badge_s.fg(), rs.bg());
+            self.state.buffer_mut().put(badge_col, y, badge_ch, bs);
+
+            // Secondary right-aligned before badge
+            if !sec.is_empty() {
+                let end_x = badge_col.saturating_sub(2);
+                let sec_x = (end_x + 1).saturating_sub(sec.len() as u16);
+                for (i, ch) in sec.chars().enumerate() {
+                    self.state.buffer_mut().put(sec_x + i as u16, y, ch, dim_s);
+                }
+            }
+        } else if !sec.is_empty() {
+            // Secondary right-aligned at right border
+            let end_x = w.saturating_sub(3);
             let sec_x = (end_x + 1).saturating_sub(sec.len() as u16);
             for (i, ch) in sec.chars().enumerate() {
                 self.state.buffer_mut().put(sec_x + i as u16, y, ch, dim_s);

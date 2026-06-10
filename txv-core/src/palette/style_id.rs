@@ -54,8 +54,11 @@ pub enum StyleId {
     TableRowInactive,
     // Tree guides
     TreeGuide,
+    // Dropdown/Tab number subscripts
+    DropdownNumber,
+    TabNumber,
 }
 
 impl StyleId {
-    pub const COUNT: usize = 44;
+    pub const COUNT: usize = 46;
 }

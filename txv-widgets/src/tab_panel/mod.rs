@@ -233,7 +233,13 @@ impl TabPanel {
         if self.dropdown_active {
             let dd_idx = self.group.child_count() - 1;
             let max_title = self.bar().titles.iter().map(|t| t.chars().count()).max().unwrap_or(4);
-            let w = ((max_title + 7) as u16 + 2).min(cr.w());
+            let has_badge = self.bar().dirty.iter().any(|d| *d);
+            let badge_w: usize = if has_badge {
+                2
+            } else {
+                0
+            };
+            let w = ((max_title + 3 + badge_w) as u16 + 2).min(cr.w());
             let h = (self.tab_count() as u16 + 1).min(cr.h());
             self.group.set_child_bounds(dd_idx, Rect::new(cr.x() + 1, cr.y(), w, h));
         }
