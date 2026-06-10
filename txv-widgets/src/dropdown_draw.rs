@@ -1,6 +1,7 @@
 //! Draw helpers for DropdownMenu.
 
 use txv_core::prelude::*;
+use txv_core::text::display_char_width;
 
 use super::dropdown_menu::{DropdownMenu, OpenSide};
 use super::dropdown_source::DropdownSource;
@@ -99,12 +100,16 @@ impl<D: DropdownSource> DropdownMenu<D> {
         let orig_idx = self.visible[vis_idx];
         let mut right_x = w - 2; // one space from right border
 
-        // Badge (rightmost, 2-char wide)
+        // Badge (rightmost, 2-char slot)
         if let Some((badge_ch, badge_s)) = self.source.badge(orig_idx) {
             let bs = Style::new(badge_s.fg(), rs.bg());
-            self.state.buffer_mut().put(right_x - 1, y, badge_ch, bs);
-            self.state.buffer_mut().put(right_x, y, ' ', rs);
-            right_x = right_x.saturating_sub(3);
+            let bw = display_char_width(badge_ch);
+            let bx = right_x + 1 - bw;
+            self.state.buffer_mut().put(bx, y, badge_ch, bs);
+            if bw == 1 {
+                self.state.buffer_mut().put(bx + 1, y, ' ', rs);
+            }
+            right_x = bx.saturating_sub(2);
         }
 
         // Secondary text (before badge)

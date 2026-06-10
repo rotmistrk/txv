@@ -202,7 +202,7 @@ fn dropdown_badge_on_right() {
     run_cycles(&mut app, &mut backend, 1);
     // Badges (●, λ, ⚡) should appear
     assert!(
-        backend.contains("●") || backend.contains("λ") || backend.contains("⚡"),
+        backend.contains("●") || backend.contains("λ") || backend.contains("»"),
         "badges should be visible"
     );
 }
