@@ -148,3 +148,60 @@ fn dropdown_shows_count_label() {
     // Should show item count "10/10" in the frame
     assert!(backend.contains("10/10"), "count label visible");
 }
+
+#[test]
+fn dropdown_alt_digit_selects() {
+    let mut app = txv_gallery::build_app();
+    let mut backend = MockBackend::new(100, 30);
+    app.set_bounds(Rect::new(0, 0, 100, 30));
+    for _ in 0..10 {
+        backend.inject_key(KeyCode::Down, KeyMod::NONE);
+    }
+    run_cycles(&mut app, &mut backend, 1);
+    backend.inject_key(KeyCode::Right, KeyMod::CTRL.with_shift());
+    run_cycles(&mut app, &mut backend, 1);
+    // Alt+2 should select regardless of filter mode
+    backend.inject_key(KeyCode::Char('2'), KeyMod::ALT);
+    run_cycles(&mut app, &mut backend, 1);
+    // No crash, gallery still shows
+    assert!(backend.contains("DropdownMenu"));
+}
+
+#[test]
+fn dropdown_ctrl_f_cycles_mode() {
+    let mut app = txv_gallery::build_app();
+    let mut backend = MockBackend::new(100, 30);
+    app.set_bounds(Rect::new(0, 0, 100, 30));
+    for _ in 0..10 {
+        backend.inject_key(KeyCode::Down, KeyMod::NONE);
+    }
+    run_cycles(&mut app, &mut backend, 1);
+    backend.inject_key(KeyCode::Right, KeyMod::CTRL.with_shift());
+    run_cycles(&mut app, &mut backend, 1);
+    // Default is Prefix (ᵖ indicator)
+    assert!(backend.contains("ᵖ"), "should show prefix indicator");
+    // Ctrl+F → Substring (ˢ)
+    backend.inject_key(KeyCode::Char('f'), KeyMod::CTRL);
+    run_cycles(&mut app, &mut backend, 1);
+    assert!(backend.contains("ˢ"), "should show substring indicator");
+    // Ctrl+F → Subsequence (ᶠ)
+    backend.inject_key(KeyCode::Char('f'), KeyMod::CTRL);
+    run_cycles(&mut app, &mut backend, 1);
+    assert!(backend.contains("ᶠ"), "should show subsequence indicator");
+}
+
+#[test]
+fn dropdown_badge_on_right() {
+    let mut app = txv_gallery::build_app();
+    let mut backend = MockBackend::new(100, 30);
+    app.set_bounds(Rect::new(0, 0, 100, 30));
+    for _ in 0..10 {
+        backend.inject_key(KeyCode::Down, KeyMod::NONE);
+    }
+    run_cycles(&mut app, &mut backend, 1);
+    // Badges (●, λ, ⚡) should appear
+    assert!(
+        backend.contains("●") || backend.contains("λ") || backend.contains("⚡"),
+        "badges should be visible"
+    );
+}

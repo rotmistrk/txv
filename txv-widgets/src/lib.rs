@@ -13,6 +13,7 @@ pub mod confirm_item;
 pub mod cursor_pos;
 pub mod dialog;
 mod dropdown_draw;
+mod dropdown_handle;
 pub mod dropdown_menu;
 pub mod dropdown_source;
 pub mod file_list;
@@ -76,7 +77,7 @@ pub(crate) mod prefix_binding;
 pub use command_item::CommandItem;
 pub use dialog::Dialog;
 pub use dropdown_menu::{
-    DropdownMenu, NumberMode, OpenSide, CM_DROPDOWN_CANCELLED, CM_DROPDOWN_CHANGED, CM_DROPDOWN_DONE,
+    DropdownMenu, FilterMode, NumberMode, OpenSide, CM_DROPDOWN_CANCELLED, CM_DROPDOWN_CHANGED, CM_DROPDOWN_DONE,
 };
 pub use dropdown_source::DropdownSource;
 pub use file_list::FileListData;

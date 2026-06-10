@@ -68,11 +68,11 @@ impl<D: DropdownSource> DropdownMenu<D> {
             let x = self.draw_prefix(row, vis_idx, y, rs, ds);
             let label = self.source.label(self.source.visible_index(vis_idx)).to_string();
             self.draw_label(&label, x, y, avail_w, rs, hl_fg);
-            self.draw_secondary(vis_idx, y, w, ds);
+            self.draw_secondary(vis_idx, y, w, rs, ds);
         }
     }
 
-    fn draw_prefix(&mut self, row: usize, vis_idx: usize, y: u16, rs: Style, ds: Style) -> u16 {
+    fn draw_prefix(&mut self, row: usize, vis_idx: usize, y: u16, _rs: Style, ds: Style) -> u16 {
         use super::dropdown_menu::NumberMode;
         let mut x: u16 = 2;
         if self.number_mode != NumberMode::None {
@@ -90,23 +90,30 @@ impl<D: DropdownSource> DropdownMenu<D> {
             self.state.buffer_mut().put(x, y, ch, ds);
             x += 1;
         }
-        let orig_idx = self.source.visible_index(vis_idx);
-        if let Some((badge_ch, badge_s)) = self.source.badge(orig_idx) {
-            let bs = Style::new(badge_s.fg(), rs.bg());
-            self.state.buffer_mut().put(x, y, badge_ch, bs);
-            x += 1;
-        }
+        // Badge moved to right side — not drawn here
+        let _ = vis_idx;
         x
     }
 
-    fn draw_secondary(&mut self, vis_idx: usize, y: u16, w: u16, ds: Style) {
+    fn draw_secondary(&mut self, vis_idx: usize, y: u16, w: u16, rs: Style, dim_s: Style) {
         let orig_idx = self.source.visible_index(vis_idx);
+        let mut right_x = w - 2;
+        // Secondary text (rightmost)
         let sec = self.source.secondary(orig_idx).to_string();
         if !sec.is_empty() {
-            let sec_x = (w - 2).saturating_sub(sec.len() as u16);
+            let sec_x = right_x.saturating_sub(sec.len() as u16);
             for (i, ch) in sec.chars().enumerate() {
-                self.state.buffer_mut().put(sec_x + i as u16, y, ch, ds);
+                self.state.buffer_mut().put(sec_x + i as u16, y, ch, dim_s);
             }
+            right_x = sec_x.saturating_sub(1);
+        }
+        // Badge (2-char wide, before secondary)
+        if let Some((badge_ch, badge_s)) = self.source.badge(orig_idx) {
+            let bs = Style::new(badge_s.fg(), rs.bg());
+            let bx = right_x.saturating_sub(1);
+            self.state.buffer_mut().put(bx, y, badge_ch, bs);
+            // Second position is space (for wide chars)
+            self.state.buffer_mut().put(bx + 1, y, ' ', rs);
         }
     }
 
@@ -136,11 +143,23 @@ impl<D: DropdownSource> DropdownMenu<D> {
     }
 
     pub(crate) fn draw_filter_label(&mut self, w: u16, h: u16, style: Style) {
+        use super::dropdown_menu::FilterMode;
         let y = if self.open_side == OpenSide::Bottom {
             0
         } else {
             h - 1
         };
+        let indicator = match self.filter_mode {
+            FilterMode::None => ' ',
+            FilterMode::Prefix => 'ᵖ',
+            FilterMode::Substring => 'ˢ',
+            FilterMode::Subsequence => 'ᶠ',
+        };
+        let mut left: u16 = 2;
+        if self.filter_mode != FilterMode::None {
+            self.state.buffer_mut().put(left, y, indicator, style);
+            left += 1;
+        }
         let count = format!("{}/{}", self.source.visible_len(), self.source.len());
         let cx = w.saturating_sub(count.len() as u16 + 2);
         for (i, ch) in count.chars().enumerate() {
@@ -148,8 +167,8 @@ impl<D: DropdownSource> DropdownMenu<D> {
         }
         if self.filter_enabled && !self.filter.is_empty() {
             let label = format!(" {} ", self.filter);
-            for (i, ch) in label.chars().enumerate().take((w - 4) as usize) {
-                self.state.buffer_mut().put(2 + i as u16, y, ch, style);
+            for (i, ch) in label.chars().enumerate().take(cx.saturating_sub(left + 1) as usize) {
+                self.state.buffer_mut().put(left + i as u16, y, ch, style);
             }
         }
     }
