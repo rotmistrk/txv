@@ -28,42 +28,41 @@ fn apply_cursor<D: EditorViewDelegate>(editor: &Editor, delegate: &D, style: Sty
     if line != editor.cursor_line() || col != editor.cursor_col() {
         return style;
     }
+    // Check delegate's Software cursor first — used regardless of mode.
     let mode = editor.mode();
+    if let CursorRender::Software(cs) = delegate.cursor_render(mode) {
+        return cs;
+    }
     if !matches!(
         mode,
         EditorMode::Normal | EditorMode::Visual | EditorMode::VisualLine | EditorMode::VisualBlock
     ) {
         return style;
     }
-    match delegate.cursor_render(mode) {
-        CursorRender::Software(cs) => cs,
-        CursorRender::Hardware | CursorRender::None => {
-            // Default software cursor: invert fg/bg
-            let fg = if style.fg() == Color::Reset {
-                Color::Rgb(220, 220, 220)
-            } else {
-                style.fg()
-            };
-            let bg = if style.bg() == Color::Reset {
-                Color::Rgb(30, 30, 30)
-            } else {
-                style.bg()
-            };
-            Style::new(bg, fg).with_attrs(style.attrs())
-        }
-    }
+    // Default software cursor: invert fg/bg
+    let fg = if style.fg() == Color::Reset {
+        Color::Rgb(220, 220, 220)
+    } else {
+        style.fg()
+    };
+    let bg = if style.bg() == Color::Reset {
+        Color::Rgb(30, 30, 30)
+    } else {
+        style.bg()
+    };
+    Style::new(bg, fg).with_attrs(style.attrs())
 }
 
 fn apply_delegate_ranges<D: EditorViewDelegate>(delegate: &D, style: Style, line: usize, col: usize) -> Style {
     for hr in delegate.highlight_ranges(line) {
-        if col >= hr.col_start && col < hr.col_end {
-            let fg = if hr.style.fg() != Color::Reset {
-                hr.style.fg()
+        if col >= hr.col_start() && col < hr.col_end() {
+            let fg = if hr.style().fg() != Color::Reset {
+                hr.style().fg()
             } else {
                 style.fg()
             };
-            let bg = if hr.style.bg() != Color::Reset {
-                hr.style.bg()
+            let bg = if hr.style().bg() != Color::Reset {
+                hr.style().bg()
             } else {
                 style.bg()
             };
@@ -75,8 +74,8 @@ fn apply_delegate_ranges<D: EditorViewDelegate>(delegate: &D, style: Style, line
 
 fn apply_delegate_decorations<D: EditorViewDelegate>(delegate: &D, style: Style, line: usize, col: usize) -> Style {
     for dec in delegate.line_decorations(line) {
-        if col >= dec.col_start && col < dec.col_end {
-            return match &dec.style {
+        if col >= dec.col_start() && col < dec.col_end() {
+            return match &dec.style() {
                 DecorationStyle::Underline(_) | DecorationStyle::Squiggly(_) => {
                     style.with_attrs(style.attrs().underline())
                 }

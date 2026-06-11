@@ -14,8 +14,25 @@ impl<D: EditorViewDelegate> EditorView<D> {
             return self.handle_cmdline_command(*id, data);
         }
         let result = self.group.dispatch(event);
+        // Drain commands emitted by InputLine child (e.g. CM_OK on Enter)
+        if let Some(r) = self.drain_child_commands() {
+            return r;
+        }
         self.group.mark_dirty();
         result
+    }
+
+    fn drain_child_commands(&mut self) -> Option<HandleResult> {
+        let sink = self.group.sink()?;
+        for ev in sink.drain() {
+            if let Event::Command { id, data, .. } = ev {
+                let r = self.handle_cmdline_command(id, &data);
+                if r != HandleResult::Ignored {
+                    return Some(r);
+                }
+            }
+        }
+        None
     }
 
     fn handle_cmdline_command(&mut self, id: CommandId, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
@@ -57,6 +74,11 @@ impl<D: EditorViewDelegate> EditorView<D> {
         if is_search {
             il = il.with_change_command(CM_CMDLINE_CHANGED);
         }
+        if !is_search {
+            if let Some(c) = self.delegate.cmdline_completer() {
+                il = il.with_completer(c);
+            }
+        }
 
         self.group.insert(Box::new(il));
         self.group.set_focused_index(0);
@@ -73,6 +95,15 @@ impl<D: EditorViewDelegate> EditorView<D> {
             self.cmdline_active = false;
             self.editor.set_viewport_height(self.content_height() as usize);
             self.group.mark_dirty();
+        }
+    }
+
+    pub(super) fn activate_cmdline_with_text(&mut self, prefix: &str, text: &str) {
+        self.activate_cmdline(prefix);
+        if let Some(il) = self.group.child_mut(0).and_then(|v| v.as_any_mut()) {
+            if let Some(il) = il.downcast_mut::<txv_widgets::InputLine>() {
+                il.set_text(text);
+            }
         }
     }
 
@@ -93,6 +124,10 @@ impl<D: EditorViewDelegate> EditorView<D> {
         };
         self.process_action(&action);
         self.ensure_cursor_visible();
+        self.delegate.on_action_post(&action, &self.editor);
+        if matches!(action, EditorAction::CursorMoved | EditorAction::ContentChanged) {
+            self.delegate.on_cursor_moved(&self.editor);
+        }
     }
 
     fn cmdline_cancel(&mut self) {

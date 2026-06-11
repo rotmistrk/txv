@@ -8,6 +8,8 @@ pub mod delegate;
 pub mod draw;
 mod handle;
 mod handle_cmdline;
+mod highlight_range;
+mod line_decoration;
 
 use std::path::{Path, PathBuf};
 
@@ -156,6 +158,26 @@ impl<D: EditorViewDelegate> EditorView<D> {
 
     pub fn hl_cache_mut(&mut self) -> &mut HighlightCache {
         &mut self.hl_cache
+    }
+
+    pub fn mark_dirty(&mut self) {
+        self.group.mark_dirty();
+    }
+
+    pub fn is_focused(&self) -> bool {
+        self.group.is_focused()
+    }
+
+    pub fn put_command(&self, id: u16, data: Option<Box<dyn std::any::Any + Send>>) {
+        self.group.put_command(id, data);
+    }
+
+    pub fn put_broadcast(&self, id: u16, data: Option<Box<dyn std::any::Any + Send>>) {
+        self.group.put_broadcast(id, data);
+    }
+
+    pub fn buffer_mut(&mut self) -> &mut txv_core::prelude::Buffer {
+        self.group.buffer_mut()
     }
 
     fn content_height(&self) -> u16 {

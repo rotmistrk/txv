@@ -28,11 +28,11 @@ impl EditorViewDelegate for DrawDelegate {
 
     fn highlight_ranges(&self, line: usize) -> &[HighlightRange] {
         static RANGES: std::sync::LazyLock<Vec<HighlightRange>> = std::sync::LazyLock::new(|| {
-            vec![HighlightRange {
-                col_start: 0,
-                col_end: 3,
-                style: Style::new(Color::Reset, Color::Rgb(255, 255, 0)),
-            }]
+            vec![HighlightRange::new(
+                0,
+                3,
+                Style::new(Color::Reset, Color::Rgb(255, 255, 0)),
+            )]
         });
         if line == 0 {
             &RANGES

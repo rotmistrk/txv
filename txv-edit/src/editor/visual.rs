@@ -32,6 +32,15 @@ impl Editor {
         self.visual_anchor = None;
     }
 
+    pub fn save_visual_range(&mut self) {
+        if let Some((al, _)) = self.visual_anchor {
+            let start = al.min(self.cursor_line);
+            let end = al.max(self.cursor_line);
+            self.last_visual_lines = Some((start, end));
+        }
+        self.exit_visual();
+    }
+
     /// Get the visual selection range as (start_offset, end_offset).
     pub fn visual_range(&self) -> Option<(usize, usize)> {
         let (al, ac) = self.visual_anchor?;

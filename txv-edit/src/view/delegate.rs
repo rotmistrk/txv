@@ -9,34 +9,8 @@ use txv_core::view::HandleResult;
 use crate::editor::keymap::EditorMode;
 use crate::editor::{Editor, EditorAction};
 
-/// A decoration on a line segment (underline, squiggly, background).
-pub struct LineDecoration {
-    pub col_start: usize,
-    pub col_end: usize,
-    pub style: DecorationStyle,
-}
-
-/// Visual style for a line decoration.
-pub enum DecorationStyle {
-    Underline(Color),
-    Squiggly(Color),
-    Background(Color),
-}
-
-/// A highlighted range on a line — merged onto existing cell style.
-pub struct HighlightRange {
-    pub col_start: usize,
-    pub col_end: usize,
-    pub style: Style,
-}
-
-/// Cursor rendering mode.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum CursorRender {
-    Hardware,
-    Software(Style),
-    None,
-}
+pub use super::highlight_range::{CursorRender, HighlightRange};
+pub use super::line_decoration::{DecorationStyle, LineDecoration};
 
 /// Delegate trait for app-specific extensions. All methods have default no-ops.
 pub trait EditorViewDelegate: Send {
@@ -140,6 +114,10 @@ pub trait EditorViewDelegate: Send {
         Self: Sized,
     {
         false
+    }
+
+    fn cmdline_completer(&self) -> Option<Box<dyn txv_core::complete::Completer>> {
+        None
     }
 }
 

@@ -74,6 +74,10 @@ impl GroupState {
         self.view.put_command(id, data);
     }
 
+    pub fn put_broadcast(&self, id: crate::event::CommandId, data: Option<Box<dyn std::any::Any + Send>>) {
+        self.view.put_broadcast(id, data);
+    }
+
     /// Query the focused child's cursor request and translate to group-relative coords.
     /// Preprocess children that report a cursor take priority (they capture input when active).
     pub fn cursor(&self) -> Option<crate::cursor::CursorRequest> {

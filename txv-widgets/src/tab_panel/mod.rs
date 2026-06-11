@@ -229,7 +229,7 @@ impl TabPanel {
                 self.group.set_child_visible(gi, false);
             }
         }
-        // Reposition dropdown overlay if active
+        // Reposition dropdown if active
         if self.dropdown_active {
             let dd_idx = self.group.child_count() - 1;
             let max_title = self.bar().titles.iter().map(|t| t.chars().count()).max().unwrap_or(4);

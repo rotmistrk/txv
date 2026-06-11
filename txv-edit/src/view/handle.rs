@@ -41,16 +41,7 @@ impl<D: EditorViewDelegate> EditorView<D> {
             return r;
         }
 
-        let is_search = matches!(
-            cmd,
-            Command::SearchNext
-                | Command::SearchPrev
-                | Command::SearchWordForward
-                | Command::SearchWordBackward
-                | Command::SearchForward(_)
-                | Command::SearchBackward(_)
-        );
-
+        let is_search = Self::is_search_command(&cmd);
         let action = self.editor.execute(cmd);
         self.process_action(&action);
         self.ensure_cursor_visible();
@@ -71,9 +62,26 @@ impl<D: EditorViewDelegate> EditorView<D> {
         HandleResult::Consumed
     }
 
+    fn is_search_command(cmd: &Command) -> bool {
+        matches!(
+            cmd,
+            Command::SearchNext
+                | Command::SearchPrev
+                | Command::SearchWordForward
+                | Command::SearchWordBackward
+                | Command::SearchForward(_)
+                | Command::SearchBackward(_)
+        )
+    }
+
     fn check_mode_entry(&mut self, cmd: &Command) -> Option<HandleResult> {
         if *cmd == Command::EnterCommandMode {
             self.activate_cmdline(":");
+            return Some(HandleResult::Consumed);
+        }
+        if *cmd == Command::VisualExCommand {
+            self.editor.save_visual_range();
+            self.activate_cmdline_with_text(":", "'<,'>");
             return Some(HandleResult::Consumed);
         }
         if *cmd == Command::EnterSearchMode {
@@ -126,6 +134,18 @@ impl<D: EditorViewDelegate> EditorView<D> {
         } else if line >= scroll + height - scrolloff {
             self.editor
                 .set_viewport_scroll(line.saturating_sub(height - 1 - scrolloff));
+        }
+        // Horizontal scroll
+        if !self.editor.options().wrap() {
+            let col = self.editor.cursor_col();
+            let gw = self.gutter_width() as usize;
+            let avail = (self.group.bounds().w() as usize).saturating_sub(gw);
+            let h_off = self.editor.h_scroll();
+            if col < h_off {
+                self.editor.set_h_scroll(col);
+            } else if avail > 0 && col >= h_off + avail {
+                self.editor.set_h_scroll(col - avail + 1);
+            }
         }
     }
 }

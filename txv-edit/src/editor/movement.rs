@@ -110,6 +110,7 @@ impl Editor {
         let page = self.viewport_height.saturating_sub(2);
         let max_line = self.buf().line_count().saturating_sub(1);
         self.cursor_line = (self.cursor_line + page).min(max_line);
+        self.viewport_scroll = (self.viewport_scroll + page).min(max_line);
         self.clamp_col();
     }
 
@@ -119,6 +120,7 @@ impl Editor {
         }
         let page = self.viewport_height.saturating_sub(2);
         self.cursor_line = self.cursor_line.saturating_sub(page);
+        self.viewport_scroll = self.viewport_scroll.saturating_sub(page);
         self.clamp_col();
     }
 

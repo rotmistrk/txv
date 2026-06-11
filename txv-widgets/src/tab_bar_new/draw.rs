@@ -117,7 +117,7 @@ impl TabBar {
         let tab_end = label_len.min(w.saturating_sub(x + badge_len + ctx.tr_len + 2));
         if x + tab_end <= w {
             self.state.buffer_mut().print(x, 0, label, style);
-            self.draw_badge_overlay(x, tab_end, ts.bg);
+            self.draw_badge_on_tab(x, tab_end, ts.bg);
             x += tab_end;
         }
         let end = Style::new(ts.bg, ctx.fill_bg);
@@ -128,7 +128,7 @@ impl TabBar {
         x
     }
 
-    fn draw_badge_overlay(&mut self, x: u16, tab_end: u16, tab_bg: Color) {
+    fn draw_badge_on_tab(&mut self, x: u16, tab_end: u16, tab_bg: Color) {
         let badge_text = self.badge_str(self.active).to_string();
         if badge_text.is_empty() {
             return;
