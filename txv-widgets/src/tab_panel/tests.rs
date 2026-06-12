@@ -224,8 +224,11 @@ fn lru_alt_digit_nested_in_static_panel() {
     // The inner panel should consume (switches to tab 1)
     assert_eq!(result, HandleResult::Consumed);
     // Get the inner panel
-    let inner_ref = outer.active_child_mut().unwrap()
-        .as_any_mut().unwrap()
-        .downcast_mut::<TabPanel>().unwrap();
-    assert_eq!(inner_ref.bar().active_index(), 1, "inner panel switched");
+    let switched = outer
+        .active_child_mut()
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_mut::<TabPanel>())
+        .map(|p| p.bar().active_index() == 1)
+        .is_some_and(|ok| ok);
+    assert!(switched, "inner panel switched");
 }

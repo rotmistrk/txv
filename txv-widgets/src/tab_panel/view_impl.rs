@@ -4,6 +4,7 @@ use txv_core::prelude::*;
 
 use super::TabPanel;
 use crate::dropdown_menu::{CM_DROPDOWN_CANCELLED, CM_DROPDOWN_DONE};
+use crate::tab_bar::mac_option_digit;
 
 impl View for TabPanel {
     delegate_group_state!(group, override { set_bounds, draw, handle, select, unselect, as_any_mut });
@@ -122,14 +123,14 @@ impl TabPanel {
             }
         } else if key.modifiers() == KeyMod::NONE {
             if let KeyCode::Char(c) = key.code() {
-                crate::tab_bar::mac_option_digit(c)
+                mac_option_digit(c)
             } else {
                 None
             }
         } else {
             None
         };
-        let Some(n) = n else { return None };
+        let n = n?;
         if n == 0 {
             return None;
         }

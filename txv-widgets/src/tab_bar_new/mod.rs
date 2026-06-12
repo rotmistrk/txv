@@ -20,11 +20,11 @@ mod tab_bar_palette;
 mod tab_style;
 pub mod types;
 
+pub(crate) use dropdown::mac_option_digit;
 pub use tab_bar_fill::TabBarFill;
 pub use tab_bar_palette::TabBarPalette;
 pub use tab_style::TabStyle;
 pub use types::TabBarMode;
-pub(crate) use dropdown::mac_option_digit;
 
 /// The tab bar widget.
 pub struct TabBar {

@@ -5,7 +5,7 @@
 //!
 //! Follows the same pattern as ModalKey: manages own bounds via set_bounds.
 
-use txv_core::event::Event;
+use txv_core::event::{Event, KeyCode, KeyEvent, KeyMod};
 use txv_core::geometry::Rect;
 use txv_core::group::GroupState;
 use txv_core::palette::palette;
@@ -47,19 +47,14 @@ impl FocusGatedGroup {
 
     fn activate(&mut self) {
         self.active = true;
-        let b = self.group.bounds();
-        self.group.set_bounds(Rect::new(b.x(), b.y(), self.natural_width, 1));
-        self.layout_children();
+        self.sync_width();
         self.group.mark_dirty();
     }
 
     fn deactivate(&mut self) {
         self.active = false;
         // Cancel any active modal children (send Esc)
-        let esc = Event::Key(txv_core::event::KeyEvent::new(
-            txv_core::event::KeyCode::Esc,
-            txv_core::event::KeyMod::default(),
-        ));
+        let esc = Event::Key(KeyEvent::new(KeyCode::Esc, KeyMod::default()));
         self.group.dispatch(&esc);
         let b = self.group.bounds();
         self.group.set_bounds(Rect::new(b.x(), b.y(), 0, 1));
@@ -111,11 +106,26 @@ impl View for FocusGatedGroup {
         if !self.active {
             return HandleResult::Ignored;
         }
-        self.group.dispatch(event)
+        let result = self.group.dispatch(event);
+        // Update own width from children (ModalKey may have expanded/collapsed)
+        self.sync_width();
+        result
     }
 }
 
 impl FocusGatedGroup {
+    fn sync_width(&mut self) {
+        let mut w: u16 = 0;
+        for i in 0..self.group.child_count() {
+            w += self.group.child(i).map_or(0, |c| c.bounds().w());
+        }
+        let b = self.group.bounds();
+        if b.w() != w {
+            self.group.set_bounds(Rect::new(b.x(), b.y(), w, 1));
+            self.layout_children();
+            self.group.mark_dirty();
+        }
+    }
     fn handle_gate_command(
         &mut self,
         id: CommandId,
