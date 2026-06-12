@@ -28,6 +28,7 @@ pub struct ModalKey {
     pub(crate) cancel_on_miss: bool,
     pub(crate) activated_at: Option<Instant>,
     pub(crate) child_sink: EventSink,
+    pub(crate) children_total_width: u16,
     pub(crate) parent_sink: Option<EventSink>,
 }
 
@@ -54,6 +55,7 @@ impl ModalKey {
             cancel_on_miss: false,
             activated_at: None,
             child_sink: EventSink::new(),
+            children_total_width: 0,
             parent_sink: None,
         }
     }
@@ -90,6 +92,7 @@ impl ModalKey {
     }
 
     pub fn add_child(mut self, child: Box<dyn View>) -> Self {
+        self.children_total_width += child.bounds().w();
         self.group.insert(child);
         let idx = self.group.child_count() - 1;
         self.group.set_child_visible(idx, false); // starts dormant
@@ -108,17 +111,22 @@ impl ModalKey {
         self.activated_at = Some(Instant::now());
         if self.terminal_command.is_some() {
             use crate::focus_gated_group::CM_DEACTIVATE_GROUP;
-            // Terminal modals (M-x) deactivate all focus-gated groups
             self.group.put_command(CM_DEACTIVATE_GROUP, Some(Box::new(u16::MAX)));
         }
         self.propagate_modal_palette();
-        self.layout_children_modal();
         for i in 0..self.group.child_count() {
             self.group.set_child_visible(i, true);
             if let Some(child) = self.group.child_mut(i) {
                 child.select();
             }
         }
+        // Expand bounds to fit prompt + children
+        let expanded_w = self.compute_expanded_width();
+        let b = self.group.bounds();
+        if expanded_w > b.w() {
+            self.group.set_bounds(Rect::new(b.x(), b.y(), expanded_w, b.h()));
+        }
+        self.layout_children_modal();
         self.group.mark_dirty();
     }
 
@@ -186,6 +194,10 @@ impl ModalKey {
     }
 
     /// Minimum width when active (prompt + caps + reasonable input space).
+    fn compute_expanded_width(&self) -> u16 {
+        let prompt_w = self.prompt.len() as u16;
+        prompt_w + 2 + self.children_total_width
+    }
     fn active_min_width(&self) -> u16 {
         let prompt_w = self.prompt.len() as u16;
         // prompt + 2 caps + at least 20 chars for input
