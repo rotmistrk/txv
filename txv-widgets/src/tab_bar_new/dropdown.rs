@@ -17,18 +17,32 @@ impl TabBar {
     }
 
     fn handle_alt_key(&mut self, key: &KeyEvent) -> HandleResult {
-        if !key.modifiers().alt() || key.modifiers().ctrl() || key.modifiers().shift() {
+        // Standard Alt-digit
+        if key.modifiers().alt() && !key.modifiers().ctrl() && !key.modifiers().shift() {
+            if let KeyCode::Char(c) = key.code() {
+                if let Some(n) = c.to_digit(10) {
+                    return self.try_activate_number(n as usize);
+                }
+            }
+        }
+        // macOS Option-digit chars (arrive as plain chars, no ALT modifier)
+        if key.modifiers() == KeyMod::NONE {
+            if let KeyCode::Char(c) = key.code() {
+                if let Some(n) = mac_option_digit(c) {
+                    return self.try_activate_number(n);
+                }
+            }
+        }
+        HandleResult::Ignored
+    }
+
+    fn try_activate_number(&mut self, n: usize) -> HandleResult {
+        if self.titles.len() <= 1 {
             return HandleResult::Ignored;
         }
-        let KeyCode::Char(c) = key.code() else {
-            return HandleResult::Ignored;
-        };
-        let Some(n) = c.to_digit(10) else {
-            return HandleResult::Ignored;
-        };
-        if n >= 1 && self.can_activate_number(n as usize) {
+        if n >= 1 && self.can_activate_number(n) {
             let prev = self.active;
-            self.activate_by_number(n as usize);
+            self.activate_by_number(n);
             if self.active != prev {
                 return HandleResult::Consumed;
             }
@@ -51,7 +65,6 @@ impl TabBar {
         }
     }
 
-    /// Check if the digit would activate a valid tab.
     fn can_activate_number(&self, n: usize) -> bool {
         match self.mode {
             TabBarMode::Single | TabBarMode::Static => n.saturating_sub(1) < self.titles.len(),
@@ -83,5 +96,21 @@ impl TabBar {
                 return;
             }
         }
+    }
+}
+
+/// Map macOS Option-digit character to digit (1-9).
+pub(crate) fn mac_option_digit(c: char) -> Option<usize> {
+    match c {
+        '¡' => Some(1),
+        '™' => Some(2),
+        '£' => Some(3),
+        '¢' => Some(4),
+        '∞' => Some(5),
+        '§' => Some(6),
+        '¶' => Some(7),
+        '•' => Some(8),
+        'ª' => Some(9),
+        _ => None,
     }
 }

@@ -49,6 +49,11 @@ impl View for TabPanel {
             }
         }
         if let Event::Key(key) = event {
+            if self.dropdown_active {
+                if let Some(result) = self.handle_dropdown_digit(key) {
+                    return result;
+                }
+            }
             if let Some(result) = self.handle_dropdown_open(key) {
                 return result;
             }
@@ -105,6 +110,35 @@ impl TabPanel {
             return Some(HandleResult::Consumed);
         }
         None
+    }
+
+    /// When dropdown is open, Alt-digit/Option-digit closes it and activates tab.
+    fn handle_dropdown_digit(&mut self, key: &KeyEvent) -> Option<HandleResult> {
+        let n = if key.modifiers().alt() && !key.modifiers().ctrl() && !key.modifiers().shift() {
+            if let KeyCode::Char(c) = key.code() {
+                c.to_digit(10).map(|d| d as usize)
+            } else {
+                None
+            }
+        } else if key.modifiers() == KeyMod::NONE {
+            if let KeyCode::Char(c) = key.code() {
+                crate::tab_bar::mac_option_digit(c)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        let Some(n) = n else { return None };
+        if n == 0 {
+            return None;
+        }
+        // Use bar's own activate logic (handles both Static and LRU numbering)
+        self.close_dropdown();
+        self.bar_mut().activate_by_number(n);
+        let idx = self.bar().active_index();
+        self.set_active(idx);
+        Some(HandleResult::Consumed)
     }
 
     /// Open dropdown on Alt-0/Down/Up or Ctrl+Shift+Down/Up.
