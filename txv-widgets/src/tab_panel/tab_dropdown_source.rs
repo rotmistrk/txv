@@ -1,7 +1,5 @@
 //! DropdownSource for tab panel dropdown.
 
-use std::iter::repeat;
-
 use txv_core::prelude::*;
 
 use super::tab_entry::TabEntry;
@@ -13,13 +11,20 @@ pub(crate) struct TabDropdownSource {
 }
 
 impl TabDropdownSource {
-    pub(crate) fn from_parts(titles: &[String], dirty: &[bool]) -> Self {
+    pub(crate) fn from_parts(
+        titles: &[String],
+        dirty: &[bool],
+        badges: &[Option<String>],
+        badge_styles: &[Option<Style>],
+    ) -> Self {
         let entries = titles
             .iter()
-            .zip(dirty.iter().chain(repeat(&false)))
-            .map(|(t, d)| TabEntry {
+            .enumerate()
+            .map(|(i, t)| TabEntry {
                 label: t.clone(),
-                dirty: *d,
+                dirty: *dirty.get(i).unwrap_or(&false),
+                badge: badges.get(i).and_then(|b| b.clone()),
+                badge_style: badge_styles.get(i).and_then(|s| *s),
             })
             .collect();
         Self { entries }
@@ -37,6 +42,14 @@ impl DropdownSource for TabDropdownSource {
 
     fn badge(&self, idx: usize) -> Option<(char, Style)> {
         let entry = self.entries.get(idx)?;
+        // Root badge takes priority over dirty indicator
+        if let Some(ref badge_text) = entry.badge {
+            let ch = badge_text.chars().next().unwrap_or('●');
+            let style = entry
+                .badge_style
+                .unwrap_or_else(|| Style::new(palette().style(StyleId::Dim).fg(), Color::Transparent));
+            return Some((ch, style));
+        }
         if entry.dirty {
             let fg = palette().style(StyleId::StateWarning).fg();
             Some(('●', Style::new(fg, Color::Transparent)))

@@ -81,7 +81,9 @@ impl TabPanel {
         }
         let titles = self.bar().titles.clone();
         let dirty = self.bar().dirty.clone();
-        let source = TabDropdownSource::from_parts(&titles, &dirty);
+        let badges = self.bar().badges.clone();
+        let badge_styles = self.bar().badge_styles.clone();
+        let source = TabDropdownSource::from_parts(&titles, &dirty, &badges, &badge_styles);
         let number_mode = match self.bar().mode {
             TabBarMode::Static | TabBarMode::Single => NumberMode::All,
             TabBarMode::Lru => NumberMode::SkipFirst,

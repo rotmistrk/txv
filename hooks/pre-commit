@@ -100,12 +100,12 @@ if [ -n "$BANNED_HITS" ]; then
     exit 1
 fi
 
-# 8. mcp-lint on staged files only (incremental enforcement)
+# 8. mcp-lint on all source files
 echo "  mcp-lint..."
 if command -v mcp-lint-cli >/dev/null 2>&1; then
-    STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '\.rs$' || true)
-    if [ -n "$STAGED" ]; then
-        LINT_VIOLATIONS=$(echo "$STAGED" | xargs mcp-lint-cli 2>&1 | grep -v ": OK$" || true)
+    ALL_RS=$(find txv-core/src txv-render/src txv-widgets/src txv-edit/src txv-gallery/src txv-gallery/tests -name '*.rs' 2>/dev/null || true)
+    if [ -n "$ALL_RS" ]; then
+        LINT_VIOLATIONS=$(echo "$ALL_RS" | xargs mcp-lint-cli 2>&1 | grep -v ": OK$" || true)
         if [ -n "$LINT_VIOLATIONS" ]; then
             echo "$LINT_VIOLATIONS"
             echo "❌ mcp-lint violations"
