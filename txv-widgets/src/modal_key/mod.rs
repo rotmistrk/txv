@@ -106,7 +106,11 @@ impl ModalKey {
     pub(crate) fn activate(&mut self) {
         self.active = true;
         self.activated_at = Some(Instant::now());
-        // Deactivate sibling FocusGatedGroups (only one modal context at a time)
+        if self.terminal_command.is_some() {
+            use crate::focus_gated_group::CM_DEACTIVATE_GROUP;
+            // Terminal modals (M-x) deactivate all focus-gated groups
+            self.group.put_command(CM_DEACTIVATE_GROUP, Some(Box::new(u16::MAX)));
+        }
         self.propagate_modal_palette();
         self.layout_children_modal();
         for i in 0..self.group.child_count() {

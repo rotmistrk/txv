@@ -17,6 +17,7 @@ pub(crate) const WIDGET_NAMES: &[&str] = &[
     "Editor",
     "DropdownMenu",
     "TabDropdown",
+    "TabLRU",
 ];
 
 /// ListData implementation backed by a static list of widget names.

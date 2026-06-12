@@ -38,6 +38,7 @@ pub(crate) fn make_demo(index: usize) -> Box<dyn View> {
         9 => make_editor(),
         10 => make_dropdown(),
         11 => make_tab_dropdown(),
+        12 => make_tab_lru(),
         _ => make_placeholder(),
     }
 }
@@ -178,5 +179,22 @@ fn make_tab_dropdown() -> Box<dyn View> {
         Some(Style::new(Color::Ansi(1), Color::Transparent)),
     );
     tp.set_active(0);
+    Box::new(tp)
+}
+
+fn make_tab_lru() -> Box<dyn View> {
+    use txv_widgets::tab_bar::TabBarMode;
+    let mut tp = TabPanel::new(TabBarMode::Lru);
+    for name in ["Alpha", "Beta", "Gamma", "Delta"] {
+        let mut ta = TextArea::new();
+        ta.set_content(&format!("Content of {name}"));
+        ta.show_line_numbers(false);
+        tp.insert_tab(name, Box::new(ta));
+    }
+    // Visit tabs to seed LRU: Delta, Gamma, Beta, Alpha (Alpha most recent)
+    tp.set_active(3); // Delta
+    tp.set_active(2); // Gamma
+    tp.set_active(1); // Beta
+    tp.set_active(0); // Alpha (active)
     Box::new(tp)
 }

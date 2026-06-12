@@ -187,7 +187,6 @@ fn alt_0_opens_dropdown() {
     assert!(backend.contains("3/3"), "dropdown opened via Alt-0");
 }
 
-
 #[test]
 fn badges_appear_on_tab_bar() {
     let mut app = txv_gallery::build_app();

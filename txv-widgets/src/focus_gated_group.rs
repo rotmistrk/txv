@@ -15,7 +15,6 @@ use txv_core::prelude::*;
 pub const CM_ACTIVATE_GROUP: CommandId = 160;
 /// Command to deactivate a FocusGatedGroup by ID.
 pub const CM_DEACTIVATE_GROUP: CommandId = 161;
-/// Command to deactivate ALL FocusGatedGroups (emitted by ModalKey on activation).
 
 pub struct FocusGatedGroup {
     group: GroupState,
@@ -131,8 +130,11 @@ impl FocusGatedGroup {
         }
         if id == CM_DEACTIVATE_GROUP {
             let gid = data.as_ref().and_then(|d| d.downcast_ref::<u16>())?;
-            if *gid == self.group_id {
+            if *gid == self.group_id || *gid == u16::MAX {
                 self.deactivate();
+                if *gid == u16::MAX {
+                    return None; // Wildcard: don't consume, let others see it
+                }
                 return Some(HandleResult::Consumed);
             }
         }

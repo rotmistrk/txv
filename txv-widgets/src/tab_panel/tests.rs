@@ -181,3 +181,51 @@ fn focus_tab_by_title() {
     assert_eq!(panel.active_title(), Some("A"));
     assert!(!panel.focus_tab_by_title("Z"));
 }
+
+#[test]
+fn lru_alt_digit_switches_tab() {
+    let mut panel = TabPanel::new(TabBarMode::Lru);
+    for _ in 0..4 {
+        panel.insert_tab("T", Box::new(Dummy::new()));
+    }
+    panel.set_active(3);
+    panel.set_active(2);
+    panel.set_active(1);
+    panel.set_active(0);
+    panel.set_bounds(Rect::new(0, 0, 40, 10));
+    panel.select();
+    // Alt-1 should switch to tab at LRU position 1 (= tab 1)
+    let event = Event::Key(KeyEvent::new(KeyCode::Char('1'), KeyMod::ALT));
+    let result = panel.handle(&event);
+    assert_eq!(result, HandleResult::Consumed);
+    assert_eq!(panel.bar().active_index(), 1);
+}
+
+#[test]
+fn lru_alt_digit_nested_in_static_panel() {
+    // Simulate gallery structure: outer Static panel with 1 tab containing LRU panel
+    let mut inner = TabPanel::new(TabBarMode::Lru);
+    for name in ["A", "B", "C", "D"] {
+        inner.insert_tab(name, Box::new(Dummy::new()));
+    }
+    inner.set_active(3);
+    inner.set_active(2);
+    inner.set_active(1);
+    inner.set_active(0);
+
+    let mut outer = TabPanel::new(TabBarMode::Static);
+    outer.insert_tab("Demo", Box::new(inner));
+    outer.set_bounds(Rect::new(0, 0, 60, 20));
+    outer.select();
+
+    let event = Event::Key(KeyEvent::new(KeyCode::Char('1'), KeyMod::ALT));
+    let result = outer.handle(&event);
+    // The outer panel should pass through (1 tab, already active=0)
+    // The inner panel should consume (switches to tab 1)
+    assert_eq!(result, HandleResult::Consumed);
+    // Get the inner panel
+    let inner_ref = outer.active_child_mut().unwrap()
+        .as_any_mut().unwrap()
+        .downcast_mut::<TabPanel>().unwrap();
+    assert_eq!(inner_ref.bar().active_index(), 1, "inner panel switched");
+}

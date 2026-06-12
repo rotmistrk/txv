@@ -95,13 +95,9 @@ impl Gallery {
         bar.add(StatusSlot::new(Box::new(dd)).priority(7));
         let dd_mac = KeyLabelView::new(KeyEvent::new(KeyCode::Char('º'), KeyMod::NONE), CM_TW_TAB_DROPDOWN, "");
         bar.add(StatusSlot::new(Box::new(dd_mac)).priority(1));
-        // Tab switching: Alt-1..9 + macOS Option chars
+        // macOS Option chars for tab switching (these don't conflict with Alt handling)
         let mac_chars: &[char] = &['¡', '™', '£', '¢', '∞', '§', '¶', '•', 'ª'];
         for n in 1u16..=9 {
-            let ch = char::from(b'0' + n as u8);
-            let kl = KeyLabelView::new(KeyEvent::new(KeyCode::Char(ch), KeyMod::ALT), CM_TW_ACTIVATE_TAB, "")
-                .with_data(n - 1);
-            bar.add(StatusSlot::new(Box::new(kl)).priority(1));
             let mac_kl = KeyLabelView::new(
                 KeyEvent::new(KeyCode::Char(mac_chars[(n - 1) as usize]), KeyMod::NONE),
                 CM_TW_ACTIVATE_TAB,
