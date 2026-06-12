@@ -78,8 +78,6 @@ fn cancel_on_miss_deactivates() {
 
 #[test]
 fn input_line_tab_completes() {
-    use crate::InputLine;
-
     let mk = setup_completion_modal();
     let text = activate_type_tab_and_read(mk);
     assert!(text.contains("help"), "expected 'help' in buffer, got: {}", text.trim());

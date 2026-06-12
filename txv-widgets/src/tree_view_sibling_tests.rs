@@ -2,8 +2,6 @@
 
 #[cfg(test)]
 mod tests {
-    use txv_core::prelude::*;
-
     use crate::tree_view::TreeData;
 
     /// A mock tree represented as a flat list of (id, depth) pairs.
@@ -27,10 +25,8 @@ mod tests {
         fn child_count(&self, _id: usize) -> usize {
             0
         }
-        fn label(&self, id: usize) -> &str {
-            match id {
-                _ => "node",
-            }
+        fn label(&self, _id: usize) -> &str {
+            "node"
         }
         fn is_expandable(&self, _id: usize) -> bool {
             false

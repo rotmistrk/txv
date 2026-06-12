@@ -2,7 +2,6 @@
 
 use txv_core::prelude::*;
 use txv_edit::editor::command::Command;
-use txv_edit::editor::Editor;
 use txv_edit::view::EditorView;
 
 fn editor_with(content: &str, w: u16, h: u16) -> EditorView {
@@ -132,9 +131,8 @@ fn cursor_on_multiply_wrapped_line() {
     }
     assert_eq!(ev.editor().cursor_col(), 80);
     // Cursor should be on visual row 2 (0-indexed)
-    let cursor = ev.cursor();
-    assert!(cursor.is_some() || true); // software cursor won't report
-                                       // At minimum, editor col is 80
+    let _cursor = ev.cursor(); // software cursor won't report in mock
+    // At minimum, editor col is 80
     assert_eq!(ev.editor().cursor_col(), 80);
 }
 

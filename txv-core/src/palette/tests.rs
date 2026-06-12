@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::cell::Color;
 use crate::palette::dark::DarkPalette;
 use crate::palette::style_id::StyleId;
-use crate::palette::{palette, set_palette, Palette, PaletteStyle};
+use crate::palette::{palette, set_palette, PaletteStyle};
 
 #[test]
 fn dark_palette_has_expected_roles() {

@@ -162,7 +162,6 @@ fn mac_option_digit_switches_without_dropdown() {
 }
 
 #[test]
-#[test]
 fn badge_on_right_side() {
     let mut app = txv_gallery::build_app();
     let mut backend = MockBackend::new(100, 30);

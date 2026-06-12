@@ -1,4 +1,3 @@
-use super::*;
 use crate::diff::diff_cells;
 use txv_core::buffer::Buffer;
 use txv_core::cell::{Attrs, Style};

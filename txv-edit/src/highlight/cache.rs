@@ -114,6 +114,12 @@ impl HighlightCache {
     }
 }
 
+fn find_syntax<'a>(syntax_set: &'a SyntaxSet, ext: &str) -> Option<&'a SyntaxReference> {
+    syntax_set
+        .find_syntax_by_extension(ext)
+        .or_else(|| syntax_set.find_syntax_by_name(ext))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,7 +130,7 @@ mod tests {
         let themes = syntect::highlighting::ThemeSet::load_defaults();
         let theme = &themes.themes["base16-eighties.dark"];
 
-        let lines = vec![
+        let lines = [
             "class Foo {".to_string(),
             "  void bar() {".to_string(),
             "  }".to_string(),
@@ -154,7 +160,7 @@ mod tests {
         let themes = syntect::highlighting::ThemeSet::load_defaults();
         let theme = &themes.themes["base16-eighties.dark"];
 
-        let lines = vec![
+        let lines = [
             "// comment".to_string(),
             "let x = 1;".to_string(),
             "let y = 2;".to_string(),
@@ -228,10 +234,4 @@ mod tests {
         assert_eq!(cache.snapshots.len(), 1); // 60/50 = 1, keep first snapshot
         assert!(before > cache.snapshots.len());
     }
-}
-
-fn find_syntax<'a>(syntax_set: &'a SyntaxSet, ext: &str) -> Option<&'a SyntaxReference> {
-    syntax_set
-        .find_syntax_by_extension(ext)
-        .or_else(|| syntax_set.find_syntax_by_name(ext))
 }

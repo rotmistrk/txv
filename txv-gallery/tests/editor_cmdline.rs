@@ -34,7 +34,7 @@ impl TestEditor {
         }
     }
 
-    fn feed_key(&mut self, code: KeyCode, mods: KeyMod) {
+    fn _feed_key(&mut self, code: KeyCode, mods: KeyMod) {
         self.ev.handle(&Event::Key(KeyEvent::new(code, mods)));
         self.drain();
     }

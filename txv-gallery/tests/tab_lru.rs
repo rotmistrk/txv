@@ -37,18 +37,6 @@ fn dropdown_labels(app: &mut dyn View, backend: &mut MockBackend) -> Vec<String>
     labels
 }
 
-/// Get the active tab name from the tab bar (row 1 of the panel area).
-fn active_tab(backend: &MockBackend) -> String {
-    let row = backend.row(1);
-    for name in ["Alpha", "Beta", "Gamma", "Delta"] {
-        // Active tab in LRU has no subscript prefix — check for " Name" pattern
-        if row.contains(name) {
-            return name.to_string();
-        }
-    }
-    String::new()
-}
-
 #[test]
 fn initial_lru_order() {
     let mut app = txv_gallery::build_app();

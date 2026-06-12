@@ -161,6 +161,7 @@ fn tab_next_cycles() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn close_tab_by_title() {
     let mut panel = TabPanel::new(TabBarMode::Static);
     panel.set_bounds(Rect::new(0, 0, 80, 24));
@@ -172,6 +173,7 @@ fn close_tab_by_title() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn focus_tab_by_title() {
     let mut panel = TabPanel::new(TabBarMode::Static);
     panel.set_bounds(Rect::new(0, 0, 80, 24));

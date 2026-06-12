@@ -50,7 +50,7 @@ impl TreeTableSource for TestSource {
     }
 
     fn is_expandable(&self, row: usize) -> bool {
-        self.rows().get(row).map_or(false, |r| r.2)
+        self.rows().get(row).is_some_and(|r| r.2)
     }
 
     fn is_expanded(&self, _row: usize) -> bool {
