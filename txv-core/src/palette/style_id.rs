@@ -56,6 +56,7 @@ pub enum StyleId {
     TreeGuide,
     // Dropdown/Tab number subscripts
     DropdownNumber,
+    DropdownBorder,
     TabNumber,
 }
 

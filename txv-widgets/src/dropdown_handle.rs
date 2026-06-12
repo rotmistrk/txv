@@ -19,7 +19,7 @@ impl<D: DropdownSource> View for DropdownMenu<D> {
         self.sync_scroll();
         let pal = palette();
         let bg = pal.style(StyleId::PopupBackground);
-        let border_style = pal.style(StyleId::Border);
+        let border_style = self.border_style.unwrap_or_else(|| pal.style(StyleId::Border));
         let selected = pal.style(StyleId::CursorFocused);
         let dim = pal.style(StyleId::Dim);
         self.state.buffer_mut().fill(' ', bg);

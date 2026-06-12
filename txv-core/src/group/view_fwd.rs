@@ -83,7 +83,7 @@ impl GroupState {
     pub fn cursor(&self) -> Option<crate::cursor::CursorRequest> {
         // Check preprocess children first — if they report a cursor, they're active.
         for (i, child) in self.children.iter().enumerate() {
-            if child.options().preprocess {
+            if child.options().preprocess() {
                 if let Some(mut req) = child.cursor() {
                     let (ox, oy) = self.origins.get(i).copied().unwrap_or((0, 0));
                     req.x = req.x.saturating_add(ox);

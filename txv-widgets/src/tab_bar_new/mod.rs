@@ -7,6 +7,7 @@
 use txv_core::prelude::*;
 
 mod badge_render_ctx;
+mod display;
 mod draw;
 mod draw_multi;
 mod draw_multi_badge;
@@ -23,7 +24,6 @@ pub use tab_bar_fill::TabBarFill;
 pub use tab_bar_palette::TabBarPalette;
 pub use tab_style::TabStyle;
 pub use types::TabBarMode;
-use types::SUBSCRIPTS;
 
 /// The tab bar widget.
 pub struct TabBar {
@@ -94,6 +94,15 @@ impl TabBar {
         self.state.mark_dirty();
     }
 
+    pub fn insert_tab(&mut self, pos: usize, title: impl Into<String>) {
+        self.titles.insert(pos, title.into());
+        self.dirty.insert(pos, false);
+        self.badges.insert(pos, None);
+        self.badge_styles.insert(pos, None);
+        self.lru_order.push(pos);
+        self.state.mark_dirty();
+    }
+
     pub fn remove_tab(&mut self, idx: usize) {
         if idx >= self.titles.len() {
             return;
@@ -128,6 +137,30 @@ impl TabBar {
 
     pub fn tab_count(&self) -> usize {
         self.titles.len()
+    }
+
+    pub fn titles(&self) -> &[String] {
+        &self.titles
+    }
+
+    pub fn dirty_flags(&self) -> &[bool] {
+        &self.dirty
+    }
+
+    pub fn badges(&self) -> &[Option<String>] {
+        &self.badges
+    }
+
+    pub fn badge_styles(&self) -> &[Option<Style>] {
+        &self.badge_styles
+    }
+
+    pub fn lru_order(&self) -> &[usize] {
+        &self.lru_order
+    }
+
+    pub fn mode(&self) -> TabBarMode {
+        self.mode
     }
 
     pub fn set_dirty(&mut self, idx: usize, is_dirty: bool) {
@@ -179,72 +212,12 @@ impl TabBar {
         self.lru_order.insert(0, idx);
     }
 
-    /// Get display order based on mode.
-    pub(crate) fn display_order(&self) -> Vec<usize> {
-        match self.mode {
-            TabBarMode::Single => vec![self.active],
-            TabBarMode::Static => (0..self.titles.len()).collect(),
-            TabBarMode::Lru => {
-                let mut order = vec![self.active];
-                for &i in &self.lru_order {
-                    if i != self.active && i < self.titles.len() {
-                        order.push(i);
-                    }
-                }
-                order
-            }
-        }
-    }
-
-    /// Number label for a tab at display position.
-    pub(crate) fn number_label(&self, display_pos: usize, tab_idx: usize) -> Option<char> {
-        match self.mode {
-            TabBarMode::Single => None,
-            TabBarMode::Static => {
-                if display_pos < 9 {
-                    Some(SUBSCRIPTS[display_pos + 1])
-                } else {
-                    None
-                }
-            }
-            TabBarMode::Lru => {
-                if tab_idx == self.active {
-                    None
-                } else if display_pos > 0 && display_pos <= 9 {
-                    Some(SUBSCRIPTS[display_pos])
-                } else {
-                    None
-                }
-            }
-        }
-    }
-
-    /// Tab style for a display position.
-    pub(crate) fn tab_style(&self, display_pos: usize, tab_idx: usize) -> TabStyle {
-        if tab_idx == self.active {
-            if self.focused {
-                self.palette.active_focused
-            } else {
-                self.palette.active_unfocused
-            }
-        } else {
-            // Gradient based on distance from active tab
-            let active_pos = match self.mode {
-                TabBarMode::Lru => 0, // active is always first in LRU
-                _ => self.active,
-            };
-            let distance = display_pos.abs_diff(active_pos);
-            let idx = distance.saturating_sub(1).min(9);
-            self.palette.inactive[idx]
-        }
-    }
-
     /// Background color of the active tab (for dropdown border matching).
     pub fn active_tab_bg(&self) -> Color {
         if self.focused {
-            self.palette.active_focused.bg
+            self.palette.active_focused.bg()
         } else {
-            self.palette.active_unfocused.bg
+            self.palette.active_unfocused.bg()
         }
     }
 }

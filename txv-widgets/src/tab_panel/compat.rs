@@ -12,12 +12,8 @@ impl TabPanel {
     pub fn insert_tab_at(&mut self, idx: usize, title: impl Into<String>, view: Box<dyn View>) {
         let pos = idx.min(self.tab_count());
         let gi = pos + 1; // group index
-        self.bar_mut().titles.insert(pos, title.into());
-        self.bar_mut().dirty.insert(pos, false);
-        self.bar_mut().badges.insert(pos, None);
-        self.bar_mut().lru_order.push(pos);
+        self.bar_mut().insert_tab(pos, title);
         self.group.insert_at(gi, view);
-        self.bar_mut().state.mark_dirty();
         self.relayout();
     }
 
@@ -45,7 +41,7 @@ impl TabPanel {
 
     /// Index of the least recently used tab.
     pub fn lru_index(&self) -> Option<usize> {
-        self.bar().lru_order.last().copied()
+        self.bar().lru_order().last().copied()
     }
 
     /// Cycle to next tab.
@@ -79,23 +75,24 @@ impl TabPanel {
         if self.dropdown_active {
             return;
         }
-        let titles = self.bar().titles.clone();
-        let dirty = self.bar().dirty.clone();
-        let badges = self.bar().badges.clone();
-        let badge_styles = self.bar().badge_styles.clone();
+        let titles = self.bar().titles().to_vec();
+        let dirty = self.bar().dirty_flags().to_vec();
+        let badges = self.bar().badges().to_vec();
+        let badge_styles = self.bar().badge_styles().to_vec();
         let source = TabDropdownSource::from_parts(&titles, &dirty, &badges, &badge_styles);
-        let number_mode = match self.bar().mode {
+        let number_mode = match self.bar().mode() {
             TabBarMode::Static | TabBarMode::Single => NumberMode::All,
             TabBarMode::Lru => NumberMode::SkipFirst,
         };
         let menu = DropdownMenu::new(source)
             .with_numbers(number_mode)
             .with_filter(FilterMode::Prefix)
-            .with_open_side(OpenSide::Top);
+            .with_open_side(OpenSide::Top)
+            .with_border_style(palette().style(StyleId::DropdownBorder));
         let cr = self.content_rect();
         // Width: border(2) + digit(1) + longest_title + badge_space
         let max_title = titles.iter().map(|t| t.chars().count()).max().unwrap_or(4);
-        let has_badge = dirty.iter().any(|d| *d);
+        let has_badge = dirty.iter().any(|d| *d) || badges.iter().any(|b| b.is_some());
         let badge_w: usize = if has_badge {
             2
         } else {
@@ -172,7 +169,7 @@ impl TabPanel {
 
     #[deprecated(note = "title is not an ID — use find_tab_by_id")]
     pub fn find_tab_by_title(&self, title: &str) -> Option<usize> {
-        self.bar().titles.iter().position(|t| t == title)
+        self.bar().titles().iter().position(|t| t == title)
     }
 
     #[deprecated(note = "title is not an ID — use close_tab_by_id")]
@@ -199,14 +196,14 @@ impl TabPanel {
 
     /// Generate next unique tab name with prefix.
     pub fn next_tab_name(&self, prefix: &str) -> String {
-        let count = self.bar().titles.iter().filter(|t| t.starts_with(prefix)).count();
+        let count = self.bar().titles().iter().filter(|t| t.starts_with(prefix)).count();
         format!("{prefix}:{count}")
     }
 
     /// Rename the active tab's user-visible part (after the colon).
     pub fn rename_user_part(&mut self, new_name: &str) {
         let idx = self.bar().active_index();
-        if let Some(title) = self.bar().titles.get(idx) {
+        if let Some(title) = self.bar().titles().get(idx) {
             let new_title = if let Some(colon_pos) = title.find(':') {
                 format!("{}:{new_name}", &title[..colon_pos])
             } else {

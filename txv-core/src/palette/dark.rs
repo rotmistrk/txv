@@ -48,7 +48,7 @@ fn dark_remaining(id: StyleId) -> Style {
         StyleId::StatusBarModal => PaletteStyle::colors(ansi(15), Color::Palette(18)).to_style(),
         StyleId::ScrollbarTrack => PaletteStyle::fg(ansi(8)).to_style(),
         StyleId::ScrollbarThumb => PaletteStyle::colors(ansi(0), ansi(7)).to_style(),
-        StyleId::PopupBackground => PaletteStyle::colors(ansi(12), ansi(0)).to_style(),
+        StyleId::PopupBackground => PaletteStyle::colors(ansi(15), ansi(0)).to_style(),
         StyleId::PopupBorder => PaletteStyle::colors(ansi(6), ansi(0)).to_style(),
         StyleId::PopupSelected => PaletteStyle::colors(ansi(15), ansi(4)).underline().to_style(),
         StyleId::PopupTableHeader => PaletteStyle::colors(ansi(0), ansi(7)).bold().to_style(),
@@ -64,6 +64,7 @@ fn dark_remaining(id: StyleId) -> Style {
         StyleId::TableRowInactive => PaletteStyle::fg(ansi(7)).underline().to_style(),
         StyleId::TreeGuide => PaletteStyle::fg(ansi(8)).to_style(),
         StyleId::DropdownNumber => PaletteStyle::fg(ansi(11)).to_style(),
+        StyleId::DropdownBorder => PaletteStyle::fg(ansi(12)).to_style(),
         StyleId::TabNumber => PaletteStyle::fg(ansi(11)).to_style(),
         _ => Style::default(),
     }

@@ -19,6 +19,9 @@ impl LifecycleDelegate {
             transitions: Vec::new(),
         }
     }
+    fn transitions(&self) -> &[(EditorMode, EditorMode)] {
+        &self.transitions
+    }
 }
 
 impl EditorViewDelegate for LifecycleDelegate {
@@ -46,7 +49,7 @@ fn delegate_on_mode_changed() {
     ev.set_bounds(Rect::new(0, 0, 80, 24));
     ev.handle(&Event::Key(KeyEvent::new(KeyCode::Char('i'), KeyMod::NONE)));
     ev.handle(&Event::Key(KeyEvent::new(KeyCode::Esc, KeyMod::NONE)));
-    let t = &ev.delegate().transitions;
+    let t = ev.delegate().transitions();
     assert_eq!(t.len(), 2);
     assert_eq!(t[0], (EditorMode::Normal, EditorMode::Insert));
     assert_eq!(t[1], (EditorMode::Insert, EditorMode::Normal));

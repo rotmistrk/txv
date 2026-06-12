@@ -68,6 +68,7 @@ fn light_remaining(id: StyleId) -> Style {
         StyleId::TableRowInactive => PaletteStyle::fg(ansi(8)).underline().to_style(),
         StyleId::TreeGuide => PaletteStyle::fg(Color::Rgb(0xc0, 0xc0, 0xc0)).to_style(),
         StyleId::DropdownNumber => PaletteStyle::fg(ansi(4)).to_style(),
+        StyleId::DropdownBorder => PaletteStyle::fg(ansi(4)).to_style(),
         StyleId::TabNumber => PaletteStyle::fg(ansi(4)).to_style(),
         _ => Style::default(),
     }

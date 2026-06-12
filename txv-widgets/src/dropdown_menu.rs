@@ -54,6 +54,7 @@ pub struct DropdownMenu<D: DropdownSource> {
     pub(crate) max_visible: usize,
     pub(crate) open_side: OpenSide,
     pub(crate) visible: Vec<usize>,
+    pub(crate) border_style: Option<Style>,
 }
 
 impl<D: DropdownSource> DropdownMenu<D> {
@@ -71,7 +72,13 @@ impl<D: DropdownSource> DropdownMenu<D> {
             max_visible: 12,
             open_side: OpenSide::None,
             visible,
+            border_style: None,
         }
+    }
+
+    pub fn with_border_style(mut self, style: Style) -> Self {
+        self.border_style = Some(style);
+        self
     }
 
     pub fn with_filter(mut self, mode: FilterMode) -> Self {

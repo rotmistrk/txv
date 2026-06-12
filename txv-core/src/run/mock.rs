@@ -157,7 +157,7 @@ impl MockBackend {
         }
         let mut row = String::new();
         for x in 0..buf.width() {
-            row.push(buf.cell(x, y).ch);
+            row.push(buf.cell(x, y).ch());
         }
         row.trim_end().to_string()
     }

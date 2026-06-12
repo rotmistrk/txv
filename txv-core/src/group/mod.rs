@@ -203,7 +203,7 @@ impl GroupState {
         let mut next = (old + 1) % count;
         let start = next;
         loop {
-            if self.children[next].options().focusable {
+            if self.children[next].options().focusable() {
                 break;
             }
             next = (next + 1) % count;
@@ -232,7 +232,7 @@ impl GroupState {
         };
         let start = prev;
         loop {
-            if self.children[prev].options().focusable {
+            if self.children[prev].options().focusable() {
                 break;
             }
             prev = if prev == 0 {

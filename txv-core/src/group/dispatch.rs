@@ -26,7 +26,7 @@ impl GroupState {
 
         // Phase 1: preprocess
         for child in &mut self.children {
-            if child.options().preprocess && child.handle(event) == HandleResult::Consumed {
+            if child.options().preprocess() && child.handle(event) == HandleResult::Consumed {
                 return HandleResult::Consumed;
             }
         }
@@ -41,7 +41,7 @@ impl GroupState {
 
         // Phase 3: postprocess
         for child in &mut self.children {
-            if child.options().postprocess && child.handle(event) == HandleResult::Consumed {
+            if child.options().postprocess() && child.handle(event) == HandleResult::Consumed {
                 return HandleResult::Consumed;
             }
         }
@@ -93,7 +93,7 @@ impl GroupState {
     }
 
     fn modal_child(&self) -> Option<usize> {
-        self.children.iter().position(|c| c.options().modal)
+        self.children.iter().position(|c| c.options().modal())
     }
 }
 

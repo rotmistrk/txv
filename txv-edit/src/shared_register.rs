@@ -10,6 +10,18 @@ pub struct SharedRegister {
     pub(crate) block: bool,
 }
 
+impl SharedRegister {
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+    pub fn linewise(&self) -> bool {
+        self.linewise
+    }
+    pub fn block(&self) -> bool {
+        self.block
+    }
+}
+
 /// Thread-safe handle to a shared register.
 pub type RegisterHandle = Arc<Mutex<SharedRegister>>;
 

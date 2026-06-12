@@ -150,14 +150,17 @@ impl Editor {
         self.shared_register
             .lock()
             .unwrap_or_else(|p| p.into_inner())
-            .text
-            .clone()
+            .text()
+            .to_string()
     }
     pub fn register_linewise(&self) -> bool {
-        self.shared_register.lock().unwrap_or_else(|p| p.into_inner()).linewise
+        self.shared_register
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .linewise()
     }
     pub fn register_block(&self) -> bool {
-        self.shared_register.lock().unwrap_or_else(|p| p.into_inner()).block
+        self.shared_register.lock().unwrap_or_else(|p| p.into_inner()).block()
     }
     pub fn set_register(&mut self, text: String, linewise: bool, block: bool) {
         let mut reg = self.shared_register.lock().unwrap_or_else(|p| p.into_inner());

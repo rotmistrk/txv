@@ -16,7 +16,7 @@ fn dark_palette_has_expected_roles() {
     assert_eq!(p.style(StyleId::CursorUnfocused).bg, Color::Ansi(8));
     assert_eq!(p.style(StyleId::EditSelection).bg, Color::Ansi(2));
     assert_eq!(p.style(StyleId::PopupBorder).fg, Color::Ansi(6));
-    assert_eq!(p.style(StyleId::PopupBackground).fg, Color::Ansi(12));
+    assert_eq!(p.style(StyleId::PopupBackground).fg, Color::Ansi(15));
     assert_eq!(p.style(StyleId::PopupSelected).bg, Color::Ansi(4));
 }
 

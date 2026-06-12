@@ -81,7 +81,7 @@ impl TabPanel {
         if idx >= self.tab_count() {
             return None;
         }
-        let title = self.bar().titles[idx].clone();
+        let title = self.bar().titles()[idx].clone();
         self.bar_mut().remove_tab(idx);
         let view = self.group.remove(idx + 1);
         self.relayout();
@@ -194,12 +194,12 @@ impl TabPanel {
     /// Title of the active tab.
     pub fn active_title(&self) -> Option<&str> {
         let idx = self.bar().active_index();
-        self.bar().titles.get(idx).map(|s| s.as_str())
+        self.bar().titles().get(idx).map(|s| s.as_str())
     }
 
     /// Tab title by index.
     pub fn tab_title(&self, idx: usize) -> Option<&str> {
-        self.bar().titles.get(idx).map(|s| s.as_str())
+        self.bar().titles().get(idx).map(|s| s.as_str())
     }
 
     pub(crate) fn content_rect(&self) -> Rect {
@@ -233,8 +233,8 @@ impl TabPanel {
         // Reposition dropdown if active
         if self.dropdown_active {
             let dd_idx = self.group.child_count() - 1;
-            let max_title = self.bar().titles.iter().map(|t| t.chars().count()).max().unwrap_or(4);
-            let has_badge = self.bar().dirty.iter().any(|d| *d);
+            let max_title = self.bar().titles().iter().map(|t| t.chars().count()).max().unwrap_or(4);
+            let has_badge = self.bar().dirty_flags().iter().any(|d| *d);
             let badge_w: usize = if has_badge {
                 2
             } else {
@@ -282,7 +282,7 @@ impl TabPanel {
             }
             None => return,
         };
-        let current = match self.bar().titles.get(idx) {
+        let current = match self.bar().titles().get(idx) {
             Some(t) => t.clone(),
             None => return,
         };

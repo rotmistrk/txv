@@ -9,6 +9,12 @@ pub struct TabStyle {
     pub(crate) bg: Color,
 }
 
+impl TabStyle {
+    pub fn bg(&self) -> Color {
+        self.bg
+    }
+}
+
 impl Default for TabStyle {
     fn default() -> Self {
         Self {
