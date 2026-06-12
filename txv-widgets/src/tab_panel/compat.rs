@@ -75,10 +75,20 @@ impl TabPanel {
         if self.dropdown_active {
             return;
         }
-        let titles = self.bar().titles().to_vec();
-        let dirty = self.bar().dirty_flags().to_vec();
-        let badges = self.bar().badges().to_vec();
-        let badge_styles = self.bar().badge_styles().to_vec();
+        let order = self.bar().display_order();
+        let titles: Vec<String> = order.iter().map(|&i| self.bar().titles()[i].clone()).collect();
+        let dirty: Vec<bool> = order
+            .iter()
+            .map(|&i| self.bar().dirty_flags().get(i).copied().unwrap_or(false))
+            .collect();
+        let badges: Vec<Option<String>> = order
+            .iter()
+            .map(|&i| self.bar().badges().get(i).cloned().flatten())
+            .collect();
+        let badge_styles: Vec<Option<Style>> = order
+            .iter()
+            .map(|&i| self.bar().badge_styles().get(i).cloned().flatten())
+            .collect();
         let source = TabDropdownSource::from_parts(&titles, &dirty, &badges, &badge_styles);
         let number_mode = match self.bar().mode() {
             TabBarMode::Static | TabBarMode::Single => NumberMode::All,
@@ -91,7 +101,8 @@ impl TabPanel {
             .with_border_style(palette().style(StyleId::DropdownBorder));
         let cr = self.content_rect();
         let w = self.dropdown_width().min(cr.w());
-        let h = (titles.len() as u16 + 1).min(cr.h());
+        let h = (order.len() as u16 + 1).min(cr.h());
+        self.dropdown_order = order;
         self.group.insert(Box::new(menu));
         let idx = self.group.child_count() - 1;
         self.group.set_child_bounds(idx, Rect::new(cr.x() + 1, cr.y(), w, h));

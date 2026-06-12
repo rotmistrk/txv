@@ -90,13 +90,14 @@ impl TabPanel {
             return None;
         }
         if id == CM_DROPDOWN_DONE {
-            let idx = data
+            let display_idx = data
                 .as_ref()
                 .and_then(|d| d.downcast_ref::<usize>())
                 .copied()
                 .unwrap_or(0);
+            let tab_idx = self.dropdown_order.get(display_idx).copied().unwrap_or(display_idx);
             self.close_dropdown();
-            self.set_active(idx);
+            self.set_active(tab_idx);
             return Some(HandleResult::Consumed);
         }
         if id == CM_DROPDOWN_CANCELLED {

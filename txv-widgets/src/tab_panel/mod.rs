@@ -22,6 +22,8 @@ mod view_impl;
 pub struct TabPanel {
     group: GroupState,
     dropdown_active: bool,
+    /// Maps dropdown display index → real tab index (set when dropdown opens).
+    dropdown_order: Vec<usize>,
 }
 
 impl TabPanel {
@@ -34,6 +36,7 @@ impl TabPanel {
         Self {
             group,
             dropdown_active: false,
+            dropdown_order: Vec::new(),
         }
     }
 
@@ -217,7 +220,10 @@ impl TabPanel {
 
     fn dropdown_width(&self) -> u16 {
         let max_title = self.bar().titles().iter().map(|t| t.chars().count()).max().unwrap_or(4);
-        let max_badge_w = self.bar().badges().iter()
+        let max_badge_w = self
+            .bar()
+            .badges()
+            .iter()
             .filter_map(|b| b.as_ref())
             .map(|b| b.chars().count())
             .max()
