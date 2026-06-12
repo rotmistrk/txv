@@ -78,6 +78,11 @@ impl StatusBar {
             None => return 0,
         };
         if h.stretch > 0 {
+            // For stretch items with natural_width=0 (e.g. dormant FocusGatedGroup),
+            // check live bounds — they may have activated since add-time.
+            if h.natural_width == 0 {
+                return self.group.child(idx).map_or(0, |c| c.bounds().w());
+            }
             return h.natural_width;
         }
         let current = self.group.child(idx).map_or(0, |c| c.bounds().w());

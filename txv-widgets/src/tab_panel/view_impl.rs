@@ -43,38 +43,14 @@ impl View for TabPanel {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        // Intercept dropdown commands only if our dropdown is active.
         if let Event::Command { id, data, .. } = event {
-            if self.dropdown_active {
-                if *id == CM_DROPDOWN_DONE {
-                    let idx = data
-                        .as_ref()
-                        .and_then(|d| d.downcast_ref::<usize>())
-                        .copied()
-                        .unwrap_or(0);
-                    self.close_dropdown();
-                    self.set_active(idx);
-                    return HandleResult::Consumed;
-                }
-                if *id == CM_DROPDOWN_CANCELLED {
-                    self.close_dropdown();
-                    return HandleResult::Consumed;
-                }
+            if let Some(result) = self.handle_dropdown_cmd(*id, data) {
+                return result;
             }
         }
-        // Open dropdown on Alt-0, Alt-Down, Alt-Up, Ctrl+Shift+Down, Ctrl+Shift+Up
         if let Event::Key(key) = event {
-            if !self.dropdown_active && self.tab_count() > 1 {
-                let alt_open = key.modifiers().alt()
-                    && !key.modifiers().ctrl()
-                    && matches!(key.code(), KeyCode::Char('0') | KeyCode::Down | KeyCode::Up);
-                let cs_open = key.modifiers().ctrl()
-                    && key.modifiers().shift()
-                    && matches!(key.code(), KeyCode::Down | KeyCode::Up);
-                if alt_open || cs_open {
-                    self.open_dropdown();
-                    return HandleResult::Consumed;
-                }
+            if let Some(result) = self.handle_dropdown_open(key) {
+                return result;
             }
         }
         if matches!(event, Event::Tick) {
@@ -104,6 +80,49 @@ impl View for TabPanel {
 }
 
 impl TabPanel {
+    /// Intercept dropdown commands only if our dropdown is active.
+    fn handle_dropdown_cmd(
+        &mut self,
+        id: txv_core::event::CommandId,
+        data: &Option<Box<dyn std::any::Any + Send>>,
+    ) -> Option<HandleResult> {
+        if !self.dropdown_active {
+            return None;
+        }
+        if id == CM_DROPDOWN_DONE {
+            let idx = data
+                .as_ref()
+                .and_then(|d| d.downcast_ref::<usize>())
+                .copied()
+                .unwrap_or(0);
+            self.close_dropdown();
+            self.set_active(idx);
+            return Some(HandleResult::Consumed);
+        }
+        if id == CM_DROPDOWN_CANCELLED {
+            self.close_dropdown();
+            return Some(HandleResult::Consumed);
+        }
+        None
+    }
+
+    /// Open dropdown on Alt-0/Down/Up or Ctrl+Shift+Down/Up.
+    fn handle_dropdown_open(&mut self, key: &KeyEvent) -> Option<HandleResult> {
+        if self.dropdown_active || self.tab_count() <= 1 {
+            return None;
+        }
+        let alt_open = key.modifiers().alt()
+            && !key.modifiers().ctrl()
+            && matches!(key.code(), KeyCode::Char('0') | KeyCode::Down | KeyCode::Up);
+        let cs_open =
+            key.modifiers().ctrl() && key.modifiers().shift() && matches!(key.code(), KeyCode::Down | KeyCode::Up);
+        if alt_open || cs_open {
+            self.open_dropdown();
+            return Some(HandleResult::Consumed);
+        }
+        None
+    }
+
     fn fill_background(&mut self, b: Rect) {
         let transparent = Style::new(Color::Transparent, Color::Transparent);
         for col in 0..b.w() {

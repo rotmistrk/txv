@@ -1,6 +1,7 @@
 //! TreeView draw implementation.
 
 use txv_core::prelude::*;
+use txv_core::text::display_char_width;
 
 use super::{TreeData, TreeView};
 use crate::tree_draw_helpers::{draw_empty_rows, draw_filter_status, draw_highlighted_text};
@@ -87,10 +88,12 @@ impl<D: TreeData> TreeView<D> {
             return label_x;
         };
         let icon_style = Style::new(node_style.fg(), style.bg());
-        for (i, ch) in icon.chars().enumerate() {
-            self.state.buffer_mut().put(label_x + i as u16, y, ch, icon_style);
+        let mut x = label_x;
+        for ch in icon.chars() {
+            self.state.buffer_mut().put(x, y, ch, icon_style);
+            x += display_char_width(ch);
         }
-        label_x + icon.chars().count() as u16
+        x
     }
 
     fn draw_label(&mut self, id: usize, label_x: u16, y: u16, w: u16, style: Style) {

@@ -51,45 +51,13 @@ impl View for SidekickManager {
             return HandleResult::Ignored;
         };
         match *id {
-            CM_SIDEKICK_SHOW => {
-                let Some(show) = data.as_ref().and_then(|d| d.downcast_ref::<SidekickRequest>()) else {
-                    return HandleResult::Ignored;
-                };
-                let h = show.rect.h();
-                let w = show.rect.w();
-                let emitter = show.emitter_id;
-                let Some(view) = show.take_view() else {
-                    return HandleResult::Ignored;
-                };
-                if self.group.child_count() > 0 {
-                    self.group.remove(0);
-                }
-                self.group.insert(view);
-                self.group.set_child_bounds(0, Rect::new(0, 0, w, h));
-                self.group.mark_dirty();
-                self.request_reposition(w, h, 0, -(h as i16), Some(emitter));
-                HandleResult::Consumed
-            }
+            CM_SIDEKICK_SHOW => self.handle_show(data),
             CM_SIDEKICK_HIDE => {
                 self.hide();
                 HandleResult::Consumed
             }
             CM_DROPDOWN_DONE => {
-                let idx = data
-                    .as_ref()
-                    .and_then(|d| d.downcast_ref::<usize>())
-                    .copied()
-                    .unwrap_or(0);
-                let text = self
-                    .group
-                    .child_mut(0)
-                    .and_then(|c| c.as_any_mut())
-                    .and_then(|a| a.downcast_mut::<DropdownMenu<CompletionSource>>())
-                    .and_then(|dd| dd.source().text_at(idx).map(String::from));
-                if let Some(t) = text {
-                    self.group.put_command(CM_SIDEKICK_RESULT, Some(Box::new(t)));
-                }
-                self.hide();
+                self.handle_done(data);
                 HandleResult::Consumed
             }
             CM_DROPDOWN_CANCELLED => {
@@ -98,6 +66,46 @@ impl View for SidekickManager {
             }
             _ => HandleResult::Ignored,
         }
+    }
+}
+
+impl SidekickManager {
+    fn handle_show(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+        let Some(show) = data.as_ref().and_then(|d| d.downcast_ref::<SidekickRequest>()) else {
+            return HandleResult::Ignored;
+        };
+        let h = show.rect.h();
+        let w = show.rect.w();
+        let emitter = show.emitter_id;
+        let Some(view) = show.take_view() else {
+            return HandleResult::Ignored;
+        };
+        if self.group.child_count() > 0 {
+            self.group.remove(0);
+        }
+        self.group.insert(view);
+        self.group.set_child_bounds(0, Rect::new(0, 0, w, h));
+        self.group.mark_dirty();
+        self.request_reposition(w, h, 0, -(h as i16), Some(emitter));
+        HandleResult::Consumed
+    }
+
+    fn handle_done(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) {
+        let idx = data
+            .as_ref()
+            .and_then(|d| d.downcast_ref::<usize>())
+            .copied()
+            .unwrap_or(0);
+        let text = self
+            .group
+            .child_mut(0)
+            .and_then(|c| c.as_any_mut())
+            .and_then(|a| a.downcast_mut::<DropdownMenu<CompletionSource>>())
+            .and_then(|dd| dd.source().text_at(idx).map(String::from));
+        if let Some(t) = text {
+            self.group.put_command(CM_SIDEKICK_RESULT, Some(Box::new(t)));
+        }
+        self.hide();
     }
 }
 

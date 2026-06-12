@@ -139,14 +139,11 @@ impl<D: ListData> View for ListView<D> {
                 HandleResult::Consumed
             }
             KeyCode::PageDown => {
-                let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
-                let max = self.data.len().saturating_sub(1);
-                self.set_cursor((self.cursor + page).min(max));
+                self.page_down();
                 HandleResult::Consumed
             }
             KeyCode::PageUp => {
-                let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
-                self.set_cursor(self.cursor.saturating_sub(page));
+                self.page_up();
                 HandleResult::Consumed
             }
             KeyCode::Enter => {
@@ -155,5 +152,18 @@ impl<D: ListData> View for ListView<D> {
             }
             _ => HandleResult::Ignored,
         }
+    }
+}
+
+impl<D: ListData> ListView<D> {
+    fn page_down(&mut self) {
+        let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
+        let max = self.data.len().saturating_sub(1);
+        self.set_cursor((self.cursor + page).min(max));
+    }
+
+    fn page_up(&mut self) {
+        let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
+        self.set_cursor(self.cursor.saturating_sub(page));
     }
 }

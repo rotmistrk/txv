@@ -7,6 +7,7 @@ use txv_core::event::CommandId;
 use super::commands::*;
 use super::types::{PanelPosition, SplitDir};
 use super::TiledWorkspace;
+use crate::tab_panel::TabPanel;
 
 impl TiledWorkspace {
     /// Handle a workspace command event. Returns true if consumed.
@@ -101,38 +102,12 @@ impl TiledWorkspace {
     fn handle_tab_cmd(&mut self, id: CommandId, data: &Option<Box<dyn Any + Send>>) -> bool {
         match id {
             CM_TW_TAB_DROPDOWN => {
-                if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                    if panel.tab_count() > 1 {
-                        panel.open_dropdown();
-                    } else if let Some(inner) = panel.active_child_mut() {
-                        if let Some(tp) = inner
-                            .as_any_mut()
-                            .and_then(|a| a.downcast_mut::<crate::tab_panel::TabPanel>())
-                        {
-                            tp.open_dropdown();
-                        }
-                    }
-                }
+                self.open_tab_dropdown();
                 true
             }
             CM_TW_ACTIVATE_TAB => {
                 if let Some(idx) = extract_usize(data) {
-                    if let Some(panel) = self.panel_mut(self.group.focused_index()) {
-                        if panel.dropdown_open() {
-                            panel.close_dropdown();
-                            panel.activate_by_label(idx + 1);
-                        } else if panel.tab_count() > 1 {
-                            panel.activate_by_label(idx + 1);
-                        } else if let Some(inner) = panel.active_child_mut() {
-                            if let Some(tp) = inner
-                                .as_any_mut()
-                                .and_then(|a| a.downcast_mut::<crate::tab_panel::TabPanel>())
-                            {
-                                tp.close_dropdown();
-                                tp.set_active(idx);
-                            }
-                        }
-                    }
+                    self.activate_tab_at(idx);
                 }
                 true
             }
@@ -146,6 +121,39 @@ impl TiledWorkspace {
             }
             _ => false,
         }
+    }
+
+    fn open_tab_dropdown(&mut self) {
+        let Some(panel) = self.panel_mut(self.group.focused_index()) else {
+            return;
+        };
+        if panel.tab_count() > 1 {
+            panel.open_dropdown();
+        } else if let Some(tp) = Self::inner_tab_panel(panel) {
+            tp.open_dropdown();
+        }
+    }
+
+    fn activate_tab_at(&mut self, idx: usize) {
+        let Some(panel) = self.panel_mut(self.group.focused_index()) else {
+            return;
+        };
+        if panel.dropdown_open() {
+            panel.close_dropdown();
+            panel.activate_by_label(idx + 1);
+        } else if panel.tab_count() > 1 {
+            panel.activate_by_label(idx + 1);
+        } else if let Some(tp) = Self::inner_tab_panel(panel) {
+            tp.close_dropdown();
+            tp.set_active(idx);
+        }
+    }
+
+    fn inner_tab_panel(panel: &mut TabPanel) -> Option<&mut TabPanel> {
+        panel
+            .active_child_mut()
+            .and_then(|c| c.as_any_mut())
+            .and_then(|a| a.downcast_mut::<TabPanel>())
     }
 
     fn handle_tab_nav(&mut self, id: CommandId) {

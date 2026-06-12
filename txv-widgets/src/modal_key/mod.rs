@@ -5,6 +5,7 @@
 
 mod view_impl;
 
+use crate::focus_gated_group::CM_DEACTIVATE_ALL_GROUPS;
 use std::time::Instant;
 
 use txv_core::palette::palette;
@@ -106,6 +107,8 @@ impl ModalKey {
     pub(crate) fn activate(&mut self) {
         self.active = true;
         self.activated_at = Some(Instant::now());
+        // Deactivate sibling FocusGatedGroups (only one modal context at a time)
+        self.group.put_command(CM_DEACTIVATE_ALL_GROUPS, None);
         self.propagate_modal_palette();
         self.layout_children_modal();
         for i in 0..self.group.child_count() {

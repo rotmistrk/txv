@@ -95,27 +95,32 @@ impl TiledWorkspace {
             self.toggle_zoom();
             return Some(HandleResult::Consumed);
         }
+        self.dispatch_focus_nav(key, km)
+    }
+
+    fn dispatch_focus_nav(&mut self, key: &KeyEvent, km: &super::keymap::WorkspaceKeymap) -> Option<HandleResult> {
         // Skip focus navigation when panel has dropdown open
         let dd_open = self
             .panel(self.group.focused_index())
             .is_some_and(|p| p.dropdown_open());
-        if !dd_open {
-            if km.matches(key, &km.focus_left) {
-                self.focus_direction(-1, 0);
-                return Some(HandleResult::Consumed);
-            }
-            if km.matches(key, &km.focus_right) {
-                self.focus_direction(1, 0);
-                return Some(HandleResult::Consumed);
-            }
-            if km.matches(key, &km.focus_up) {
-                self.focus_direction(0, -1);
-                return Some(HandleResult::Consumed);
-            }
-            if km.matches(key, &km.focus_down) {
-                self.focus_direction(0, 1);
-                return Some(HandleResult::Consumed);
-            }
+        if dd_open {
+            return None;
+        }
+        if km.matches(key, &km.focus_left) {
+            self.focus_direction(-1, 0);
+            return Some(HandleResult::Consumed);
+        }
+        if km.matches(key, &km.focus_right) {
+            self.focus_direction(1, 0);
+            return Some(HandleResult::Consumed);
+        }
+        if km.matches(key, &km.focus_up) {
+            self.focus_direction(0, -1);
+            return Some(HandleResult::Consumed);
+        }
+        if km.matches(key, &km.focus_down) {
+            self.focus_direction(0, 1);
+            return Some(HandleResult::Consumed);
         }
         None
     }

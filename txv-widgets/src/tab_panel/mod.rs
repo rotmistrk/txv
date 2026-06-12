@@ -11,6 +11,7 @@ use crate::tab_bar::{TabBar, TabBarMode};
 
 mod compat;
 mod tab_dropdown_source;
+mod tab_entry;
 mod view_impl;
 
 /// A tabbed panel: TabBar on top, stacked children below.

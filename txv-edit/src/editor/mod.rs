@@ -9,6 +9,7 @@ mod dispatch_search;
 mod dispatch_visual;
 mod dispatch_yank;
 mod editing;
+mod editing_lines;
 pub mod ephemeral;
 pub mod ephemeral_range;
 pub mod ex;
@@ -27,6 +28,7 @@ mod movement;
 pub mod options;
 pub mod save;
 mod search;
+mod set_option;
 mod visual;
 mod visual_block;
 
