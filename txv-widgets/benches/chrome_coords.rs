@@ -11,21 +11,21 @@ use txv_core::prelude::Rect;
 /// Simulates compute_chrome_coords: given panel rects, compute tier rows and gap columns.
 /// This is the exact algorithm from TiledWorkspace::compute_chrome_coords.
 fn compute_chrome_coords(rects: &[Rect]) -> (Vec<u16>, Vec<(u16, u16, u16)>) {
-    let mut tier_ys: Vec<u16> = rects.iter().map(|r| r.y).collect();
+    let mut tier_ys: Vec<u16> = rects.iter().map(|r| r.y()).collect();
     tier_ys.sort_unstable();
     tier_ys.dedup();
 
     let mut gaps: Vec<(u16, u16, u16)> = Vec::new();
     for a in rects {
-        let gap_x = a.x + a.w;
-        let has_neighbor = rects.iter().any(|b| b.x == gap_x + 1 && b.y == a.y);
+        let gap_x = a.x() + a.w();
+        let has_neighbor = rects.iter().any(|b| b.x() == gap_x + 1 && b.y() == a.y());
         if !has_neighbor {
             continue;
         }
-        if gaps.iter().any(|&(x, ys, _)| x == gap_x && ys == a.y) {
+        if gaps.iter().any(|&(x, ys, _)| x == gap_x && ys == a.y()) {
             continue;
         }
-        gaps.push((gap_x, a.y, a.y + a.h));
+        gaps.push((gap_x, a.y(), a.y() + a.h()));
     }
 
     (tier_ys, gaps)
