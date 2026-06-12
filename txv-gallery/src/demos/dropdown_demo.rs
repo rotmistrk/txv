@@ -37,14 +37,14 @@ impl DropdownSource for LangSource {
     fn secondary(&self, idx: usize) -> &str {
         self.items[idx].1
     }
-    fn badge(&self, idx: usize) -> Option<(char, Style)> {
-        let (ch, color) = match self.items[idx].1 {
-            "systems" => ('●', Color::Ansi(1)),
-            "functional" => ('λ', Color::Ansi(5)),
-            "scripting" => ('»', Color::Ansi(3)),
+    fn badge(&self, idx: usize) -> Option<(&str, Style)> {
+        let (s, color) = match self.items[idx].1 {
+            "systems" => ("●", Color::Ansi(1)),
+            "functional" => ("λ", Color::Ansi(5)),
+            "scripting" => ("»", Color::Ansi(3)),
             _ => return None,
         };
-        Some((ch, Style::default().with_fg(color)))
+        Some((s, Style::default().with_fg(color)))
     }
 }
 

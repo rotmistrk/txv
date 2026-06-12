@@ -72,13 +72,24 @@ impl<D: DropdownSource> DropdownMenu<D> {
         }
     }
 
-    fn compute_avail_w(&self, w: u16, content_h: usize) -> usize {
-        let has_badge = (0..content_h).any(|row| {
+    fn max_visible_badge_width(&self, content_h: usize) -> u16 {
+        let mut max_w: u16 = 0;
+        for row in 0..content_h {
             let vi = self.scroll.offset + row;
-            vi < self.visible.len() && self.source.badge(self.visible[vi]).is_some()
-        });
-        let right_pad: u16 = if has_badge {
-            2
+            if vi >= self.visible.len() {
+                continue;
+            }
+            if let Some((badge_str, _)) = self.source.badge(self.visible[vi]) {
+                max_w = max_w.max(badge_str.chars().count() as u16);
+            }
+        }
+        max_w
+    }
+
+    fn compute_avail_w(&self, w: u16, content_h: usize) -> usize {
+        let max_badge_w = self.max_visible_badge_width(content_h);
+        let right_pad: u16 = if max_badge_w > 0 {
+            max_badge_w + 1
         } else {
             0
         };
@@ -121,11 +132,15 @@ impl<D: DropdownSource> DropdownMenu<D> {
             return;
         }
 
-        // Badge at rightmost content position (1 char inside right border)
-        if let Some((badge_ch, badge_s)) = badge {
-            let badge_col = w.saturating_sub(3);
+        // Badge right-aligned inside right border
+        if let Some((badge_str, badge_s)) = badge {
+            let badge_len = badge_str.chars().count() as u16;
+            let badge_end = w.saturating_sub(2); // last char at this col
+            let badge_col = badge_end.saturating_sub(badge_len);
             let bs = Style::new(badge_s.fg(), rs.bg());
-            self.state.buffer_mut().put(badge_col, y, badge_ch, bs);
+            for (i, ch) in badge_str.chars().enumerate() {
+                self.state.buffer_mut().put(badge_col + i as u16, y, ch, bs);
+            }
 
             // Secondary right-aligned before badge
             if !sec.is_empty() {

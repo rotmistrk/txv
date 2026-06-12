@@ -90,16 +90,7 @@ impl TabPanel {
             .with_open_side(OpenSide::Top)
             .with_border_style(palette().style(StyleId::DropdownBorder));
         let cr = self.content_rect();
-        // Width: border(2) + digit(1) + longest_title + badge_space
-        let max_title = titles.iter().map(|t| t.chars().count()).max().unwrap_or(4);
-        let has_badge = dirty.iter().any(|d| *d) || badges.iter().any(|b| b.is_some());
-        let badge_w: usize = if has_badge {
-            2
-        } else {
-            0
-        };
-        let w = ((max_title + 3 + badge_w) as u16 + 2).min(cr.w());
-        // Height: items + 1 (bottom border; top is open)
+        let w = self.dropdown_width().min(cr.w());
         let h = (titles.len() as u16 + 1).min(cr.h());
         self.group.insert(Box::new(menu));
         let idx = self.group.child_count() - 1;
@@ -211,5 +202,36 @@ impl TabPanel {
             };
             self.bar_mut().set_title(idx, new_title);
         }
+    }
+
+    /// Sync active view's subtitle into the tab title (e.g. OSC title from PTY).
+    pub(super) fn sync_subtitle(&mut self) {
+        let idx = self.bar().active_index();
+        let gi = idx + 1;
+        let subtitle = match self.group.child(gi) {
+            Some(child) => {
+                let s = child.subtitle();
+                if s.is_empty() {
+                    return;
+                }
+                s.to_string()
+            }
+            None => return,
+        };
+        let current = match self.bar().titles().get(idx) {
+            Some(t) => t.clone(),
+            None => return,
+        };
+        let new_title = if let Some(colon_pos) = current.find(':') {
+            let prefix = &current[..colon_pos];
+            let new = format!("{prefix}:{subtitle}");
+            if new == current {
+                return;
+            }
+            new
+        } else {
+            return;
+        };
+        self.bar_mut().set_title(idx, new_title);
     }
 }

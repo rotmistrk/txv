@@ -13,8 +13,8 @@ pub trait DropdownSource: Send + 'static {
     fn secondary(&self, _idx: usize) -> &str {
         ""
     }
-    /// Optional badge (single char with style).
-    fn badge(&self, _idx: usize) -> Option<(char, Style)> {
+    /// Optional badge string with style, right-aligned in dropdown row.
+    fn badge(&self, _idx: usize) -> Option<(&str, Style)> {
         None
     }
 }

@@ -151,6 +151,11 @@ impl TabPanel {
         self.bar_mut().set_dirty(idx, dirty);
     }
 
+    /// Set badge with a custom style on a tab.
+    pub fn set_badge_styled(&mut self, idx: usize, badge: Option<String>, style: Option<Style>) {
+        self.bar_mut().set_badge_styled(idx, badge, style);
+    }
+
     /// Set title of a tab.
     pub fn set_title(&mut self, idx: usize, title: impl Into<String>) {
         self.bar_mut().set_title(idx, title);
@@ -210,6 +215,21 @@ impl TabPanel {
         Rect::new(b.x(), b.y() + 1, b.w(), b.h() - 1)
     }
 
+    fn dropdown_width(&self) -> u16 {
+        let max_title = self.bar().titles().iter().map(|t| t.chars().count()).max().unwrap_or(4);
+        let max_badge_w = self.bar().badges().iter()
+            .filter_map(|b| b.as_ref())
+            .map(|b| b.chars().count())
+            .max()
+            .unwrap_or(0);
+        let badge_w: usize = if max_badge_w > 0 || self.bar().dirty_flags().iter().any(|d| *d) {
+            max_badge_w.max(1) + 1
+        } else {
+            0
+        };
+        (max_title + 3 + badge_w) as u16 + 2
+    }
+
     pub(crate) fn relayout(&mut self) {
         let b = self.group.bounds();
         if b.w() == 0 || b.h() == 0 {
@@ -233,14 +253,7 @@ impl TabPanel {
         // Reposition dropdown if active
         if self.dropdown_active {
             let dd_idx = self.group.child_count() - 1;
-            let max_title = self.bar().titles().iter().map(|t| t.chars().count()).max().unwrap_or(4);
-            let has_badge = self.bar().dirty_flags().iter().any(|d| *d);
-            let badge_w: usize = if has_badge {
-                2
-            } else {
-                0
-            };
-            let w = ((max_title + 3 + badge_w) as u16 + 2).min(cr.w());
+            let w = self.dropdown_width().min(cr.w());
             let h = (self.tab_count() as u16 + 1).min(cr.h());
             self.group.set_child_bounds(dd_idx, Rect::new(cr.x() + 1, cr.y(), w, h));
         }
@@ -266,38 +279,6 @@ impl TabPanel {
             }
         }
         self.relayout();
-    }
-
-    /// Sync active view's subtitle into the tab title (e.g. OSC title from PTY).
-    fn sync_subtitle(&mut self) {
-        let idx = self.bar().active_index();
-        let gi = idx + 1;
-        let subtitle = match self.group.child(gi) {
-            Some(child) => {
-                let s = child.subtitle();
-                if s.is_empty() {
-                    return;
-                }
-                s.to_string()
-            }
-            None => return,
-        };
-        let current = match self.bar().titles().get(idx) {
-            Some(t) => t.clone(),
-            None => return,
-        };
-        // Format: "Prefix:subtitle" — update the part after colon
-        let new_title = if let Some(colon_pos) = current.find(':') {
-            let prefix = &current[..colon_pos];
-            let new = format!("{prefix}:{subtitle}");
-            if new == current {
-                return;
-            }
-            new
-        } else {
-            return;
-        };
-        self.bar_mut().set_title(idx, new_title);
     }
 }
 

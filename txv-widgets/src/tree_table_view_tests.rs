@@ -11,6 +11,12 @@ struct TestSource {
 }
 
 impl TestSource {
+    fn is_expanded_flag(&self) -> bool {
+        self.expanded
+    }
+    fn set_expanded_flag(&mut self, v: bool) {
+        self.expanded = v;
+    }
     fn new() -> Self {
         Self { expanded: false }
     }
@@ -124,7 +130,7 @@ fn expand_on_right_key() {
     v.set_cursor(1); // Beta (expandable)
     let right = Event::Key(KeyEvent::new(KeyCode::Right, KeyMod::default()));
     v.handle(&right);
-    assert!(v.data().expanded);
+    assert!(v.data().is_expanded_flag());
     assert_eq!(v.data().visible_count(), 5);
 }
 
@@ -132,17 +138,17 @@ fn expand_on_right_key() {
 fn collapse_on_left_key() {
     let mut v = make_view();
     v.set_cursor(1);
-    v.data_mut().expanded = true;
+    v.data_mut().set_expanded_flag(true);
     let left = Event::Key(KeyEvent::new(KeyCode::Left, KeyMod::default()));
     v.handle(&left);
-    assert!(!v.data().expanded);
+    assert!(!v.data().is_expanded_flag());
     assert_eq!(v.data().visible_count(), 3);
 }
 
 #[test]
 fn left_on_child_goes_to_parent() {
     let mut v = make_view();
-    v.data_mut().expanded = true;
+    v.data_mut().set_expanded_flag(true);
     v.set_cursor(2); // Child1, depth=1
     let left = Event::Key(KeyEvent::new(KeyCode::Left, KeyMod::default()));
     v.handle(&left);
@@ -155,7 +161,7 @@ fn scroll_when_content_exceeds_viewport() {
     let mut v = TreeTableView::new(TestSource::new(), &[6]);
     v.state.set_bounds(Rect::new(0, 0, 40, 3));
     v.select();
-    v.data_mut().expanded = true; // 5 items
+    v.data_mut().set_expanded_flag(true); // 5 items
     v.set_cursor(4); // last item
     assert!(v.scroll.offset > 0, "should scroll: offset={}", v.scroll.offset);
 }
@@ -182,7 +188,7 @@ fn collapse_clears_stale_rows_below_content() {
     v.select();
 
     // Expand Beta to show children (5 items total)
-    v.data_mut().expanded = true;
+    v.data_mut().set_expanded_flag(true);
     v.draw();
 
     // Verify Child1 is drawn on row 2

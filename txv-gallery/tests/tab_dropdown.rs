@@ -162,18 +162,17 @@ fn mac_option_digit_switches_without_dropdown() {
 }
 
 #[test]
-fn dirty_badge_on_right_side() {
+#[test]
+fn badge_on_right_side() {
     let mut app = txv_gallery::build_app();
     let mut backend = MockBackend::new(100, 30);
     app.set_bounds(Rect::new(0, 0, 100, 30));
     nav_to_demo(&mut app, &mut backend);
     backend.inject_key(KeyCode::Down, KeyMod::CTRL.with_shift());
     run_cycles(&mut app, &mut backend, 1);
-    // Build is dirty — ● badge should appear
-    assert!(backend.contains("●"), "dirty badge visible");
-    // Badge should be on the Build row (row 4), near the right border of dropdown
+    // Build has !! badge — should appear on the Build row
     let row4 = backend.row(4); // 0=workspace top, 1=tab bar, 2=item1, 3=item2, 4=item3
-    assert!(row4.contains("●"), "badge on Build row");
+    assert!(row4.contains("!!"), "badge on Build row");
     assert!(row4.contains("Build"), "Build label on same row");
 }
 
@@ -186,4 +185,52 @@ fn alt_0_opens_dropdown() {
     backend.inject_key(KeyCode::Char('0'), KeyMod::ALT);
     run_cycles(&mut app, &mut backend, 1);
     assert!(backend.contains("3/3"), "dropdown opened via Alt-0");
+}
+
+
+#[test]
+fn badges_appear_on_tab_bar() {
+    let mut app = txv_gallery::build_app();
+    let mut backend = MockBackend::new(100, 30);
+    app.set_bounds(Rect::new(0, 0, 100, 30));
+    nav_to_demo(&mut app, &mut backend);
+    // Tab 0 (Main): no badge. Tab 1 (Tests): green "\u{2713}". Tab 2 (Build): red "!!".
+    assert!(backend.contains("\u{2713}"), "\u{2713} badge on Tests tab");
+    assert!(backend.contains("!!"), "!! badge on Build tab");
+    let green_fg = backend.fg_of('\u{2713}').expect("\u{2713} found");
+    assert_eq!(green_fg, Color::Ansi(2), "\u{2713} badge is green");
+    let red_fg = backend.fg_of('!').expect("! found");
+    assert_eq!(red_fg, Color::Ansi(1), "! badge is red");
+}
+
+#[test]
+fn badges_appear_in_dropdown_with_same_colors() {
+    let mut app = txv_gallery::build_app();
+    let mut backend = MockBackend::new(100, 30);
+    app.set_bounds(Rect::new(0, 0, 100, 30));
+    nav_to_demo(&mut app, &mut backend);
+    // Open dropdown
+    backend.inject_key(KeyCode::Down, KeyMod::CTRL.with_shift());
+    run_cycles(&mut app, &mut backend, 1);
+    assert!(backend.contains("3/3"), "dropdown open");
+    // Dropdown rows: row 2=Main (no badge), row 3=Tests (\u{2713}), row 4=Build (!!)
+    let row2 = backend.row(2);
+    assert!(row2.contains("Main"), "Main in dropdown");
+    assert!(!row2.contains("\u{2713}"), "Main has no badge in dropdown");
+    let row3 = backend.row(3);
+    assert!(row3.contains("Tests"), "Tests in dropdown");
+    assert!(row3.contains("\u{2713}"), "\u{2713} badge on Tests row in dropdown");
+    let colors_row3 = backend.fg_of_on_row('\u{2713}', 3);
+    assert!(!colors_row3.is_empty(), "\u{2713} found on row 3");
+    assert_eq!(colors_row3[0], Color::Ansi(2), "\u{2713} is green in dropdown");
+    let row4 = backend.row(4);
+    assert!(row4.contains("Build"), "Build in dropdown");
+    assert!(row4.contains("!!"), "!! badge on Build row in dropdown");
+    let colors_row4 = backend.fg_of_on_row('!', 4);
+    assert!(!colors_row4.is_empty(), "! found on row 4");
+    assert_eq!(colors_row4[0], Color::Ansi(1), "! is red in dropdown");
+    // Badges must be right-aligned: \u{2713} (1 char) and !! (2 chars) should end at same column
+    let badge_end_3 = row3.rfind('\u{2713}').unwrap();
+    let badge_end_4 = row4.rfind('!').unwrap();
+    assert_eq!(badge_end_3, badge_end_4, "badges right-aligned to same column");
 }

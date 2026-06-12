@@ -16,7 +16,6 @@ pub const CM_ACTIVATE_GROUP: CommandId = 160;
 /// Command to deactivate a FocusGatedGroup by ID.
 pub const CM_DEACTIVATE_GROUP: CommandId = 161;
 /// Command to deactivate ALL FocusGatedGroups (emitted by ModalKey on activation).
-pub const CM_DEACTIVATE_ALL_GROUPS: CommandId = 162;
 
 pub struct FocusGatedGroup {
     group: GroupState,
@@ -57,6 +56,12 @@ impl FocusGatedGroup {
 
     fn deactivate(&mut self) {
         self.active = false;
+        // Cancel any active modal children (send Esc)
+        let esc = Event::Key(txv_core::event::KeyEvent::new(
+            txv_core::event::KeyCode::Esc,
+            txv_core::event::KeyMod::default(),
+        ));
+        self.group.dispatch(&esc);
         let b = self.group.bounds();
         self.group.set_bounds(Rect::new(b.x(), b.y(), 0, 1));
         self.group.mark_dirty();
@@ -123,12 +128,6 @@ impl FocusGatedGroup {
                 self.activate();
                 return Some(HandleResult::Consumed);
             }
-        }
-        if id == CM_DEACTIVATE_ALL_GROUPS {
-            if self.active {
-                self.deactivate();
-            }
-            return None; // Don't consume — let other groups see it too
         }
         if id == CM_DEACTIVATE_GROUP {
             let gid = data.as_ref().and_then(|d| d.downcast_ref::<u16>())?;

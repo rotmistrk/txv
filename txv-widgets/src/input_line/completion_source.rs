@@ -29,7 +29,7 @@ impl DropdownSource for CompletionSource {
         self.items.get(idx).map(|i| i.display()).unwrap_or("")
     }
 
-    fn badge(&self, _idx: usize) -> Option<(char, Style)> {
+    fn badge(&self, _idx: usize) -> Option<(&str, Style)> {
         None
     }
 }

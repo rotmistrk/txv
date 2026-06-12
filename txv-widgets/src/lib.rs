@@ -83,7 +83,7 @@ pub use dropdown_source::DropdownSource;
 pub use file_list::FileListData;
 pub use file_tree::FileTreeData;
 pub use file_tree_filter::fuzzy_match_positions;
-pub use focus_gated_group::{FocusGatedGroup, CM_ACTIVATE_GROUP, CM_DEACTIVATE_ALL_GROUPS, CM_DEACTIVATE_GROUP};
+pub use focus_gated_group::{FocusGatedGroup, CM_ACTIVATE_GROUP, CM_DEACTIVATE_GROUP};
 pub use fuzzy_select::FuzzySelect;
 pub use input_dialog::InputDialog;
 pub use input_line::InputLine;

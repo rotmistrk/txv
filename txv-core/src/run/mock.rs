@@ -3,6 +3,7 @@
 use std::time::Duration;
 
 use crate::buffer::Buffer;
+use crate::cell::Color;
 use crate::commands::CM_QUIT;
 use crate::event::{Event, KeyCode, KeyEvent, KeyMod};
 use crate::geometry::Rect;
@@ -165,6 +166,38 @@ impl MockBackend {
     /// Last cursor request set by the program.
     pub fn cursor(&self) -> Option<crate::cursor::CursorRequest> {
         self.last_cursor
+    }
+
+    /// Find the foreground color of the first occurrence of `ch` on screen.
+    pub fn fg_of(&self, ch: char) -> Option<Color> {
+        let buf = self.last_buffer.as_ref()?;
+        for y in 0..buf.height() {
+            for x in 0..buf.width() {
+                let cell = buf.cell(x, y);
+                if cell.ch() == ch {
+                    return Some(cell.style().fg());
+                }
+            }
+        }
+        None
+    }
+
+    /// Find all foreground colors for occurrences of `ch` on a given row.
+    pub fn fg_of_on_row(&self, ch: char, row: u16) -> Vec<Color> {
+        let mut colors = Vec::new();
+        let Some(ref buf) = self.last_buffer else {
+            return colors;
+        };
+        if row >= buf.height() {
+            return colors;
+        }
+        for x in 0..buf.width() {
+            let cell = buf.cell(x, row);
+            if cell.ch() == ch {
+                colors.push(cell.style().fg());
+            }
+        }
+        colors
     }
 }
 

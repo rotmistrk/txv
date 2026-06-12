@@ -166,7 +166,17 @@ fn make_tab_dropdown() -> Box<dyn View> {
     t3.set_content("Third tab — modified.");
     t3.show_line_numbers(false);
     tp.insert_tab("Build", Box::new(t3));
-    tp.set_dirty(2, true);
+    // Tab 0: no badge. Tab 1: 1-char green badge "✓". Tab 2: 2-char red badge "!!".
+    tp.set_badge_styled(
+        1,
+        Some("✓".to_string()),
+        Some(Style::new(Color::Ansi(2), Color::Transparent)),
+    );
+    tp.set_badge_styled(
+        2,
+        Some("!!".to_string()),
+        Some(Style::new(Color::Ansi(1), Color::Transparent)),
+    );
     tp.set_active(0);
     Box::new(tp)
 }

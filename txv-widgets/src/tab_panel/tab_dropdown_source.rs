@@ -40,19 +40,17 @@ impl DropdownSource for TabDropdownSource {
         self.entries.get(idx).map(|e| e.label.as_str()).unwrap_or("")
     }
 
-    fn badge(&self, idx: usize) -> Option<(char, Style)> {
+    fn badge(&self, idx: usize) -> Option<(&str, Style)> {
         let entry = self.entries.get(idx)?;
-        // Root badge takes priority over dirty indicator
         if let Some(ref badge_text) = entry.badge {
-            let ch = badge_text.chars().next().unwrap_or('●');
             let style = entry
                 .badge_style
                 .unwrap_or_else(|| Style::new(palette().style(StyleId::Dim).fg(), Color::Transparent));
-            return Some((ch, style));
+            return Some((badge_text.as_str(), style));
         }
         if entry.dirty {
             let fg = palette().style(StyleId::StateWarning).fg();
-            Some(('●', Style::new(fg, Color::Transparent)))
+            Some(("•", Style::new(fg, Color::Transparent)))
         } else {
             None
         }
