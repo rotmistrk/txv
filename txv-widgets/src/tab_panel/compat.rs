@@ -76,6 +76,33 @@ impl TabPanel {
             return;
         }
         let order = self.bar().display_order();
+        let source = self.build_dropdown_source(&order);
+        let number_mode = match self.bar().mode() {
+            TabBarMode::Static | TabBarMode::Single => NumberMode::All,
+            TabBarMode::Lru => NumberMode::SkipFirst,
+        };
+        let active = self.bar().active_index();
+        let cursor_pos = order.iter().position(|&i| i == active).unwrap_or(0);
+        let menu = DropdownMenu::new(source)
+            .with_numbers(number_mode)
+            .with_filter(FilterMode::Prefix)
+            .with_open_side(OpenSide::Top)
+            .with_border_style(palette().style(StyleId::DropdownBorder))
+            .with_cursor(cursor_pos);
+        let cr = self.content_rect();
+        let w = self.dropdown_width().min(cr.w());
+        let h = (order.len() as u16 + 1).min(cr.h());
+        self.dropdown_order = order;
+        self.group.insert(Box::new(menu));
+        let idx = self.group.child_count() - 1;
+        self.group.set_child_bounds(idx, Rect::new(cr.x() + 1, cr.y(), w, h));
+        self.group.set_focused_index(idx);
+        self.bar_mut().set_handle_keys(false);
+        self.group.mark_dirty();
+        self.dropdown_active = true;
+    }
+
+    fn build_dropdown_source(&self, order: &[usize]) -> TabDropdownSource {
         let titles: Vec<String> = order.iter().map(|&i| self.bar().titles()[i].clone()).collect();
         let dirty: Vec<bool> = order
             .iter()
@@ -89,27 +116,7 @@ impl TabPanel {
             .iter()
             .map(|&i| self.bar().badge_styles().get(i).cloned().flatten())
             .collect();
-        let source = TabDropdownSource::from_parts(&titles, &dirty, &badges, &badge_styles);
-        let number_mode = match self.bar().mode() {
-            TabBarMode::Static | TabBarMode::Single => NumberMode::All,
-            TabBarMode::Lru => NumberMode::SkipFirst,
-        };
-        let menu = DropdownMenu::new(source)
-            .with_numbers(number_mode)
-            .with_filter(FilterMode::Prefix)
-            .with_open_side(OpenSide::Top)
-            .with_border_style(palette().style(StyleId::DropdownBorder));
-        let cr = self.content_rect();
-        let w = self.dropdown_width().min(cr.w());
-        let h = (order.len() as u16 + 1).min(cr.h());
-        self.dropdown_order = order;
-        self.group.insert(Box::new(menu));
-        let idx = self.group.child_count() - 1;
-        self.group.set_child_bounds(idx, Rect::new(cr.x() + 1, cr.y(), w, h));
-        self.group.set_focused_index(idx);
-        self.bar_mut().set_handle_keys(false);
-        self.group.mark_dirty();
-        self.dropdown_active = true;
+        TabDropdownSource::from_parts(&titles, &dirty, &badges, &badge_styles)
     }
 
     /// Close the tab dropdown (remove from group).

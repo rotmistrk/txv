@@ -102,6 +102,11 @@ impl<D: DropdownSource> DropdownMenu<D> {
         self
     }
 
+    pub fn with_cursor(mut self, cursor: usize) -> Self {
+        self.cursor = cursor;
+        self
+    }
+
     pub fn desired_size(&self, max_w: u16, max_h: u16) -> (u16, u16) {
         let count = self.visible.len().min(self.max_visible);
         let border_h: u16 = match self.open_side {
