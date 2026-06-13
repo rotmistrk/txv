@@ -122,7 +122,7 @@ impl<D: EditorViewDelegate> EditorView<D> {
         }
     }
 
-    pub(super) fn ensure_cursor_visible(&mut self) {
+    pub fn ensure_cursor_visible(&mut self) {
         let line = self.editor.cursor_line();
         let scroll = self.editor.viewport_scroll();
         let height = self.editor.viewport_height();
@@ -192,7 +192,7 @@ impl<D: EditorViewDelegate> EditorView<D> {
         if w == 0 {
             1
         } else {
-            (w + avail - 1) / avail
+            w.div_ceil(avail)
         }
     }
 

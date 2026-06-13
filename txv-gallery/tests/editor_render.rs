@@ -256,7 +256,7 @@ fn wrap_scroll_cursor_stays_visible() {
     feed(&mut ev, "j"); // line 1
     feed(&mut ev, "j"); // line 2
     feed(&mut ev, "j"); // line 3
-    // After moving to line 3, cursor should be visible (scroll adjusted)
+                        // After moving to line 3, cursor should be visible (scroll adjusted)
     let scroll = ev.editor().viewport_scroll();
     let cursor = ev.editor().cursor_line();
     assert_eq!(cursor, 3, "cursor on line 3");
