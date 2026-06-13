@@ -20,6 +20,8 @@ impl GroupState {
     }
 
     /// Blit a single child's buffer onto this group's buffer.
+    /// Internal: only called by delegate_group_state! render(). Do not call directly.
+    #[doc(hidden)]
     pub fn blit_child(&mut self, idx: usize) {
         let (ox, oy) = self.child_origin(idx);
         let buf_ptr = self.buffer_mut() as *mut Buffer;
@@ -30,6 +32,8 @@ impl GroupState {
     }
 
     /// Blit all children's buffers onto this group's buffer.
+    /// Internal: only called by delegate_group_state! render(). Do not call directly.
+    #[doc(hidden)]
     pub fn blit_all_children(&mut self) {
         for i in 0..self.children.len() {
             self.blit_child(i);
