@@ -74,7 +74,6 @@ impl View for BranchView {
         if !self.label_text.is_empty() {
             buf.print(1, 0, &self.label_text, style);
         }
-        self.state.mark_redrawn();
     }
 
     fn set_palette(&mut self, palette: Arc<dyn Palette>) {

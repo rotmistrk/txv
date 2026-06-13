@@ -101,7 +101,6 @@ impl View for ConfirmView {
         let buf = self.state.buffer_mut();
         buf.fill(' ', bar_style);
         if !self.active {
-            self.state.mark_redrawn();
             return;
         }
         let w = buf.width() as usize;
@@ -116,7 +115,6 @@ impl View for ConfirmView {
             };
             buf.put((i + 1) as u16, 0, ch, s);
         }
-        self.state.mark_redrawn();
     }
 
     fn set_palette(&mut self, palette: Arc<dyn Palette>) {

@@ -85,7 +85,6 @@ impl View for KeyLabelView {
         if !text.is_empty() {
             Self::render_styled_text(buf, &text, style);
         }
-        self.state.mark_redrawn();
     }
 
     fn set_palette(&mut self, palette: Arc<dyn Palette>) {

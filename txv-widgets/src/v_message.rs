@@ -82,12 +82,10 @@ impl View for MessageView {
         if self.display.is_empty() {
             let style = palette().style(StyleId::StatusBar);
             buf.fill(' ', style);
-            self.state.mark_redrawn();
             return;
         }
         buf.fill(' ', self.display_style);
         buf.print(1, 0, &self.display, self.display_style);
-        self.state.mark_redrawn();
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

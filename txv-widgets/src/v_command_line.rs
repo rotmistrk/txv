@@ -215,7 +215,6 @@ impl View for CommandLineView {
         if !label.is_empty() {
             buf.print(1, 0, &label, style);
         }
-        self.state.mark_redrawn();
     }
 
     fn set_palette(&mut self, palette: Arc<dyn Palette>) {

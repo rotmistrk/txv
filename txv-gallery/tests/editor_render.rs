@@ -132,7 +132,7 @@ fn cursor_on_multiply_wrapped_line() {
     assert_eq!(ev.editor().cursor_col(), 80);
     // Cursor should be on visual row 2 (0-indexed)
     let _cursor = ev.cursor(); // software cursor won't report in mock
-    // At minimum, editor col is 80
+                               // At minimum, editor col is 80
     assert_eq!(ev.editor().cursor_col(), 80);
 }
 

@@ -91,7 +91,7 @@ pub mod prelude {
     pub use crate::group::GroupState;
     pub use crate::message::{Message, MsgLevel};
     pub use crate::palette::{palette, set_palette, DerivedPalette, Palette, PaletteStyle, StyleId, ThemeMode};
-    pub use crate::run::{exec_view, run, run_cycles, Backend, MockBackend};
+    pub use crate::run::{run, run_cycles, Backend, MockBackend};
     pub use crate::status::{ActiveItem, Gravity, StatusBarItem, VisibleItem};
     pub use crate::text::{display_char_width, display_width, visual_positions};
     pub use crate::view::{CloseResult, EventSink, HandleResult, View, ViewId, ViewOptions, ViewState};
