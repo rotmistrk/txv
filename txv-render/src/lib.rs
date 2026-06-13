@@ -9,6 +9,8 @@ mod backend_flush;
 pub mod color;
 pub mod diff;
 mod event_translate;
+pub mod image_flush;
+pub mod image_protocol;
 mod style_emit;
 pub mod termbuf;
 pub mod text;

@@ -18,6 +18,7 @@ mod demo_completion;
 mod demo_row;
 mod demo_tree_source;
 mod dropdown_demo;
+mod image_chart_demo;
 mod status_bar_demo;
 
 use demo_completer::DemoCompleter;
@@ -39,6 +40,7 @@ pub(crate) fn make_demo(index: usize) -> Box<dyn View> {
         10 => make_dropdown(),
         11 => make_tab_dropdown(),
         12 => make_tab_lru(),
+        13 => image_chart_demo::make(),
         _ => make_placeholder(),
     }
 }

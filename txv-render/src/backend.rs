@@ -11,6 +11,7 @@ use txv_core::run::{Backend, Waker};
 
 use crate::color::ColorMode;
 use crate::event_translate::{translate_key, translate_mouse};
+use crate::image_protocol::{detect_image_protocol, CellPixelSize, ImageProtocol};
 
 /// Crossterm-based terminal backend with dual-buffer diffing.
 pub struct CrosstermBackend {
@@ -19,6 +20,8 @@ pub struct CrosstermBackend {
     pub(crate) force_full: bool,
     pub(crate) last_cursor: Option<CursorRequest>,
     pub(crate) cursor_dirty: bool,
+    pub(crate) image_protocol: ImageProtocol,
+    pub(crate) cell_size: CellPixelSize,
     wake_read: std::os::unix::io::RawFd,
     wake_write: std::os::unix::io::RawFd,
 }
@@ -41,6 +44,8 @@ impl CrosstermBackend {
             force_full: true,
             last_cursor: None,
             cursor_dirty: true,
+            image_protocol: detect_image_protocol(),
+            cell_size: CellPixelSize::default(),
             wake_read: fds[0],
             wake_write: fds[1],
         }

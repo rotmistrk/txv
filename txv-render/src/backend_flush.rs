@@ -56,6 +56,16 @@ impl CrosstermBackend {
         self.force_full = false;
         self.cursor_dirty = true;
         sync_previous(&mut self.previous, buf, w, h);
+
+        // Flush images on top of text
+        if !buf.images().is_empty() {
+            crate::image_flush::flush_images(
+                &mut io::stdout().lock(),
+                buf,
+                self.image_protocol,
+                self.cell_size,
+            );
+        }
     }
 }
 

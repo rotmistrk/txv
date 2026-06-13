@@ -53,6 +53,7 @@
 //! ```
 
 pub mod buffer;
+mod buffer_images;
 pub mod cell;
 pub mod clip_entry;
 pub mod clipboard_ring;
@@ -65,6 +66,7 @@ pub mod event;
 pub mod geometry;
 pub mod glyphs;
 pub mod group;
+pub mod image;
 pub mod message;
 pub mod palette;
 pub mod point;
@@ -89,6 +91,7 @@ pub mod prelude {
     pub use crate::geometry::{Point, Rect};
     pub use crate::glyphs::{glyphs, set_glyphs, GlyphSet, GlyphTier};
     pub use crate::group::GroupState;
+    pub use crate::image::{ImageData, ImagePlacement, ImageTransform};
     pub use crate::message::{Message, MsgLevel};
     pub use crate::palette::{palette, set_palette, DerivedPalette, Palette, PaletteStyle, StyleId, ThemeMode};
     pub use crate::run::{run, run_cycles, Backend, MockBackend};

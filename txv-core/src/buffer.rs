@@ -2,6 +2,7 @@
 //! Groups composite children by blitting child buffers at child origins.
 
 use crate::cell::{Cell, Style};
+use crate::image::ImagePlacement;
 use crate::text::display_char_width;
 
 /// Owned cell grid of width × height.
@@ -9,6 +10,7 @@ pub struct Buffer {
     cells: Vec<Cell>,
     width: u16,
     height: u16,
+    pub(crate) images: Vec<ImagePlacement>,
 }
 
 impl Buffer {
@@ -18,6 +20,7 @@ impl Buffer {
             cells: vec![Cell::default(); len],
             width: w,
             height: h,
+            images: Vec::new(),
         }
     }
 
@@ -29,13 +32,14 @@ impl Buffer {
         self.height
     }
 
-    /// Resize the buffer. Clears all content.
+    /// Resize the buffer. Clears all content and images.
     pub fn resize(&mut self, w: u16, h: u16) {
         self.width = w;
         self.height = h;
         let len = (w as usize) * (h as usize);
         self.cells.clear();
         self.cells.resize(len, Cell::default());
+        self.images.clear();
     }
 
     /// Clear all cells to space with given style.
@@ -176,24 +180,6 @@ impl Buffer {
         self.put(x + w - 1, y, tr, style);
         self.put(x, y + h - 1, bl, style);
         self.put(x + w - 1, y + h - 1, br, style);
-    }
-
-    /// Blit another buffer onto this one at (dx, dy) with clipping.
-    pub fn blit(&mut self, src: &Buffer, dx: u16, dy: u16) {
-        use crate::cell::Color;
-        let src_w = src.width.min(self.width.saturating_sub(dx));
-        let src_h = src.height.min(self.height.saturating_sub(dy));
-        for row in 0..src_h {
-            for col in 0..src_w {
-                let cell = &src.cells[src.idx(col, row)];
-                // Skip fully transparent cells
-                if cell.style.fg == Color::Transparent && cell.style.bg == Color::Transparent {
-                    continue;
-                }
-                let di = self.idx(dx + col, dy + row);
-                self.cells[di] = cell.clone();
-            }
-        }
     }
 
     /// Raw cell slice for backend flush.

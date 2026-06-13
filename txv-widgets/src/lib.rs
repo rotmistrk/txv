@@ -24,6 +24,7 @@ mod file_tree_filter;
 mod file_tree_ops;
 pub mod focus_gated_group;
 pub mod frame;
+pub mod image_view;
 pub mod fuzzy_select;
 pub mod input_dialog;
 pub mod input_line;
