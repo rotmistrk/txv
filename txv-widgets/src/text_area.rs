@@ -175,8 +175,8 @@ impl TextArea {
 
     fn handle_navigation(&mut self, key: &txv_core::event::KeyEvent) -> HandleResult {
         match key.code() {
-            KeyCode::Up => self.scroll_and_dirty(|s| s.scroll.scroll_up(1)),
-            KeyCode::Down => self.scroll_and_dirty(|s| s.scroll.scroll_down(1)),
+            KeyCode::Up | KeyCode::Char('k') => self.scroll_and_dirty(|s| s.scroll.scroll_up(1)),
+            KeyCode::Down | KeyCode::Char('j') => self.scroll_and_dirty(|s| s.scroll.scroll_down(1)),
             KeyCode::PageUp => {
                 let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
                 self.scroll_and_dirty(|s| s.scroll.scroll_up(page))
@@ -185,8 +185,8 @@ impl TextArea {
                 let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
                 self.scroll_and_dirty(|s| s.scroll.scroll_down(page))
             }
-            KeyCode::Home => self.scroll_and_dirty(|s| s.scroll.scroll_to(0)),
-            KeyCode::End => {
+            KeyCode::Home | KeyCode::Char('g') => self.scroll_and_dirty(|s| s.scroll.scroll_to(0)),
+            KeyCode::End | KeyCode::Char('G') => {
                 let max = self.scroll.max_offset();
                 self.scroll_and_dirty(|s| s.scroll.scroll_to(max))
             }
