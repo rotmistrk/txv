@@ -25,7 +25,7 @@ Cmd+/- font scaling, and full clipboard integration.
 ## Rendering Pipeline
 
 Each frame (on flush):
-1. Walk `Buffer` cells, render glyphs into a texture/surface
+1. Walk `Buffer` cells, render glyphs into a texture
    - Background: fill cell rect with bg color
    - If bg is Transparent and image underneath → leave clear
    - Foreground: render glyph with fg color (or skip if Transparent)

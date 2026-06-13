@@ -7,9 +7,9 @@ three-phase event dispatch, dirty tracking, and diff-flush rendering.
 
 | Crate | Purpose |
 |-------|---------|
-| `txv-core` | Pure logic. View trait, GroupState, EventQueue, Surface, geometry. Zero I/O. |
+| `txv-core` | Pure logic. View trait, GroupState, Buffer, Event, geometry. Zero I/O. |
 | `txv-render` | Terminal backend (crossterm). TermBuf, VTE parsing, diff flush. |
-| `txv-widgets` | Concrete views: TabGroup, PtyTerminal, TextArea, TreeView, StatusBar, etc. |
+| `txv-widgets` | Concrete views: TabPanel, PtyTerminal, TextArea, TreeView, StatusBar, etc. |
 | `txv-edit` | Vi-style text editor with syntax highlighting, :commands, search. |
 | `txv-gallery` | Widget gallery demo + integration test harness (56+ scenario tests). |
 
@@ -44,24 +44,23 @@ cargo test -p txv-gallery
 
 ```rust
 use txv_core::prelude::*;
-use txv_render::CrosstermBackend;
 
 struct MyView {
     state: ViewState,
 }
 
 impl View for MyView {
-    delegate_view_state!(state);
+    delegate_view_state!(state, override { draw, handle });
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.bounds();
-        surface.write_str(b.x, b.y, "Hello, TXV!", Style::default());
+    fn draw(&mut self) {
+        let b = self.state.bounds();
+        self.state.buffer_mut().print(0, 0, "Hello, TXV!", Style::default());
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Key(k) = event {
-            if k.code == KeyCode::Char('q') {
-                queue.put_command(CM_QUIT, None);
+            if k.code() == KeyCode::Char('q') {
+                self.state.put_command(CM_QUIT, None);
                 return HandleResult::Consumed;
             }
         }
@@ -75,19 +74,21 @@ impl View for MyView {
 - **Composition over inheritance** — ViewState/GroupState are embedded, not inherited
 - **Delegation macros** eliminate boilerplate while keeping views focused
 - **Three-phase dispatch** — preprocess → focused → postprocess
-- **Command-based communication** — views emit commands via EventQueue, never call each other
+- **Command-based communication** — views emit commands via EventSink, never call each other
 - **Dirty tracking** — only changed regions are flushed to the terminal
+- **Render pipeline** — `render()` calls `draw()` then blits children; never call `draw()` or `blit_child()` directly
 
 ## Widgets
 
-TabGroup, SplitPane, PtyTerminal, TextArea, TreeView, ListView, Table,
-StatusBar, InputLine, InputDialog, FuzzySelect, Menu, Overlay, ScrollView,
-ProgressBar, FileTree, InlineEditor.
+TabPanel, SplitPanel, SplitPane, TiledWorkspace, PtyTerminal, TextArea,
+TreeView, ListView, Table, StatusBar, InputLine, InputDialog, FuzzySelect,
+Menu, ScrollView, ProgressBar, FileTree, DropdownMenu, ModalKey.
 
 ## Documentation
 
-- [User Guide](docs/user-guide.md) — View trait, widgets, event model, layout
-- [Developer Guide](docs/developer-guide.md) — Architecture, testing, contributing
+- [Architecture](docs/ARCHITECTURE.md) — View trait, GroupState, dispatch, patterns
+- [User Guide](docs/user-guide.md) — API reference, event model, layout, render lifecycle
+- [Developer Guide](docs/developer-guide.md) — Crate structure, testing, contributing
 
 ## License
 
