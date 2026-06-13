@@ -27,7 +27,12 @@ pub fn draw_gutter<D: EditorViewDelegate>(
         draw_line_number(buf, line_idx, y, num_w, extra_gw, style);
     }
     if extra_gw > 0 {
+        // Left sign column (git markers): first extra column after line numbers
         if let Some((ch, sign_style)) = delegate.gutter_sign(line_idx) {
+            buf.put(num_w, y, ch, sign_style);
+        }
+        // Right sign column (diagnostics): rightmost extra column, adjacent to text
+        if let Some((ch, sign_style)) = delegate.gutter_sign_right(line_idx) {
             buf.put(p.gutter_w - 1, y, ch, sign_style);
         }
     }

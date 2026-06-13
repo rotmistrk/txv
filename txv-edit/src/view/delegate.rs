@@ -19,8 +19,13 @@ pub trait EditorViewDelegate: Send {
         None
     }
 
-    /// Gutter sign for a line. Returns (char, style) for the sign column.
+    /// Left gutter sign for a line (e.g. git markers). Drawn after line numbers.
     fn gutter_sign(&self, _line: usize) -> Option<(char, Style)> {
+        None
+    }
+
+    /// Right gutter sign for a line (e.g. diagnostics). Drawn adjacent to text.
+    fn gutter_sign_right(&self, _line: usize) -> Option<(char, Style)> {
         None
     }
 
