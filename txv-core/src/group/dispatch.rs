@@ -143,7 +143,11 @@ macro_rules! delegate_group_state {
                 }
             }
             if own_dirty || child_drew {
+                #[cfg(debug_assertions)]
+                { self.$field.set_rendering(true); }
                 self.draw();
+                #[cfg(debug_assertions)]
+                { self.$field.set_rendering(false); }
                 self.$field.mark_redrawn();
                 for i in 0..self.$field.child_count() {
                     if !self.$field.is_child_visible(i) {
@@ -223,7 +227,11 @@ macro_rules! delegate_group_state {
                 }
             }
             if own_dirty || child_drew {
+                #[cfg(debug_assertions)]
+                { self.$field.set_rendering(true); }
                 self.draw();
+                #[cfg(debug_assertions)]
+                { self.$field.set_rendering(false); }
                 self.$field.mark_redrawn();
                 for i in 0..self.$field.child_count() {
                     if !self.$field.is_child_visible(i) {

@@ -24,6 +24,9 @@ pub struct GroupState {
     pub(crate) focused: usize,
     /// Named children: name → index.
     named: HashMap<String, usize>,
+    /// Guard: true while inside render(). set_child_bounds panics if called.
+    #[cfg(debug_assertions)]
+    rendering: bool,
 }
 
 impl GroupState {
@@ -35,7 +38,16 @@ impl GroupState {
             visible: Vec::new(),
             focused: 0,
             named: HashMap::new(),
+            #[cfg(debug_assertions)]
+            rendering: false,
         }
+    }
+
+    /// Set the rendering guard flag. Used by delegate_group_state! macro only.
+    #[doc(hidden)]
+    #[cfg(debug_assertions)]
+    pub fn set_rendering(&mut self, v: bool) {
+        self.rendering = v;
     }
 
     pub fn insert(&mut self, child: Box<dyn View>) {
@@ -134,6 +146,8 @@ impl GroupState {
 
     /// Set origin (position within parent) and size for a child.
     pub fn set_child_bounds(&mut self, index: usize, rect: crate::geometry::Rect) {
+        #[cfg(debug_assertions)]
+        debug_assert!(!self.rendering, "set_child_bounds called during render/draw");
         if let Some(origin) = self.origins.get_mut(index) {
             *origin = (rect.x, rect.y);
         }
