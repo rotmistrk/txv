@@ -239,3 +239,28 @@ fn visual_block_on_short_lines() {
     assert_eq!(lines[1], ""); // short line: nothing past col 4
     assert_eq!(lines[2], "efgh"); // full
 }
+
+#[test]
+fn wrap_scroll_cursor_stays_visible() {
+    // Create content: 10 lines where each is 80 chars wide.
+    // In a 20-col, 10-row viewport with wrap, each line takes 4 visual rows.
+    // Moving down should scroll to keep cursor visible.
+    let lines: Vec<String> = (0..10).map(|i| format!("{}", (b'a' + i) as char).repeat(80)).collect();
+    let content = lines.join("\n");
+    let mut ev = editor_with(&content, 20, 10);
+    ev.editor_mut().execute(Command::ExCommand("set wrap".into()));
+    ev.editor_mut().execute(Command::ExCommand("set nonu".into()));
+    // Cursor starts at line 0. Move down several times.
+    // Each line occupies 4 visual rows in 20-col viewport (80/20=4).
+    // Viewport is 10 rows, so only ~2 full lines fit.
+    feed(&mut ev, "j"); // line 1
+    feed(&mut ev, "j"); // line 2
+    feed(&mut ev, "j"); // line 3
+    // After moving to line 3, cursor should be visible (scroll adjusted)
+    let scroll = ev.editor().viewport_scroll();
+    let cursor = ev.editor().cursor_line();
+    assert_eq!(cursor, 3, "cursor on line 3");
+    assert!(scroll > 0, "viewport should have scrolled, scroll={scroll}");
+    // The cursor line must be within the scroll range
+    assert!(cursor >= scroll, "cursor {cursor} below scroll {scroll}");
+}
