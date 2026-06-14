@@ -43,15 +43,16 @@ impl ClipboardRing {
     }
 
     /// Paste: try system clipboard first, fallback to ring top.
-    /// If system clipboard differs from top, push it to ring.
+    /// If system clipboard has text not already in ring, push it (external copy).
+    /// Otherwise trust the ring order (user may have reordered via select()).
     pub fn paste(&mut self) -> Option<String> {
         if let Ok(sys_text) = read_system_clipboard() {
             if !sys_text.is_empty() {
-                let differs = self.entries.front().is_none_or(|e| e.text != sys_text);
-                if differs {
+                let in_ring = self.entries.iter().any(|e| e.text == sys_text);
+                if !in_ring {
                     self.push(&sys_text, "system");
+                    return Some(sys_text);
                 }
-                return Some(sys_text);
             }
         }
         self.entries.front().map(|e| e.text.clone())
