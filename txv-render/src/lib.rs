@@ -11,6 +11,7 @@ pub mod diff;
 mod event_translate;
 pub mod image_flush;
 pub mod image_protocol;
+pub mod png_encode;
 mod style_emit;
 pub mod termbuf;
 pub mod text;

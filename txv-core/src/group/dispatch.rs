@@ -143,6 +143,7 @@ macro_rules! delegate_group_state {
                 }
             }
             if own_dirty || child_drew {
+                self.$field.buffer_mut().clear_images();
                 #[cfg(debug_assertions)]
                 { self.$field.set_rendering(true); }
                 self.draw();
@@ -227,6 +228,7 @@ macro_rules! delegate_group_state {
                 }
             }
             if own_dirty || child_drew {
+                self.$field.buffer_mut().clear_images();
                 #[cfg(debug_assertions)]
                 { self.$field.set_rendering(true); }
                 self.draw();

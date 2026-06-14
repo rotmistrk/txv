@@ -20,12 +20,8 @@ pub fn flush_images(out: &mut impl Write, buffer: &Buffer, protocol: ImageProtoc
         return;
     }
     for img in buffer.images() {
-        let visible = visible_region(buffer, img);
-        if visible.is_empty() {
-            continue;
-        }
         match protocol {
-            ImageProtocol::Kitty => emit_kitty(out, img, &visible, cell_size),
+            ImageProtocol::Kitty => emit_kitty(out, img, cell_size),
             ImageProtocol::Iterm2 => emit_iterm2(out, img, cell_size),
             ImageProtocol::None => {}
         }
@@ -90,7 +86,7 @@ fn scan_transparent_run(buffer: &Buffer, rx: u16, rw: u16, by: u16, mut col: u16
 }
 
 /// Emit image via Kitty graphics protocol.
-fn emit_kitty(out: &mut impl Write, img: &ImagePlacement, runs: &[VisibleRun], cell_size: CellPixelSize) {
+fn emit_kitty(out: &mut impl Write, img: &ImagePlacement, cell_size: CellPixelSize) {
     let r = img.rect();
     let data = img.data();
     let img_w = data.width();
@@ -130,7 +126,6 @@ fn emit_kitty(out: &mut impl Write, img: &ImagePlacement, runs: &[VisibleRun], c
         }
         offset = chunk_end;
     }
-    let _ = runs; // Kitty handles clipping via virtual placement
 }
 
 /// Emit image via iTerm2 inline image protocol.
@@ -145,9 +140,10 @@ fn emit_iterm2(out: &mut impl Write, img: &ImagePlacement, cell_size: CellPixelS
     // Position cursor
     let _ = write!(out, "\x1b[{};{}H", r.y() + 1, r.x() + 1);
 
-    // Scale and encode as raw RGBA, then base64
+    // Scale then encode as PNG
     let scaled = scale_image(data.pixels(), img_w, img_h, pixel_w, pixel_h);
-    let encoded = base64_encode(&scaled);
+    let png = crate::png_encode::encode_png(pixel_w, pixel_h, &scaled);
+    let encoded = base64_encode(&png);
 
     // Wrap in tmux passthrough if needed
     let tmux = in_tmux();
@@ -156,7 +152,8 @@ fn emit_iterm2(out: &mut impl Write, img: &ImagePlacement, cell_size: CellPixelS
     }
     let _ = write!(
         out,
-        "\x1b]1337;File=inline=1;width={}cells;height={}cells;preserveAspectRatio=0:{}\x07",
+        "\x1b]1337;File=inline=1;size={};width={}cells;height={}cells:{}\x07",
+        png.len(),
         r.w(),
         r.h(),
         encoded,
@@ -164,6 +161,7 @@ fn emit_iterm2(out: &mut impl Write, img: &ImagePlacement, cell_size: CellPixelS
     if tmux {
         let _ = write!(out, "\x1b\\");
     }
+    let _ = out.flush();
 }
 
 /// Nearest-neighbor scale of RGBA image.
