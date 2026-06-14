@@ -56,3 +56,41 @@ impl View for ImageView {
         HandleResult::Ignored
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use txv_core::group::GroupState;
+
+    #[test]
+    fn image_survives_render() {
+        let mut iv = ImageView::new();
+        let pixels = vec![255u8; 10 * 10 * 4];
+        iv.set_image(Arc::new(ImageData::new(10, 10, pixels)));
+        iv.set_bounds(Rect::new(0, 0, 20, 10));
+        iv.render();
+        assert_eq!(iv.buffer().images().len(), 1, "image in leaf buffer");
+    }
+
+    #[test]
+    fn image_survives_parent_blit() {
+        // Simulate what GroupState render does: parent buffer + blit child
+        let mut iv = ImageView::new();
+        let pixels = vec![255u8; 4 * 4 * 4];
+        iv.set_image(Arc::new(ImageData::new(4, 4, pixels)));
+        iv.set_bounds(Rect::new(0, 0, 10, 5));
+        iv.render();
+
+        // Parent buffer
+        let mut parent_buf = Buffer::new(40, 20);
+        parent_buf.fill(' ', Style::default());
+        // Blit child at offset (5, 3)
+        parent_buf.blit(iv.buffer(), 5, 3);
+
+        assert_eq!(parent_buf.images().len(), 1, "image transferred to parent");
+        let img = &parent_buf.images()[0];
+        assert_eq!(img.rect().x(), 5, "x offset applied");
+        assert_eq!(img.rect().y(), 3, "y offset applied");
+    }
+}

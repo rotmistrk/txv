@@ -19,7 +19,8 @@ pub fn flush_images(out: &mut impl Write, buffer: &Buffer, protocol: ImageProtoc
     if protocol == ImageProtocol::None {
         return;
     }
-    for img in buffer.images() {
+    let images = buffer.images();
+    for img in images {
         match protocol {
             ImageProtocol::Kitty => emit_kitty(out, img, cell_size),
             ImageProtocol::Iterm2 => emit_iterm2(out, img, cell_size),
@@ -129,20 +130,15 @@ fn emit_kitty(out: &mut impl Write, img: &ImagePlacement, cell_size: CellPixelSi
 }
 
 /// Emit image via iTerm2 inline image protocol.
-fn emit_iterm2(out: &mut impl Write, img: &ImagePlacement, cell_size: CellPixelSize) {
+fn emit_iterm2(out: &mut impl Write, img: &ImagePlacement, _cell_size: CellPixelSize) {
     let r = img.rect();
     let data = img.data();
-    let img_w = data.width();
-    let img_h = data.height();
-    let pixel_w = r.w() as u32 * cell_size.width() as u32;
-    let pixel_h = r.h() as u32 * cell_size.height() as u32;
 
     // Position cursor
     let _ = write!(out, "\x1b[{};{}H", r.y() + 1, r.x() + 1);
 
-    // Scale then encode as PNG
-    let scaled = scale_image(data.pixels(), img_w, img_h, pixel_w, pixel_h);
-    let png = crate::png_encode::encode_png(pixel_w, pixel_h, &scaled);
+    // Encode source image directly as PNG (terminal handles scaling)
+    let png = crate::png_encode::encode_png(data.width(), data.height(), data.pixels());
     let encoded = base64_encode(&png);
 
     // Wrap in tmux passthrough if needed
