@@ -51,6 +51,12 @@ pub fn detect_image_protocol() -> ImageProtocol {
             return ImageProtocol::Iterm2;
         }
     }
+    // iTerm2 sets LC_TERMINAL even inside tmux/ssh
+    if let Ok(lc_term) = env::var("LC_TERMINAL") {
+        if lc_term.to_lowercase().contains("iterm") {
+            return ImageProtocol::Iterm2;
+        }
+    }
     if let Ok(term) = env::var("TERM") {
         if term.contains("kitty") {
             return ImageProtocol::Kitty;

@@ -1,4 +1,5 @@
 //! Git stats chart demo — renders project line-count history as an inline image.
+//! Uses a single `git log --numstat` call for all data (fast even over SSH).
 
 use std::process::Command;
 use std::str::from_utf8;
@@ -7,7 +8,6 @@ use std::sync::Arc;
 use txv_core::prelude::*;
 use txv_widgets::image_view::ImageView;
 
-/// Generate the git stats chart demo.
 pub(crate) fn make() -> Box<dyn View> {
     let mut iv = ImageView::new();
     let data = generate_chart();
@@ -16,14 +16,12 @@ pub(crate) fn make() -> Box<dyn View> {
     Box::new(iv)
 }
 
-/// Generate a simple bar chart as RGBA pixels showing line counts.
 fn generate_chart() -> Arc<ImageData> {
     let stats = gather_line_stats();
     let w: u32 = 320;
     let h: u32 = 160;
     let mut pixels = vec![0u8; (w * h * 4) as usize];
-
-    fill_background(&mut pixels);
+    fill_background(&mut pixels, w, h);
 
     if stats.is_empty() {
         return Arc::new(ImageData::new(w, h, pixels));
@@ -35,20 +33,28 @@ fn generate_chart() -> Arc<ImageData> {
     let chart_h = h - 20;
 
     for (i, stat) in stats.iter().enumerate().take(bar_count) {
-        let x_start = (i * bar_w) as u32;
+        let x = (i * bar_w) as u32;
+        let bw = bar_w as u32;
         let code_h = (stat.code as u32 * chart_h / max_val as u32).min(chart_h);
-        draw_bar(&mut pixels, w, x_start, bar_w as u32, chart_h - code_h, code_h, [70, 130, 230, 255]);
+        draw_bar(&mut pixels, w, x, bw, chart_h - code_h, code_h, [70, 130, 230, 255]);
         let test_h = (stat.test as u32 * chart_h / max_val as u32).min(chart_h - code_h);
         if test_h > 0 {
-            let y = chart_h - code_h - test_h;
-            draw_bar(&mut pixels, w, x_start, bar_w as u32, y, test_h, [80, 200, 120, 255]);
+            draw_bar(
+                &mut pixels,
+                w,
+                x,
+                bw,
+                chart_h - code_h - test_h,
+                test_h,
+                [80, 200, 120, 255],
+            );
         }
     }
 
     Arc::new(ImageData::new(w, h, pixels))
 }
 
-fn fill_background(pixels: &mut [u8]) {
+fn fill_background(pixels: &mut [u8], _w: u32, _h: u32) {
     for i in (0..pixels.len()).step_by(4) {
         pixels[i] = 30;
         pixels[i + 1] = 30;
@@ -62,9 +68,10 @@ struct LineStat {
     test: usize,
 }
 
+/// Gather cumulative line counts using ONE `git log --numstat` command.
 fn gather_line_stats() -> Vec<LineStat> {
     let output = Command::new("git")
-        .args(["log", "--oneline", "--reverse", "--format=%H"])
+        .args(["log", "--reverse", "--numstat", "--format=%H"])
         .output()
         .ok();
     let Some(output) = output else {
@@ -73,48 +80,61 @@ fn gather_line_stats() -> Vec<LineStat> {
     if !output.status.success() {
         return sample_stats();
     }
-    let commits: Vec<&str> = from_utf8(&output.stdout).unwrap_or("").lines().collect();
-    if commits.is_empty() {
-        return sample_stats();
-    }
-    // Sample up to 40 evenly-spaced commits
-    let step = (commits.len() / 40).max(1);
-    let sampled: Vec<&str> = commits.iter().step_by(step).take(40).copied().collect();
-
-    sampled.iter().map(|c| count_lines_at(c)).collect()
+    let text = from_utf8(&output.stdout).unwrap_or("");
+    parse_numstat(text)
 }
 
-fn count_lines_at(commit: &str) -> LineStat {
-    let output = Command::new("git")
-        .args(["ls-tree", "-r", "--name-only", commit])
-        .output()
-        .ok();
-    let Some(output) = output else {
-        return LineStat { code: 0, test: 0 };
-    };
-    let text = from_utf8(&output.stdout).unwrap_or("");
-    let rs_files: Vec<&str> = text.lines().filter(|l| l.ends_with(".rs")).collect();
+/// Parse git log --numstat output into cumulative stats per commit.
+fn parse_numstat(text: &str) -> Vec<LineStat> {
+    let mut all_commits: Vec<LineStat> = Vec::new();
+    let mut code: i64 = 0;
+    let mut test: i64 = 0;
 
-    let mut code = 0usize;
-    let mut test = 0usize;
-    for file in &rs_files {
-        let lines = count_file_lines(commit, file);
-        if file.contains("test") || file.contains("gallery/tests") {
-            test += lines;
-        } else {
-            code += lines;
+    for line in text.lines() {
+        if line.len() == 40 && line.chars().all(|c| c.is_ascii_hexdigit()) {
+            // Commit hash — record snapshot
+            all_commits.push(LineStat {
+                code: code.max(0) as usize,
+                test: test.max(0) as usize,
+            });
+        } else if let Some((add, del, path)) = parse_numstat_line(line) {
+            if !path.ends_with(".rs") {
+                continue;
+            }
+            let net = add as i64 - del as i64;
+            if is_test_file(path) {
+                test += net;
+            } else {
+                code += net;
+            }
         }
     }
-    LineStat { code, test }
+    // Final state
+    all_commits.push(LineStat {
+        code: code.max(0) as usize,
+        test: test.max(0) as usize,
+    });
+
+    // Sample down to ~30 points
+    if all_commits.len() <= 30 {
+        return all_commits;
+    }
+    let step = all_commits.len() / 30;
+    all_commits.into_iter().step_by(step).take(30).collect()
 }
 
-fn count_file_lines(commit: &str, file: &str) -> usize {
-    Command::new("git")
-        .args(["show", &format!("{commit}:{file}")])
-        .output()
-        .ok()
-        .and_then(|o| from_utf8(&o.stdout).ok().map(|s| s.lines().count()))
-        .unwrap_or(0)
+fn parse_numstat_line(line: &str) -> Option<(usize, usize, &str)> {
+    let mut parts = line.split('\t');
+    let add_str = parts.next()?;
+    let del_str = parts.next()?;
+    let path = parts.next()?;
+    let add: usize = add_str.parse().ok()?;
+    let del: usize = del_str.parse().ok()?;
+    Some((add, del, path))
+}
+
+fn is_test_file(path: &str) -> bool {
+    path.contains("test") || path.contains("gallery/tests")
 }
 
 fn sample_stats() -> Vec<LineStat> {
@@ -126,7 +146,10 @@ fn sample_stats() -> Vec<LineStat> {
         LineStat { code: 5500, test: 1800 },
         LineStat { code: 7000, test: 2400 },
         LineStat { code: 8500, test: 3000 },
-        LineStat { code: 10000, test: 3600 },
+        LineStat {
+            code: 10000,
+            test: 3600,
+        },
     ]
 }
 

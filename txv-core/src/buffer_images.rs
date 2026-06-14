@@ -26,7 +26,8 @@ impl Buffer {
         for img in src.images() {
             let r = img.rect();
             let offset_rect = Rect::new(r.x() + dx, r.y() + dy, r.w(), r.h());
-            self.images.push(ImagePlacement::new(offset_rect, img.data().clone(), img.transform()));
+            self.images
+                .push(ImagePlacement::new(offset_rect, img.data().clone(), img.transform()));
         }
     }
 

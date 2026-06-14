@@ -12,6 +12,7 @@ use txv_core::cell::{Cell, Style};
 
 use crate::backend::CrosstermBackend;
 use crate::color::ColorMode;
+use crate::image_flush::flush_images;
 use crate::style_emit::{apply_color_mode, emit_style};
 
 struct FlushCtx<'a> {
@@ -59,12 +60,7 @@ impl CrosstermBackend {
 
         // Flush images on top of text
         if !buf.images().is_empty() {
-            crate::image_flush::flush_images(
-                &mut io::stdout().lock(),
-                buf,
-                self.image_protocol,
-                self.cell_size,
-            );
+            flush_images(&mut io::stdout().lock(), buf, self.image_protocol, self.cell_size);
         }
     }
 }

@@ -11,6 +11,12 @@ pub struct ImageView {
     transform: ImageTransform,
 }
 
+impl Default for ImageView {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ImageView {
     pub fn new() -> Self {
         Self {

@@ -9,12 +9,7 @@ use txv_core::image::ImagePlacement;
 use crate::image_protocol::{CellPixelSize, ImageProtocol};
 
 /// Render all image placements from a buffer to the terminal.
-pub fn flush_images(
-    out: &mut impl Write,
-    buffer: &Buffer,
-    protocol: ImageProtocol,
-    cell_size: CellPixelSize,
-) {
+pub fn flush_images(out: &mut impl Write, buffer: &Buffer, protocol: ImageProtocol, cell_size: CellPixelSize) {
     if protocol == ImageProtocol::None {
         return;
     }
@@ -66,7 +61,11 @@ fn collect_row_runs(buffer: &Buffer, rx: u16, rw: u16, by: u16, row: u16, runs: 
         if buffer.cell(bx, by).style().bg() == Color::Transparent {
             let start = col;
             col = scan_transparent_run(buffer, rx, rw, by, col);
-            runs.push(VisibleRun { x: start, y: row, w: col - start });
+            runs.push(VisibleRun {
+                x: start,
+                y: row,
+                w: col - start,
+            });
         } else {
             col += 1;
         }
@@ -108,7 +107,11 @@ fn emit_kitty(out: &mut impl Write, img: &ImagePlacement, runs: &[VisibleRun], c
     while offset < total {
         let chunk_end = (offset + 4096).min(total);
         let chunk = &encoded[offset..chunk_end];
-        let more = if chunk_end < total { 1 } else { 0 };
+        let more = if chunk_end < total {
+            1
+        } else {
+            0
+        };
         if offset == 0 {
             let _ = write!(
                 out,
@@ -117,7 +120,7 @@ fn emit_kitty(out: &mut impl Write, img: &ImagePlacement, runs: &[VisibleRun], c
                 r.h(),
             );
         } else {
-            let _ = write!(out, "\x1b_Gm={more};{chunk}\x1b\\", );
+            let _ = write!(out, "\x1b_Gm={more};{chunk}\x1b\\",);
         }
         offset = chunk_end;
     }
@@ -172,7 +175,7 @@ fn scale_image(src: &[u8], src_w: u32, src_h: u32, dst_w: u32, dst_h: u32) -> Ve
 fn base64_encode(data: &[u8]) -> String {
     use std::fmt::Write as FmtWrite;
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::with_capacity((data.len() + 2) / 3 * 4);
+    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
         let b0 = chunk[0] as u32;
         let b1 = chunk.get(1).copied().unwrap_or(0) as u32;
