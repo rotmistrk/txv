@@ -4,10 +4,10 @@ use std::env;
 use std::io::Write;
 
 use txv_core::buffer::Buffer;
-use txv_core::cell::Color;
 use txv_core::image::ImagePlacement;
 
 use crate::image_protocol::{CellPixelSize, ImageProtocol};
+use crate::png_encode;
 
 /// Check if we're inside tmux (need passthrough wrapping).
 fn in_tmux() -> bool {
@@ -27,63 +27,6 @@ pub fn flush_images(out: &mut impl Write, buffer: &Buffer, protocol: ImageProtoc
             ImageProtocol::None => {}
         }
     }
-}
-
-/// A visible rectangular run within an image placement.
-#[allow(dead_code)]
-struct VisibleRun {
-    /// Cell column (relative to image rect origin).
-    x: u16,
-    /// Cell row (relative to image rect origin).
-    y: u16,
-    /// Width in cells.
-    w: u16,
-}
-
-/// Compute visible cell runs for an image — cells where bg is Transparent.
-fn visible_region(buffer: &Buffer, img: &ImagePlacement) -> Vec<VisibleRun> {
-    let r = img.rect();
-    let mut runs = Vec::new();
-    for row in 0..r.h() {
-        let by = r.y() + row;
-        if by >= buffer.height() {
-            break;
-        }
-        collect_row_runs(buffer, r.x(), r.w(), by, row, &mut runs);
-    }
-    runs
-}
-
-fn collect_row_runs(buffer: &Buffer, rx: u16, rw: u16, by: u16, row: u16, runs: &mut Vec<VisibleRun>) {
-    let mut col = 0;
-    while col < rw {
-        let bx = rx + col;
-        if bx >= buffer.width() {
-            break;
-        }
-        if buffer.cell(bx, by).style().bg() == Color::Transparent {
-            let start = col;
-            col = scan_transparent_run(buffer, rx, rw, by, col);
-            runs.push(VisibleRun {
-                x: start,
-                y: row,
-                w: col - start,
-            });
-        } else {
-            col += 1;
-        }
-    }
-}
-
-fn scan_transparent_run(buffer: &Buffer, rx: u16, rw: u16, by: u16, mut col: u16) -> u16 {
-    while col < rw {
-        let cx = rx + col;
-        if cx >= buffer.width() || buffer.cell(cx, by).style().bg() != Color::Transparent {
-            break;
-        }
-        col += 1;
-    }
-    col
 }
 
 /// Emit image via Kitty graphics protocol.
@@ -138,7 +81,7 @@ fn emit_iterm2(out: &mut impl Write, img: &ImagePlacement, _cell_size: CellPixel
     let _ = write!(out, "\x1b[{};{}H", r.y() + 1, r.x() + 1);
 
     // Encode source image directly as PNG (terminal handles scaling)
-    let png = crate::png_encode::encode_png(data.width(), data.height(), data.pixels());
+    let png = png_encode::encode_png(data.width(), data.height(), data.pixels());
     let encoded = base64_encode(&png);
 
     // Wrap in tmux passthrough if needed

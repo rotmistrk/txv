@@ -49,12 +49,16 @@ fn zlib_store(data: &[u8]) -> Vec<u8> {
     // Zlib header: CM=8, CINFO=7, FCHECK so header%31==0
     out.push(0x78); // CMF
     out.push(0x01); // FLG (no dict, level 0, check bits)
-    // Deflate stored blocks (max 65535 bytes each)
+                    // Deflate stored blocks (max 65535 bytes each)
     let mut offset = 0;
     while offset < data.len() {
         let remaining = data.len() - offset;
         let block_len = remaining.min(65535);
-        let last = if offset + block_len >= data.len() { 1u8 } else { 0u8 };
+        let last = if offset + block_len >= data.len() {
+            1u8
+        } else {
+            0u8
+        };
         out.push(last); // BFINAL + BTYPE=00 (stored)
         let len = block_len as u16;
         out.extend_from_slice(&len.to_le_bytes());

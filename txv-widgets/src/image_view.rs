@@ -61,7 +61,6 @@ impl View for ImageView {
 mod tests {
     use super::*;
     use std::sync::Arc;
-    use txv_core::group::GroupState;
 
     #[test]
     fn image_survives_render() {
