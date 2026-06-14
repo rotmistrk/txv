@@ -14,7 +14,6 @@ impl<D: EditorViewDelegate> EditorView<D> {
         if self.cmdline_active {
             return self.cmdline_cursor();
         }
-        // Check delegate cursor render preference
         match self.delegate.cursor_render(mode) {
             CursorRender::Software(_) | CursorRender::None => return None,
             CursorRender::Hardware => {}
@@ -27,23 +26,47 @@ impl<D: EditorViewDelegate> EditorView<D> {
             return None;
         }
         let sticky_h = sticky_line_count(&self.editor);
-        let y = (line - scroll) as u16 + sticky_h;
+        let y = self.compute_cursor_y(line, scroll, gw, sticky_h)?;
         let x = gw + (col.saturating_sub(self.editor.h_scroll())) as u16;
+        let shape = self.cursor_shape(mode)?;
+        Some(CursorRequest::new(x, y, shape))
+    }
+
+    fn compute_cursor_y(&self, line: usize, scroll: usize, gw: u16, sticky_h: u16) -> Option<u16> {
+        if self.editor.options().wrap() {
+            let avail = self.group.bounds().w().saturating_sub(gw) as usize;
+            if avail == 0 {
+                return None;
+            }
+            let tw = self.editor.options().tab_width();
+            let mut vrow = 0u16;
+            for i in scroll..line {
+                let l = self.editor.buf().line(i).unwrap_or_default();
+                let w = display_width(&l, tw) as usize;
+                vrow += if w == 0 {
+                    1
+                } else {
+                    w.div_ceil(avail) as u16
+                };
+            }
+            Some(vrow + sticky_h)
+        } else {
+            Some((line - scroll) as u16 + sticky_h)
+        }
+    }
+
+    fn cursor_shape(&self, mode: EditorMode) -> Option<CursorShape> {
         let opts = self.editor.options();
         let cs = match mode {
             EditorMode::Insert => opts.cursor_insert(),
             _ => opts.cursor_normal(),
         };
-        if cs == CursorStyle::Software {
-            return None;
+        match cs {
+            CursorStyle::Bar => Some(CursorShape::Bar),
+            CursorStyle::Block => Some(CursorShape::Block),
+            CursorStyle::Underline => Some(CursorShape::Underline),
+            CursorStyle::Software => None,
         }
-        let shape = match cs {
-            CursorStyle::Bar => CursorShape::Bar,
-            CursorStyle::Block => CursorShape::Block,
-            CursorStyle::Underline => CursorShape::Underline,
-            CursorStyle::Software => return None,
-        };
-        Some(CursorRequest::new(x, y, shape))
     }
 
     fn cmdline_cursor(&self) -> Option<CursorRequest> {

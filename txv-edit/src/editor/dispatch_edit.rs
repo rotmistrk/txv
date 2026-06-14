@@ -140,8 +140,8 @@ impl Editor {
             }
             Command::ChangeToEnd => {
                 self.buf().begin_group();
-                self.delete_to_end();
                 self.mode = EditorMode::Insert;
+                self.delete_to_end();
                 EditorAction::ContentChanged
             }
             Command::Substitute => {

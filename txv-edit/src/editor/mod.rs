@@ -122,6 +122,8 @@ pub struct Editor {
     pub(crate) ephemeral: EphemeralHighlights,
     /// Vim-style local marks (a-z): char → (line, col).
     pub(crate) marks: HashMap<char, (usize, usize)>,
+    /// Pending block insert: (start_line, end_line, start_col) saved when I is pressed in block mode.
+    pub(crate) pending_block_insert: Option<(usize, usize, usize)>,
 }
 
 impl Editor {
@@ -215,6 +217,7 @@ impl Editor {
             highlight: None,
             ephemeral: EphemeralHighlights::new(),
             marks: HashMap::new(),
+            pending_block_insert: None,
         }
     }
 }

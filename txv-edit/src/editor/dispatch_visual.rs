@@ -97,11 +97,13 @@ impl Editor {
 
     fn dispatch_block_insert(&mut self) {
         if self.mode == EditorMode::VisualBlock {
-            if let Some((sl, _, sc, _)) = self.block_range() {
+            if let Some((sl, el, sc, _)) = self.block_range() {
+                self.pending_block_insert = Some((sl, el, sc));
                 self.exit_visual();
                 self.cursor_line = sl;
                 self.cursor_col = sc;
                 self.mode = EditorMode::Insert;
+                self.buf().begin_group();
             }
         }
     }

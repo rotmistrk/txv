@@ -130,7 +130,20 @@ impl Editor {
 
     pub(super) fn visual_change(&mut self) {
         self.buf().begin_group();
-        self.visual_delete();
+        if self.mode == EditorMode::VisualLine {
+            // Linewise change: delete selected lines, insert blank line for typing
+            let (al, _) = self.visual_anchor.unwrap_or((self.cursor_line, 0));
+            let start_line = al.min(self.cursor_line);
+            self.visual_delete();
+            // Insert a newline at cursor position to create blank line
+            let offset = self.buf().line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
+            self.buf().insert(offset, "\n");
+            let line_count = self.buf().line_count();
+            self.cursor_col = 0;
+            self.cursor_line = start_line.min(line_count.saturating_sub(1));
+        } else {
+            self.visual_delete();
+        }
         self.mode = EditorMode::Insert;
     }
 
