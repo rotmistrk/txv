@@ -35,3 +35,11 @@ pre-commit:
 ## Clean build artifacts
 clean:
 	cargo clean
+
+## Install txv skill for Kiro (only if ~/.kiro exists)
+install-skill:
+	@if [ -d ~/.kiro ]; then \
+		mkdir -p ~/.kiro/skills && \
+		cp docs/skill-txv-framework.md ~/.kiro/skills/txv-framework.md && \
+		echo "✅ Installed txv skill to ~/.kiro/skills/"; \
+	fi

@@ -74,6 +74,33 @@ fn display_width(label: &str, plain_char: bool, code: KeyCode) -> usize {
     }
 }
 
+fn format_key_event(key: &KeyEvent) -> String {
+    let mut s = String::new();
+    let m = key.modifiers();
+    if m.ctrl() {
+        s.push_str("C-");
+    }
+    if m.alt() {
+        s.push_str("M-");
+    }
+    if m.shift() {
+        s.push_str("S-");
+    }
+    match key.code() {
+        KeyCode::Char(c) => s.push(c),
+        KeyCode::F(n) => s.push_str(&format!("F{n}")),
+        KeyCode::Enter => s.push_str("Enter"),
+        KeyCode::Esc => s.push_str("Esc"),
+        KeyCode::Tab => s.push_str("Tab"),
+        KeyCode::Up => s.push_str("Up"),
+        KeyCode::Down => s.push_str("Down"),
+        KeyCode::Left => s.push_str("Left"),
+        KeyCode::Right => s.push_str("Right"),
+        _ => s.push('?'),
+    }
+    s
+}
+
 impl View for KeyLabelView {
     delegate_view_state!(state);
 
@@ -100,6 +127,22 @@ impl View for KeyLabelView {
             }
         }
         HandleResult::Ignored
+    }
+
+    fn key_help(&self) -> Vec<txv_core::key_help::KeyHelpEntry> {
+        if self.label_text.is_empty() {
+            return vec![txv_core::key_help::KeyHelpEntry::new(
+                format_key_event(&self.key),
+                format!("cmd:{}", self.command),
+                "Global",
+            )];
+        }
+        let action = self.label_text.replace('~', "");
+        vec![txv_core::key_help::KeyHelpEntry::new(
+            format_key_event(&self.key),
+            action,
+            "Global",
+        )]
     }
 }
 

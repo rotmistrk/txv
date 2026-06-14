@@ -57,6 +57,17 @@ impl StatusBar {
         self.group.child_count()
     }
 
+    /// Collect key binding descriptions from all children.
+    pub fn describe_bindings(&self) -> Vec<crate::key_help::KeyHelpEntry> {
+        let mut entries = Vec::new();
+        for i in 0..self.group.child_count() {
+            if let Some(child) = self.group.child(i) {
+                entries.extend(child.key_help());
+            }
+        }
+        entries
+    }
+
     // --- Internal accessors for layout module ---
 
     pub(super) fn bounds_rect(&self) -> Rect {
@@ -119,6 +130,10 @@ impl View for StatusBar {
 
     fn select(&mut self) {}
     fn unselect(&mut self) {}
+
+    fn key_help(&self) -> Vec<crate::key_help::KeyHelpEntry> {
+        self.describe_bindings()
+    }
 
     fn handle(&mut self, event: &crate::event::Event) -> crate::view::HandleResult {
         let result = self.group.dispatch(event);

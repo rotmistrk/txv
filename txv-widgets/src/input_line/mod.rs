@@ -30,6 +30,7 @@ pub struct InputLine {
     pub(crate) selection: Option<usize>,
     pub(crate) history: Vec<String>,
     pub(crate) history_pos: Option<usize>,
+    pub(crate) shared_history: Option<txv_core::shared_history::SharedHistory>,
     pub(crate) completer: Option<Box<dyn Completer>>,
     pub(crate) submit_command: CommandId,
     /// Command emitted on every text change (None = silent).
@@ -52,6 +53,7 @@ impl InputLine {
             selection: None,
             history: Vec::new(),
             history_pos: None,
+            shared_history: None,
             completer: None,
             submit_command: CM_OK,
             change_command: None,
@@ -79,6 +81,11 @@ impl InputLine {
 
     pub fn with_completer(mut self, c: Box<dyn Completer>) -> Self {
         self.completer = Some(c);
+        self
+    }
+
+    pub fn with_history(mut self, h: txv_core::shared_history::SharedHistory) -> Self {
+        self.shared_history = Some(h);
         self
     }
 

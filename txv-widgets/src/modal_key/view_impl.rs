@@ -47,6 +47,21 @@ impl View for ModalKey {
         }
         self.handle_active(event)
     }
+
+    fn key_help(&self) -> Vec<txv_core::key_help::KeyHelpEntry> {
+        let prefix = &self.idle_label;
+        let mut entries = Vec::new();
+        for i in 0..self.group.child_count() {
+            if let Some(child) = self.group.child(i) {
+                for mut entry in child.key_help() {
+                    entry.set_key(format!("{prefix} {}", entry.key()));
+                    entry.set_group(prefix.clone());
+                    entries.push(entry);
+                }
+            }
+        }
+        entries
+    }
 }
 
 impl ModalKey {

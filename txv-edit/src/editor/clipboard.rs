@@ -52,7 +52,7 @@ impl Editor {
         }
     }
 
-    /// Resolve paste source: named register if pending, else clipboard ring front.
+    /// Resolve paste source: named register if pending, else default register.
     fn resolve_paste_register(&mut self) -> (String, bool) {
         if let Some(reg) = self.keymap.pending_register.take() {
             let text = self
@@ -62,18 +62,9 @@ impl Editor {
                 .and_then(|r| r.get_register(reg).map(|s| s.to_string()))
                 .unwrap_or_default();
             (text, false)
-        } else if let Some(text) = self.clipboard_paste() {
-            let linewise = text.ends_with('\n');
-            (text, linewise)
         } else {
             (self.register(), self.register_linewise())
         }
-    }
-
-    fn clipboard_paste(&mut self) -> Option<String> {
-        let clip = self.clipboard.as_ref()?;
-        let mut ring = clip.lock().ok()?;
-        ring.paste()
     }
 
     pub(super) fn paste_after(&mut self) {

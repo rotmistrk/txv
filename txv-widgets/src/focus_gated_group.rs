@@ -111,6 +111,16 @@ impl View for FocusGatedGroup {
         self.sync_width();
         result
     }
+
+    fn key_help(&self) -> Vec<txv_core::key_help::KeyHelpEntry> {
+        let mut entries = Vec::new();
+        for i in 0..self.group.child_count() {
+            if let Some(child) = self.group.child(i) {
+                entries.extend(child.key_help());
+            }
+        }
+        entries
+    }
 }
 
 impl FocusGatedGroup {

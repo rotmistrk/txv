@@ -95,6 +95,10 @@ pub trait View: Send {
     fn group_state(&self) -> Option<&crate::group::GroupState> {
         None
     }
+    /// Describe key bindings this view handles (for introspection/help).
+    fn key_help(&self) -> Vec<crate::key_help::KeyHelpEntry> {
+        Vec::new()
+    }
 }
 
 // View delegation macros are in view_macros.rs
