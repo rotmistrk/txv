@@ -85,6 +85,30 @@ fn draw(&mut self) {
 
 Buffer methods: `fill()`, `print()`, `put()`, `hline()`, `vline()`, `cell()`, `cell_mut()`.
 
+### Inline Images
+
+Views can place images behind text using the Buffer image API:
+
+```rust
+use std::sync::Arc;
+
+fn draw(&mut self) {
+    let buf = self.state.buffer_mut();
+    // Fill with transparent so image shows through
+    let transparent = Style::new(Color::Transparent, Color::Transparent);
+    buf.fill(' ', transparent);
+    // Place image covering entire bounds
+    let rect = Rect::new(0, 0, buf.width(), buf.height());
+    buf.place_image(rect, self.image_data.clone(), ImageTransform::Fit);
+}
+```
+
+Images are rendered by the terminal backend using iTerm2 or Kitty protocols.
+Text with opaque background draws on top of images. The rendering pipeline:
+- Images propagate through blit (coordinates offset by parent origin)
+- Images cleared at start of each render cycle (no accumulation)
+- Terminal emits PNG-encoded image at the absolute screen position
+
 ## Events
 
 ```rust
@@ -274,6 +298,11 @@ Filtered popup list with numbered selection and badges.
 
 ### ModalKey
 Status bar item that captures input on trigger key. Used for Go-to, search, etc.
+
+### ImageView
+Displays an inline image filling its bounds. Set image data via `set_image(Arc<ImageData>)`.
+Works in terminals that support iTerm2 or Kitty graphics protocols.
+Requires `tmux set -g allow-passthrough on` when running inside tmux.
 
 ### InputLine
 Single-line text input with readline bindings and tab completion.

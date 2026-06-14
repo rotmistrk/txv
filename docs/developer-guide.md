@@ -76,6 +76,8 @@ txv-core/src/
   view/mod.rs       View trait, ViewState, ViewOptions, HandleResult
   geometry.rs       Rect, Point
   buffer.rs         Buffer — 2D cell grid (owned by each view)
+  buffer_images.rs  Buffer image placement + blit with image transfer
+  image/            ImageData, ImagePlacement, ImageTransform
   cell/             Cell, Style, Color, Attrs
   event/            Event enum, KeyEvent, MouseEvent, KeyMod
   group/
@@ -93,7 +95,10 @@ txv-core/src/
 
 txv-render/src/
   backend.rs        CrosstermBackend (enter/leave, poll, flush, cursor)
-  backend_flush.rs  Diff-based terminal output
+  backend_flush.rs  Diff-based terminal output + image flush
+  image_flush.rs    Emit images via iTerm2/Kitty protocols
+  image_protocol.rs Protocol detection from environment
+  png_encode.rs     Minimal PNG encoder (no dependencies)
   termbuf/          VTE terminal emulator (for PtyTerminal)
   event_translate.rs  crossterm → txv event translation
   color.rs          Color mode detection, downgrade (256→16→8)

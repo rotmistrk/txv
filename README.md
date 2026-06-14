@@ -77,12 +77,13 @@ impl View for MyView {
 - **Command-based communication** — views emit commands via EventSink, never call each other
 - **Dirty tracking** — only changed regions are flushed to the terminal
 - **Render pipeline** — `render()` calls `draw()` then blits children; never call `draw()` or `blit_child()` directly
+- **Inline images** — views place images in Buffer via `place_image()`; terminal renders using iTerm2/Kitty protocols
 
 ## Widgets
 
 TabPanel, SplitPanel, SplitPane, TiledWorkspace, PtyTerminal, TextArea,
 TreeView, ListView, Table, StatusBar, InputLine, InputDialog, FuzzySelect,
-Menu, ScrollView, ProgressBar, FileTree, DropdownMenu, ModalKey.
+Menu, ScrollView, ProgressBar, FileTree, DropdownMenu, ModalKey, ImageView.
 
 ## Documentation
 
