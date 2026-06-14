@@ -1,5 +1,6 @@
 //! Image rendering for terminal backends — Kitty and iTerm2 protocols.
 
+use std::env;
 use std::io::Write;
 
 use txv_core::buffer::Buffer;
@@ -7,6 +8,11 @@ use txv_core::cell::Color;
 use txv_core::image::ImagePlacement;
 
 use crate::image_protocol::{CellPixelSize, ImageProtocol};
+
+/// Check if we're inside tmux (need passthrough wrapping).
+fn in_tmux() -> bool {
+    env::var("TMUX").is_ok()
+}
 
 /// Render all image placements from a buffer to the terminal.
 pub fn flush_images(out: &mut impl Write, buffer: &Buffer, protocol: ImageProtocol, cell_size: CellPixelSize) {
@@ -143,7 +149,11 @@ fn emit_iterm2(out: &mut impl Write, img: &ImagePlacement, cell_size: CellPixelS
     let scaled = scale_image(data.pixels(), img_w, img_h, pixel_w, pixel_h);
     let encoded = base64_encode(&scaled);
 
-    // iTerm2 OSC 1337 with raw pixel data
+    // Wrap in tmux passthrough if needed
+    let tmux = in_tmux();
+    if tmux {
+        let _ = write!(out, "\x1bPtmux;\x1b");
+    }
     let _ = write!(
         out,
         "\x1b]1337;File=inline=1;width={}cells;height={}cells;preserveAspectRatio=0:{}\x07",
@@ -151,6 +161,9 @@ fn emit_iterm2(out: &mut impl Write, img: &ImagePlacement, cell_size: CellPixelS
         r.h(),
         encoded,
     );
+    if tmux {
+        let _ = write!(out, "\x1b\\");
+    }
 }
 
 /// Nearest-neighbor scale of RGBA image.
