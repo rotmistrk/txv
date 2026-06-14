@@ -37,7 +37,9 @@ impl InputDialog {
     }
 
     fn input_mut(&mut self) -> Option<&mut InputLine> {
-        self.group.child_mut(0)?.as_any_mut()?.downcast_mut::<InputLine>()
+        let child = self.group.child_mut(0)?;
+        let any = child.as_any_mut()?;
+        any.downcast_mut::<InputLine>()
     }
 
     fn layout(&mut self) {

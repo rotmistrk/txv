@@ -30,8 +30,10 @@ fn horizontal_split_divides_width() -> Result<(), Box<dyn std::error::Error>> {
     sp.add_child(Box::new(Dummy::new()), 0.5);
     sp.set_bounds(Rect::new(0, 0, 100, 40));
 
-    let b0 = sp.child(0).ok_or("child 0")?.bounds();
-    let b1 = sp.child(1).ok_or("child 1")?.bounds();
+    let c0 = sp.child(0).ok_or("child 0")?;
+    let b0 = c0.bounds();
+    let c1 = sp.child(1).ok_or("child 1")?;
+    let b1 = c1.bounds();
     let (o0x, _) = sp.child_origin(0);
     let (o1x, _) = sp.child_origin(1);
     // 1 column reserved for divider
@@ -50,8 +52,10 @@ fn vertical_split_divides_height() -> Result<(), Box<dyn std::error::Error>> {
     sp.add_child(Box::new(Dummy::new()), 0.4);
     sp.set_bounds(Rect::new(0, 0, 80, 40));
 
-    let b0 = sp.child(0).ok_or("child 0")?.bounds();
-    let b1 = sp.child(1).ok_or("child 1")?.bounds();
+    let c0 = sp.child(0).ok_or("child 0")?;
+    let b0 = c0.bounds();
+    let c1 = sp.child(1).ok_or("child 1")?;
+    let b1 = c1.bounds();
     let (_, o0y) = sp.child_origin(0);
     let (_, o1y) = sp.child_origin(1);
     // Second child starts where first ends
@@ -70,12 +74,14 @@ fn set_direction_relayouts() -> Result<(), Box<dyn std::error::Error>> {
     sp.set_bounds(Rect::new(0, 0, 80, 40));
 
     // Horizontal: children side by side
-    let b0 = sp.child(0).ok_or("child 0")?.bounds();
+    let c0 = sp.child(0).ok_or("child 0")?;
+    let b0 = c0.bounds();
     assert_eq!(b0.h(), 40);
 
     // Switch to vertical
     sp.set_direction(SplitDir::Vertical);
-    let b0 = sp.child(0).ok_or("child 0")?.bounds();
+    let c0 = sp.child(0).ok_or("child 0")?;
+    let b0 = c0.bounds();
     assert_eq!(b0.w(), 80);
     assert!(b0.h() > 0 && b0.h() < 40, "should split height");
     Ok(())
@@ -101,13 +107,16 @@ fn grow_shrink_adjusts_proportions() -> Result<(), Box<dyn std::error::Error>> {
     sp.add_child(Box::new(Dummy::new()), 0.5);
     sp.set_bounds(Rect::new(0, 0, 100, 40));
 
-    let before = sp.child(0).ok_or("child 0")?.bounds().w();
+    let c0 = sp.child(0).ok_or("child 0")?;
+    let before = c0.bounds().w();
     sp.grow_focused();
-    let after = sp.child(0).ok_or("child 0")?.bounds().w();
+    let c0 = sp.child(0).ok_or("child 0")?;
+    let after = c0.bounds().w();
     assert!(after > before);
 
     sp.shrink_focused();
-    let after2 = sp.child(0).ok_or("child 0")?.bounds().w();
+    let c0 = sp.child(0).ok_or("child 0")?;
+    let after2 = c0.bounds().w();
     assert!(after2 < after);
     Ok(())
 }
@@ -138,7 +147,8 @@ fn needs_redraw_propagates_from_children() -> Result<(), Box<dyn std::error::Err
     assert!(!sp.needs_redraw());
 
     // Mark a child dirty — parent should report needs_redraw
-    sp.child_mut(0).ok_or("child 0")?.set_bounds(Rect::new(0, 0, 39, 40));
+    let child = sp.child_mut(0).ok_or("child 0")?;
+    child.set_bounds(Rect::new(0, 0, 39, 40));
     assert!(sp.needs_redraw());
     Ok(())
 }

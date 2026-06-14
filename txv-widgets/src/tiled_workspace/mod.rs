@@ -261,8 +261,8 @@ impl TiledWorkspace {
         if id >= self.configs.len() || !self.configs[id].splittable {
             return None;
         }
-        self.group
-            .child_mut(id)?
+        let child = self.group.child_mut(id)?;
+        child
             .as_any_mut()
             .and_then(|a| a.downcast_mut::<crate::split_panel::SplitPanel>())
     }
@@ -272,8 +272,8 @@ impl TiledWorkspace {
         if id >= self.configs.len() || !self.configs[id].splittable {
             return None;
         }
-        self.group
-            .child(id)?
+        let child = self.group.child(id)?;
+        child
             .as_any()
             .and_then(|a| a.downcast_ref::<crate::split_panel::SplitPanel>())
     }

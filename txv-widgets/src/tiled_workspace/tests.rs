@@ -53,9 +53,12 @@ fn wide_layout_three_columns() -> Result<(), Box<dyn std::error::Error>> {
     ws.insert_tab(2, "Shell", Box::new(Dummy::new()));
     ws.set_bounds(Rect::new(0, 0, 200, 50));
 
-    let b0 = ws.group.child(0).ok_or("child 0")?.bounds();
-    let b1 = ws.group.child(1).ok_or("child 1")?.bounds();
-    let b2 = ws.group.child(2).ok_or("child 2")?.bounds();
+    let c0 = ws.group.child(0).ok_or("child 0")?;
+    let b0 = c0.bounds();
+    let c1 = ws.group.child(1).ok_or("child 1")?;
+    let b1 = c1.bounds();
+    let c2 = ws.group.child(2).ok_or("child 2")?;
+    let b2 = c2.bounds();
     let (o0x, _) = ws.group.child_origin(0);
     let (o1x, _) = ws.group.child_origin(1);
     let (o2x, _) = ws.group.child_origin(2);
@@ -79,9 +82,12 @@ fn narrow_layout_stacked() -> Result<(), Box<dyn std::error::Error>> {
     ws.insert_tab(2, "Shell", Box::new(Dummy::new()));
     ws.set_bounds(Rect::new(0, 0, 80, 40));
 
-    let b0 = ws.group.child(0).ok_or("child 0")?.bounds();
-    let b1 = ws.group.child(1).ok_or("child 1")?.bounds();
-    let b2 = ws.group.child(2).ok_or("child 2")?.bounds();
+    let c0 = ws.group.child(0).ok_or("child 0")?;
+    let b0 = c0.bounds();
+    let c1 = ws.group.child(1).ok_or("child 1")?;
+    let b1 = c1.bounds();
+    let c2 = ws.group.child(2).ok_or("child 2")?;
+    let b2 = c2.bounds();
     let (_, o1y) = ws.group.child_origin(1);
     let (_, o2y) = ws.group.child_origin(2);
 
@@ -102,7 +108,8 @@ fn toggle_hides_panel() -> Result<(), Box<dyn std::error::Error>> {
     ws.set_bounds(Rect::new(0, 0, 200, 50));
 
     ws.toggle_panel(0); // hide tree
-    let b0 = ws.group.child(0).ok_or("child 0")?.bounds();
+    let c0 = ws.group.child(0).ok_or("child 0")?;
+    let b0 = c0.bounds();
     let (o1x, _) = ws.group.child_origin(1);
     // Tree gets no space, main+tools fill width
     assert_eq!(b0.w(), 0);
@@ -118,7 +125,8 @@ fn zoom_gives_full_bounds() -> Result<(), Box<dyn std::error::Error>> {
     ws.focus_panel(1);
     ws.toggle_zoom();
 
-    let b1 = ws.group.child(1).ok_or("child 1")?.bounds();
+    let c1 = ws.group.child(1).ok_or("child 1")?;
+    let b1 = c1.bounds();
     assert_eq!(b1.w(), 200);
     assert_eq!(b1.h(), 50);
     Ok(())

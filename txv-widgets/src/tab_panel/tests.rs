@@ -137,10 +137,8 @@ fn needs_redraw_propagates_from_active_child() -> Result<(), Box<dyn std::error:
     assert!(!panel.needs_redraw());
 
     // Mark child dirty — panel should report needs_redraw
-    panel
-        .active_child_mut()
-        .ok_or("no active child")?
-        .set_bounds(Rect::new(0, 0, 79, 22));
+    let child = panel.active_child_mut().ok_or("no active child")?;
+    child.set_bounds(Rect::new(0, 0, 79, 22));
     assert!(panel.needs_redraw());
     Ok(())
 }

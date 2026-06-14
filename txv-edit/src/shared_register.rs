@@ -20,6 +20,11 @@ impl SharedRegister {
     pub fn block(&self) -> bool {
         self.block
     }
+    pub fn set(&mut self, text: String, linewise: bool) {
+        self.text = text;
+        self.linewise = linewise;
+        self.block = false;
+    }
 }
 
 /// Thread-safe handle to a shared register.
