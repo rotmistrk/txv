@@ -155,7 +155,6 @@ impl Editor {
         self.last_visual_lines = Some((start, end));
         self.exit_visual();
         self.mode = EditorMode::Command;
-        self.command_buf = "'<,'>".to_string();
     }
 
     pub(super) fn visual_indent(&mut self) {

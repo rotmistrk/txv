@@ -53,15 +53,6 @@ impl Editor {
     pub fn options_mut(&mut self) -> &mut EditorOptions {
         &mut self.options
     }
-    pub fn command_buf(&self) -> &str {
-        &self.command_buf
-    }
-    pub fn command_buf_mut(&mut self) -> &mut String {
-        &mut self.command_buf
-    }
-    pub fn set_command_buf(&mut self, v: String) {
-        self.command_buf = v;
-    }
     pub fn command_history(&self) -> &[String] {
         &self.command_history
     }

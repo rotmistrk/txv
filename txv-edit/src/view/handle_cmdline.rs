@@ -73,10 +73,15 @@ impl<D: EditorViewDelegate> EditorView<D> {
         let mut il = InputLine::new();
         if is_search {
             il = il.with_change_command(CM_CMDLINE_CHANGED);
-        }
-        if !is_search {
+            if let Some(h) = self.delegate.search_history() {
+                il = il.with_history(h);
+            }
+        } else {
             if let Some(c) = self.delegate.cmdline_completer() {
                 il = il.with_completer(c);
+            }
+            if let Some(h) = self.delegate.command_history() {
+                il = il.with_history(h);
             }
         }
 

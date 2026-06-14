@@ -51,18 +51,15 @@ impl Editor {
     fn enter_search_forward(&mut self) {
         self.incsearch_origin = Some((self.cursor_line, self.cursor_col));
         self.mode = EditorMode::Search;
-        self.command_buf.clear();
     }
 
     fn enter_search_backward(&mut self) {
         self.incsearch_origin = Some((self.cursor_line, self.cursor_col));
         self.search_direction_forward = false;
         self.mode = EditorMode::Search;
-        self.command_buf.clear();
     }
 
     fn enter_command_mode(&mut self) {
         self.mode = EditorMode::Command;
-        self.command_buf.clear();
     }
 }

@@ -6,6 +6,7 @@ use txv_core::text::display_width;
 use super::{EditorView, CM_EDITOR_CLOSE, CM_EDITOR_CONTENT_CHANGED, CM_EDITOR_CURSOR_MOVED, CM_EDITOR_SAVE};
 use crate::editor::command::Command;
 use crate::editor::keymap::Keymap;
+use crate::editor::motions::word_at;
 use crate::editor::EditorAction;
 use crate::view::delegate::EditorViewDelegate;
 
@@ -95,6 +96,12 @@ impl<D: EditorViewDelegate> EditorView<D> {
             self.editor.incsearch_origin = Some((self.editor.cursor_line(), self.editor.cursor_col()));
             self.editor.search_direction_forward = false;
             self.activate_cmdline("?");
+            return Some(HandleResult::Consumed);
+        }
+        if *cmd == Command::LspRename {
+            let word =
+                word_at(&self.editor.buf(), self.editor.cursor_line(), self.editor.cursor_col()).unwrap_or_default();
+            self.activate_cmdline_with_text(":", &format!("lsp-rename {word}"));
             return Some(HandleResult::Consumed);
         }
         None

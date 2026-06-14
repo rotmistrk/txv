@@ -3,7 +3,6 @@
 pub mod chars;
 pub mod gutter;
 mod line_draw;
-mod prompt;
 pub mod rainbow;
 pub mod sticky;
 pub mod style;
@@ -99,7 +98,6 @@ pub fn draw_editor<D: EditorViewDelegate>(
 
     let row = draw_viewport_lines(buf, editor, delegate, &params, &spans, sticky_lines.len(), viewport_end);
     draw_tilde_fill(buf, row, h);
-    prompt::draw_prompt(buf, editor, w, h);
 }
 
 fn draw_viewport_lines<D: EditorViewDelegate>(

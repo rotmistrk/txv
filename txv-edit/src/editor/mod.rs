@@ -109,7 +109,6 @@ pub struct Editor {
     pub(crate) search_direction_forward: bool,
     /// Cursor position before incremental search started (for elastic backspace).
     pub(crate) incsearch_origin: Option<(usize, usize)>,
-    pub(crate) command_buf: String,
     pub(crate) command_history: Vec<String>,
     pub(crate) history_index: Option<usize>,
     pub(crate) history_prefix: String,
@@ -205,7 +204,6 @@ impl Editor {
             search_pattern: String::new(),
             search_direction_forward: true,
             incsearch_origin: None,
-            command_buf: String::new(),
             command_history: Vec::new(),
             history_index: None,
             history_prefix: String::new(),

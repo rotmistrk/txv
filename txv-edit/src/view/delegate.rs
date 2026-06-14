@@ -124,6 +124,16 @@ pub trait EditorViewDelegate: Send {
     fn cmdline_completer(&self) -> Option<Box<dyn txv_core::complete::Completer>> {
         None
     }
+
+    /// Shared history for : commands. Application provides for cross-editor sharing.
+    fn command_history(&self) -> Option<txv_core::shared_history::SharedHistory> {
+        None
+    }
+
+    /// Shared history for / and ? search. Application provides for cross-editor sharing.
+    fn search_history(&self) -> Option<txv_core::shared_history::SharedHistory> {
+        None
+    }
 }
 
 /// No-op delegate for standalone usage.
