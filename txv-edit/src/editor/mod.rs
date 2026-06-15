@@ -9,6 +9,7 @@ mod dispatch_search;
 mod dispatch_visual;
 mod dispatch_yank;
 mod editing;
+mod editing_insert;
 mod editing_lines;
 pub mod ephemeral;
 pub mod ephemeral_range;
