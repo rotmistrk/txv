@@ -121,12 +121,13 @@ impl Editor {
 
     pub(super) fn delete_char_backward(&mut self) {
         if self.cursor_col > 0 {
-            self.cursor_col -= 1;
-            let offset = self.buf().line_col_to_offset(self.cursor_line, self.cursor_col);
-            if let Some(offset) = offset {
-                let content = self.buf().content();
-                let ch_len = content[offset..].chars().next().map(|c| c.len_utf8()).unwrap_or(1);
-                self.buf().delete(offset, offset + ch_len);
+            let count = self.softtab_back_count();
+            for _ in 0..count {
+                self.cursor_col -= 1;
+                let offset = self.buf().line_col_to_offset(self.cursor_line, self.cursor_col);
+                if let Some(offset) = offset {
+                    self.buf().delete(offset, offset + 1);
+                }
             }
         } else if self.cursor_line > 0 {
             let prev_len = self.buf().line_len(self.cursor_line - 1);
@@ -136,6 +137,25 @@ impl Editor {
                 self.cursor_line -= 1;
                 self.cursor_col = prev_len;
             }
+        }
+    }
+
+    /// Spaces to delete to reach previous tabstop. Only when in leading whitespace.
+    fn softtab_back_count(&self) -> usize {
+        let line = self.buf().line(self.cursor_line).unwrap_or_default();
+        let col = self.cursor_col;
+        if col == 0 || !line[..col].chars().all(|c| c == ' ') {
+            return 1;
+        }
+        let tw = self.options.tab_width();
+        if tw <= 1 {
+            return 1;
+        }
+        let back = col % tw;
+        if back == 0 {
+            tw
+        } else {
+            back
         }
     }
 

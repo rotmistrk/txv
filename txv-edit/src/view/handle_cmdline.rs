@@ -24,12 +24,15 @@ impl<D: EditorViewDelegate> EditorView<D> {
 
     fn drain_child_commands(&mut self) -> Option<HandleResult> {
         let sink = self.group.sink()?;
-        for ev in sink.drain() {
+        let events = sink.drain();
+        for ev in events {
             if let Event::Command { id, data, .. } = ev {
                 let r = self.handle_cmdline_command(id, &data);
                 if r != HandleResult::Ignored {
                     return Some(r);
                 }
+                // Re-emit unhandled commands so they reach outer components
+                self.group.put_command(id, data);
             }
         }
         None
