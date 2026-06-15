@@ -91,7 +91,7 @@ impl SidekickManager {
         } else {
             let cx = show.rect.x() as i16;
             let cy = show.rect.y() as i16;
-            (cx, cy + 2)
+            (cx, cy + 1)
         };
         self.request_reposition(w, h, off_x, off_y, Some(emitter));
         HandleResult::Consumed

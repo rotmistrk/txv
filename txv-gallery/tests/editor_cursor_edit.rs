@@ -29,7 +29,7 @@ impl TestEditor {
                 _ => KeyCode::Char(ch),
             };
             self.ev.handle(&Event::Key(KeyEvent::new(code, KeyMod::NONE)));
-            self.drain();
+            self.self.drain();
         }
     }
 
