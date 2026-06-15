@@ -57,8 +57,18 @@ impl GroupState {
             Some(rel_id) => self.origin_of(rel_id).unwrap_or((0, 0)),
             None => (0, 0),
         };
-        let x = (base.0 as i16 + req.offset_x).max(0) as u16;
-        let y = (base.1 as i16 + req.offset_y).max(0) as u16;
+        let mut x = (base.0 as i16 + req.offset_x).max(0) as u16;
+        let mut y = (base.1 as i16 + req.offset_y).max(0) as u16;
+        let parent_w = self.bounds().w();
+        let parent_h = self.bounds().h();
+        if x + req.width > parent_w {
+            x = parent_w.saturating_sub(req.width);
+        }
+        if y + req.height > parent_h {
+            // Mirror above: place above the cursor (offset_y - height - 1)
+            let above = (base.1 as i16 + req.offset_y - req.height as i16 - 2).max(0) as u16;
+            y = above;
+        }
         let translated = Rect::new(x, y, req.width, req.height);
         for i in 0..self.children.len() {
             if self.children[i].view_id() == req.view_id {
