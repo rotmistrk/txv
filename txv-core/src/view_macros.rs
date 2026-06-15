@@ -28,6 +28,9 @@ macro_rules! delegate_view_state {
         fn set_sink(&mut self, sink: $crate::view::EventSink) {
             self.$field.set_sink(sink);
         }
+        fn group_state(&self) -> Option<&$crate::group::GroupState> {
+            None
+        }
         fn options(&self) -> $crate::view::ViewOptions {
             self.$field.options()
         }
@@ -76,6 +79,9 @@ macro_rules! delegate_view_state {
                 self.$field.set_sink(sink);
             }
         });
+        fn group_state(&self) -> Option<&$crate::group::GroupState> {
+            None
+        }
         $crate::__dvs_maybe!(options, [$($skip),*], {
             fn options(&self) -> $crate::view::ViewOptions {
                 self.$field.options()
@@ -162,6 +168,7 @@ macro_rules! delegate_view {
         $crate::__dv_maybe!(set_sink, [$($skip),*], {
             fn set_sink(&mut self, sink: $crate::view::EventSink) { self.$field.set_sink(sink); }
         });
+        fn group_state(&self) -> Option<&$crate::group::GroupState> { None }
         $crate::__dv_maybe!(options, [$($skip),*], {
             fn options(&self) -> $crate::view::ViewOptions { self.$field.options() }
         });

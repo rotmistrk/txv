@@ -93,7 +93,17 @@ pub trait View: Send {
     fn buffer(&self) -> &Buffer;
     /// If this view owns a GroupState, expose it for coordinate queries.
     fn group_state(&self) -> Option<&crate::group::GroupState> {
-        None
+        #[cfg(debug_assertions)]
+        panic!(
+            "group_state() not implemented for view_id={}. \
+             Override with Some(&self.group) for groups or None for leaves.",
+            self.view_id()
+        );
+        #[cfg(not(debug_assertions))]
+        {
+            log::error!("group_state() not implemented for view_id={}", self.view_id());
+            None
+        }
     }
     /// Describe key bindings this view handles (for introspection/help).
     fn key_help(&self) -> Vec<crate::key_help::KeyHelpEntry> {

@@ -20,6 +20,9 @@ impl View for StatusBar {
     fn set_sink(&mut self, sink: EventSink) {
         self.state.set_sink(sink);
     }
+    fn group_state(&self) -> Option<&crate::group::GroupState> {
+        None
+    }
     fn options(&self) -> ViewOptions {
         self.state.options
     }
