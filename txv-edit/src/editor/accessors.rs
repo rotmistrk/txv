@@ -41,6 +41,9 @@ impl Editor {
     pub fn viewport_height(&self) -> usize {
         self.viewport_height
     }
+    pub fn viewport_width(&self) -> usize {
+        self.viewport_width
+    }
     pub fn h_scroll(&self) -> usize {
         self.h_scroll
     }

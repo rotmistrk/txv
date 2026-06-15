@@ -102,6 +102,7 @@ pub struct Editor {
     pub(crate) clipboard: Option<ClipboardHandle>,
     pub(crate) viewport_scroll: usize,
     pub(crate) viewport_height: usize,
+    pub(crate) viewport_width: usize,
     pub(crate) h_scroll: usize,
     pub(crate) visual_anchor: Option<(usize, usize)>,
     /// Last visual selection line range (for '< '> marks in ex commands).
@@ -141,6 +142,9 @@ impl Editor {
     }
     pub fn set_viewport_height(&mut self, v: usize) {
         self.viewport_height = v;
+    }
+    pub fn set_viewport_width(&mut self, v: usize) {
+        self.viewport_width = v;
     }
     pub fn mode(&self) -> EditorMode {
         self.mode
@@ -199,6 +203,7 @@ impl Editor {
             clipboard: None,
             viewport_scroll: 0,
             viewport_height: 24,
+            viewport_width: 80,
             h_scroll: 0,
             visual_anchor: None,
             last_visual_lines: None,

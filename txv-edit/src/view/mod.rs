@@ -240,6 +240,7 @@ impl<D: EditorViewDelegate + 'static> View for EditorView<D> {
     fn set_bounds(&mut self, r: Rect) {
         self.group.set_bounds(r);
         self.editor.set_viewport_height(self.content_height() as usize);
+        self.editor.set_viewport_width(r.w() as usize);
         self.relayout_cmdline();
         self.ensure_cursor_visible();
     }
