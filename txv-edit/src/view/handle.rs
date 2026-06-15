@@ -13,9 +13,11 @@ use crate::view::delegate::EditorViewDelegate;
 impl<D: EditorViewDelegate> EditorView<D> {
     pub(super) fn handle_impl(&mut self, event: &Event) -> HandleResult {
         if self.cmdline_active {
-            return self.handle_cmdline_event(event);
+            let r = self.handle_cmdline_event(event);
+            self.flush_delegate();
+            return r;
         }
-        match event {
+        let result = match event {
             Event::Tick => {
                 self.tick_count += 1;
                 self.delegate.on_tick(&mut self.editor, self.tick_count)
@@ -24,6 +26,20 @@ impl<D: EditorViewDelegate> EditorView<D> {
             Event::Paste(text) => self.delegate.on_paste(text, &mut self.editor),
             Event::Key(key) => self.handle_key(*key),
             _ => HandleResult::Ignored,
+        };
+        self.flush_delegate();
+        result
+    }
+
+    fn flush_delegate(&mut self) {
+        for (id, data) in self.delegate.drain_commands() {
+            self.group.put_command(id, data);
+        }
+        for (id, data) in self.delegate.drain_broadcasts() {
+            self.group.put_broadcast(id, data);
+        }
+        if self.delegate.needs_redraw(&self.editor) {
+            self.group.mark_dirty();
         }
     }
 

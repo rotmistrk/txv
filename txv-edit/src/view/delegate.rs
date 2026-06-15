@@ -134,6 +134,13 @@ pub trait EditorViewDelegate: Send {
     fn search_history(&self) -> Option<txv_core::shared_history::SharedHistory> {
         None
     }
+
+    fn drain_commands(&mut self) -> Vec<(u16, Option<Box<dyn Any + Send>>)> {
+        vec![]
+    }
+    fn drain_broadcasts(&mut self) -> Vec<(u16, Option<Box<dyn Any + Send>>)> {
+        vec![]
+    }
 }
 
 /// No-op delegate for standalone usage.

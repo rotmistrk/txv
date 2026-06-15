@@ -66,7 +66,9 @@ impl<D: EditorViewDelegate> EditorView<D> {
         } else {
             EditorMode::Command
         };
+        let old_mode = self.editor.mode();
         self.editor.set_mode(mode);
+        self.delegate.on_mode_changed(old_mode, mode, &self.editor);
         self.cmdline_prefix = prefix.chars().next().unwrap_or(':');
         self.match_count = 0;
 
@@ -116,6 +118,7 @@ impl<D: EditorViewDelegate> EditorView<D> {
         let mode = self.editor.mode();
         self.deactivate_cmdline();
         self.editor.set_mode(EditorMode::Normal);
+        self.delegate.on_mode_changed(mode, EditorMode::Normal, &self.editor);
         self.editor.incsearch_origin = None;
         if text.is_empty() {
             return;
@@ -140,8 +143,11 @@ impl<D: EditorViewDelegate> EditorView<D> {
             self.editor.set_cursor_line(line);
             self.editor.set_cursor_col(col);
         }
+        let old_mode = self.editor.mode();
         self.deactivate_cmdline();
         self.editor.set_mode(EditorMode::Normal);
+        self.delegate
+            .on_mode_changed(old_mode, EditorMode::Normal, &self.editor);
     }
 
     pub(super) fn incsearch_update(&mut self) {

@@ -86,7 +86,26 @@ impl SidekickManager {
         self.group.insert(view);
         self.group.set_child_bounds(0, Rect::new(0, 0, w, h));
         self.group.mark_dirty();
-        self.request_reposition(w, h, 0, -(h as i16), Some(emitter));
+        let (off_x, off_y) = if show.rect.x() == 0 && show.rect.y() == 0 {
+            // No cursor offset — place above emitter (legacy behavior)
+            (0i16, -(h as i16))
+        } else {
+            // Cursor offset provided — place below cursor, clamp to screen
+            let cx = show.rect.x() as i16;
+            let cy = show.rect.y() as i16;
+            let screen_h = self.group.bounds().h() as i16;
+            let screen_w = self.group.bounds().w() as i16;
+            let mut x = cx;
+            let mut y = cy + 1;
+            if x + w as i16 > screen_w {
+                x = screen_w - w as i16;
+            }
+            if y + h as i16 > screen_h {
+                y = cy - h as i16;
+            }
+            (x, y)
+        };
+        self.request_reposition(w, h, off_x, off_y, Some(emitter));
         HandleResult::Consumed
     }
 

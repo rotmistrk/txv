@@ -241,6 +241,7 @@ impl<D: EditorViewDelegate + 'static> View for EditorView<D> {
         self.group.set_bounds(r);
         self.editor.set_viewport_height(self.content_height() as usize);
         self.relayout_cmdline();
+        self.ensure_cursor_visible();
     }
 
     fn draw(&mut self) {
