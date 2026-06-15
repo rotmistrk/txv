@@ -27,7 +27,16 @@ impl<D: EditorViewDelegate> EditorView<D> {
         }
         let sticky_h = sticky_line_count(&self.editor);
         let y = self.compute_cursor_y(line, scroll, gw, sticky_h)?;
-        let x = gw + (col.saturating_sub(self.editor.h_scroll())) as u16;
+        let x = if self.editor.options().wrap() {
+            let avail = self.group.bounds().w().saturating_sub(gw) as usize;
+            if avail == 0 {
+                gw
+            } else {
+                gw + (col % avail) as u16
+            }
+        } else {
+            gw + (col.saturating_sub(self.editor.h_scroll())) as u16
+        };
         let shape = self.cursor_shape(mode)?;
         Some(CursorRequest::new(x, y, shape))
     }
@@ -49,6 +58,9 @@ impl<D: EditorViewDelegate> EditorView<D> {
                     w.div_ceil(avail) as u16
                 };
             }
+            // Add wrapped row within current line
+            let col = self.editor.cursor_col();
+            vrow += (col / avail) as u16;
             Some(vrow + sticky_h)
         } else {
             Some((line - scroll) as u16 + sticky_h)
