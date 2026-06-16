@@ -184,6 +184,14 @@ impl TiledWorkspace {
             self.move_tab_to_subpanel();
             return Some(HandleResult::Consumed);
         }
+        if km.matches(key, &km.move_tab_left) {
+            self.move_tab_to_adjacent(false);
+            return Some(HandleResult::Consumed);
+        }
+        if km.matches(key, &km.move_tab_right) {
+            self.move_tab_to_adjacent(true);
+            return Some(HandleResult::Consumed);
+        }
         None
     }
 
