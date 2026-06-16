@@ -97,6 +97,34 @@ impl TiledWorkspace {
         self.recompute_layout();
     }
 
+    /// Move the active tab from the focused panel to an adjacent panel.
+    /// `forward`: true = right/down, false = left/up.
+    pub fn move_tab_to_adjacent(&mut self, forward: bool) {
+        let current = self.group.focused_index();
+        let visible: Vec<usize> = (0..self.configs.len()).filter(|&i| !self.hidden[i]).collect();
+        if visible.len() <= 1 {
+            return;
+        }
+        let pos = visible.iter().position(|&i| i == current).unwrap_or(0);
+        let target = if forward {
+            visible[(pos + 1) % visible.len()]
+        } else {
+            visible[(pos + visible.len() - 1) % visible.len()]
+        };
+        // Take active tab from source panel
+        let tab_data = self.panel_mut(current).and_then(|p| p.take_active());
+        let Some((title, view)) = tab_data else {
+            return;
+        };
+        // Insert into target panel
+        if let Some(tp) = self.panel_mut(target) {
+            tp.insert_tab(title, view);
+        }
+        // Focus the target panel
+        self.group.switch_focus(target);
+        self.recompute_layout();
+    }
+
     fn do_move_tab(sp: &mut SplitPanel, mode: crate::tab_bar::TabBarMode) {
         let focused = sp.focused_index();
         let tab_data = {
