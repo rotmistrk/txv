@@ -71,6 +71,11 @@ impl SplitPanel {
         self.group.focused_index()
     }
 
+    /// Switch focus to a different child (unselects old, selects new).
+    pub fn switch_focus(&mut self, idx: usize) {
+        self.group.switch_focus(idx);
+    }
+
     /// Access a child by index.
     pub fn child(&self, idx: usize) -> Option<&dyn View> {
         self.group.child(idx)

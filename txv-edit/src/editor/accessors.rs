@@ -56,24 +56,6 @@ impl Editor {
     pub fn options_mut(&mut self) -> &mut EditorOptions {
         &mut self.options
     }
-    pub fn command_history(&self) -> &[String] {
-        &self.command_history
-    }
-    pub fn command_history_mut(&mut self) -> &mut Vec<String> {
-        &mut self.command_history
-    }
-    pub fn history_index(&self) -> Option<usize> {
-        self.history_index
-    }
-    pub fn set_history_index(&mut self, v: Option<usize>) {
-        self.history_index = v;
-    }
-    pub fn history_prefix(&self) -> &str {
-        &self.history_prefix
-    }
-    pub fn set_history_prefix(&mut self, v: String) {
-        self.history_prefix = v;
-    }
     pub fn highlight(&self) -> Option<&HighlightState> {
         self.highlight.as_ref()
     }

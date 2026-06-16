@@ -51,6 +51,8 @@ pub struct TiledWorkspace {
     handle_keys: bool,
     h_divider_gaps: bool,
     v_divider_gaps: bool,
+    /// When true, Ctrl+Shift+Arrow cycles through subpanels within splits.
+    focus_subpanels: bool,
 }
 
 impl TiledWorkspace {
@@ -93,6 +95,7 @@ impl TiledWorkspace {
             handle_keys: true,
             h_divider_gaps: true,
             v_divider_gaps: true,
+            focus_subpanels: false,
         }
     }
 
@@ -110,6 +113,16 @@ impl TiledWorkspace {
     /// responds to command events — the app/status bar owns key dispatch.
     pub fn set_handle_keys(&mut self, enabled: bool) {
         self.handle_keys = enabled;
+    }
+
+    /// Enable/disable subpanel inclusion in focus rotation.
+    pub fn set_focus_subpanels(&mut self, enabled: bool) {
+        self.focus_subpanels = enabled;
+    }
+
+    /// Whether subpanel focus rotation is enabled.
+    pub fn focus_subpanels(&self) -> bool {
+        self.focus_subpanels
     }
 
     /// Access a panel's TabPanel.
