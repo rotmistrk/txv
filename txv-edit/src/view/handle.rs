@@ -23,7 +23,14 @@ impl<D: EditorViewDelegate> EditorView<D> {
                 self.delegate.on_tick(&mut self.editor, self.tick_count)
             }
             Event::Command { id, data, .. } => self.delegate.on_command(*id, data, &mut self.editor),
-            Event::Paste(text) => self.delegate.on_paste(text, &mut self.editor),
+            Event::Paste(text) => {
+                let r = self.delegate.on_paste(text, &mut self.editor);
+                if r == HandleResult::Ignored {
+                    self.handle_paste(text)
+                } else {
+                    r
+                }
+            }
             Event::Key(key) => self.handle_key(*key),
             _ => HandleResult::Ignored,
         };
@@ -41,6 +48,26 @@ impl<D: EditorViewDelegate> EditorView<D> {
         if self.delegate.needs_redraw(&self.editor) {
             self.group.mark_dirty();
         }
+    }
+
+    fn handle_paste(&mut self, text: &str) -> HandleResult {
+        use crate::editor::command::Command;
+        if self.editor.mode() == crate::editor::keymap::EditorMode::Insert {
+            for ch in text.chars() {
+                let cmd = if ch == '\n' {
+                    Command::InsertNewline
+                } else {
+                    Command::InsertChar(ch)
+                };
+                self.editor.execute(cmd);
+            }
+        } else {
+            // Normal mode: set register, then paste
+            self.editor.yank(text.to_string());
+            self.editor.execute(Command::Paste);
+        }
+        self.ensure_cursor_visible();
+        HandleResult::Consumed
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> HandleResult {
