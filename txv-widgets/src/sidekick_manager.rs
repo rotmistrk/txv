@@ -10,7 +10,9 @@ use txv_core::prelude::*;
 
 use crate::dropdown_menu::{DropdownMenu, CM_DROPDOWN_CANCELLED, CM_DROPDOWN_DONE};
 use crate::input_line::completion_source::CompletionSource;
-use crate::sidekick::{SidekickRequest, CM_SIDEKICK_HIDE, CM_SIDEKICK_RESULT, CM_SIDEKICK_SHOW};
+use crate::sidekick::{
+    SidekickRequest, CM_SIDEKICK_HIDE, CM_SIDEKICK_NEXT, CM_SIDEKICK_PREV, CM_SIDEKICK_RESULT, CM_SIDEKICK_SHOW,
+};
 
 pub struct SidekickManager {
     group: GroupState,
@@ -27,7 +29,6 @@ impl SidekickManager {
         if self.group.child_count() > 0 {
             self.group.remove(0);
         }
-        self.group.set_modal(false);
         self.group.mark_dirty();
         self.request_reposition(0, 0, 0, 0, None);
     }
@@ -48,16 +49,6 @@ impl View for SidekickManager {
     fn draw(&mut self) {}
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        // Forward key events to child dropdown when modal
-        if matches!(event, Event::Key(_) | Event::Tick) {
-            if let Some(child) = self.group.child_mut(0) {
-                let r = child.handle(event);
-                if r == HandleResult::Consumed {
-                    self.group.mark_dirty();
-                    return r;
-                }
-            }
-        }
         let Event::Command { id, data, .. } = event else {
             return HandleResult::Ignored;
         };
@@ -65,6 +56,26 @@ impl View for SidekickManager {
             CM_SIDEKICK_SHOW => self.handle_show(data),
             CM_SIDEKICK_HIDE => {
                 self.hide();
+                HandleResult::Consumed
+            }
+            CM_SIDEKICK_NEXT => {
+                if let Some(child) = self.group.child_mut(0) {
+                    child.handle(&Event::Key(txv_core::event::KeyEvent::new(
+                        txv_core::event::KeyCode::Down,
+                        txv_core::event::KeyMod::default(),
+                    )));
+                    self.group.mark_dirty();
+                }
+                HandleResult::Consumed
+            }
+            CM_SIDEKICK_PREV => {
+                if let Some(child) = self.group.child_mut(0) {
+                    child.handle(&Event::Key(txv_core::event::KeyEvent::new(
+                        txv_core::event::KeyCode::Up,
+                        txv_core::event::KeyMod::default(),
+                    )));
+                    self.group.mark_dirty();
+                }
                 HandleResult::Consumed
             }
             CM_DROPDOWN_DONE => {
@@ -102,11 +113,6 @@ impl SidekickManager {
         }
         self.group.insert(view);
         self.group.set_child_bounds(0, Rect::new(0, 0, w, h));
-        // Only set modal for cursor-positioned popups (editor completion)
-        // InputLine sends rect (0,0,...) and handles its own key forwarding
-        if show.rect.x() != 0 || show.rect.y() != 0 {
-            self.group.set_modal(true);
-        }
         self.group.mark_dirty();
         let (off_x, off_y) = if show.rect.x() == 0 && show.rect.y() == 0 {
             (0i16, -(h as i16))
