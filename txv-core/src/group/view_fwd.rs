@@ -49,6 +49,10 @@ impl GroupState {
         self.view.options()
     }
 
+    pub fn set_modal(&mut self, modal: bool) {
+        self.view.set_modal(modal);
+    }
+
     pub fn sink(&self) -> Option<&EventSink> {
         self.view.sink()
     }

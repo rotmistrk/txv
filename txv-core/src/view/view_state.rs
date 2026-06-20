@@ -55,6 +55,10 @@ impl ViewState {
         self.options
     }
 
+    pub fn set_modal(&mut self, modal: bool) {
+        self.options.modal = modal;
+    }
+
     pub fn set_preprocess(&mut self, enabled: bool) {
         self.options.preprocess = enabled;
     }
