@@ -193,3 +193,25 @@ impl<D: EditorViewDelegate> EditorView<D> {
         self.group.mark_dirty();
     }
 }
+
+impl<D: EditorViewDelegate> EditorView<D> {
+    pub(super) fn handle_paste(&mut self, text: &str) -> HandleResult {
+        use crate::editor::command::Command;
+        use crate::editor::keymap::EditorMode;
+        if self.editor.mode() == EditorMode::Insert || self.editor.mode() == EditorMode::Replace {
+            for ch in text.chars() {
+                let cmd = if ch == '\n' {
+                    Command::InsertNewline
+                } else {
+                    Command::InsertChar(ch)
+                };
+                self.editor.execute(cmd);
+            }
+        } else {
+            self.editor.yank(text.to_string());
+            self.editor.execute(Command::Paste);
+        }
+        self.ensure_cursor_visible();
+        HandleResult::Consumed
+    }
+}

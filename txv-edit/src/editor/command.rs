@@ -71,6 +71,7 @@ pub enum Command {
 
     // Mode
     EnterInsertMode,
+    EnterReplaceMode,
     EnterInsertAfter,
     EnterInsertLineEnd,
     EnterInsertLineStart,

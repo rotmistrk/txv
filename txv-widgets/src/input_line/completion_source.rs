@@ -15,6 +15,7 @@ impl CompletionSource {
         Self { items }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn text_at(&self, idx: usize) -> Option<&str> {
         self.items.get(idx).map(|i| i.text())
     }

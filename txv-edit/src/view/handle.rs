@@ -50,26 +50,6 @@ impl<D: EditorViewDelegate> EditorView<D> {
         }
     }
 
-    fn handle_paste(&mut self, text: &str) -> HandleResult {
-        use crate::editor::command::Command;
-        if self.editor.mode() == crate::editor::keymap::EditorMode::Insert {
-            for ch in text.chars() {
-                let cmd = if ch == '\n' {
-                    Command::InsertNewline
-                } else {
-                    Command::InsertChar(ch)
-                };
-                self.editor.execute(cmd);
-            }
-        } else {
-            // Normal mode: set register, then paste
-            self.editor.yank(text.to_string());
-            self.editor.execute(Command::Paste);
-        }
-        self.ensure_cursor_visible();
-        HandleResult::Consumed
-    }
-
     fn handle_key(&mut self, key: KeyEvent) -> HandleResult {
         if let Some(result) = self.delegate.on_key_pre(&key, &mut self.editor) {
             return result;

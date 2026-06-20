@@ -70,7 +70,7 @@ impl<D: EditorViewDelegate> EditorView<D> {
     fn cursor_shape(&self, mode: EditorMode) -> Option<CursorShape> {
         let opts = self.editor.options();
         let cs = match mode {
-            EditorMode::Insert => opts.cursor_insert(),
+            EditorMode::Insert | EditorMode::Replace => opts.cursor_insert(),
             _ => opts.cursor_normal(),
         };
         match cs {

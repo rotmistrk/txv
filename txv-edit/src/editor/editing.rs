@@ -51,7 +51,9 @@ impl Editor {
     pub(super) fn insert_char(&mut self, ch: char) {
         let offset = self.buf().line_col_to_offset(self.cursor_line, self.cursor_col);
         if let Some(offset) = offset {
-            if ch == '\t' {
+            if self.mode == EditorMode::Replace {
+                self.replace_char_at(offset, ch);
+            } else if ch == '\t' {
                 self.buf().insert(offset, "    ");
                 self.cursor_col += 4;
             } else {

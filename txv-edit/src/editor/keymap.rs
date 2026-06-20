@@ -9,6 +9,7 @@ use super::command::Command;
 pub enum EditorMode {
     Normal,
     Insert,
+    Replace,
     Visual,
     VisualLine,
     VisualBlock,

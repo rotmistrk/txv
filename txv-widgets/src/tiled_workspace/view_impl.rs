@@ -184,6 +184,10 @@ impl TiledWorkspace {
             self.move_tab_to_subpanel();
             return Some(HandleResult::Consumed);
         }
+        self.dispatch_move_tab_keys(key, km)
+    }
+
+    fn dispatch_move_tab_keys(&mut self, key: &KeyEvent, km: &super::keymap::WorkspaceKeymap) -> Option<HandleResult> {
         if km.matches(key, &km.move_tab_left) {
             self.move_tab_to_adjacent(false);
             return Some(HandleResult::Consumed);

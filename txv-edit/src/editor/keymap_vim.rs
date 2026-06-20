@@ -119,6 +119,7 @@ impl VimKeymap {
             KeyCode::Char('X') => Command::DeleteCharBackward,
             KeyCode::Char('s') => Command::Substitute,
             KeyCode::Char('S') => Command::SubstituteLine,
+            KeyCode::Char('R') => Command::EnterReplaceMode,
             KeyCode::Char('C') => Command::ChangeToEnd,
             KeyCode::Char('D') => Command::DeleteToEnd,
             KeyCode::Char('J') => Command::JoinLines,
@@ -226,7 +227,7 @@ impl Keymap for VimKeymap {
     fn handle_key(&mut self, key: &KeyEvent, mode: EditorMode) -> Command {
         let cmd = match mode {
             EditorMode::Normal => self.normal_key(key),
-            EditorMode::Insert => self.insert_key(key),
+            EditorMode::Insert | EditorMode::Replace => self.insert_key(key),
             EditorMode::Visual | EditorMode::VisualLine | EditorMode::VisualBlock => self.visual_key(key),
             EditorMode::Command | EditorMode::Search => Command::Noop,
         };
@@ -242,6 +243,7 @@ impl Keymap for VimKeymap {
         match mode {
             EditorMode::Normal => "NORMAL",
             EditorMode::Insert => "INSERT",
+            EditorMode::Replace => "REPLACE",
             EditorMode::Visual => "VISUAL",
             EditorMode::VisualLine => "V-LINE",
             EditorMode::VisualBlock => "V-BLOCK",

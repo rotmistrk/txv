@@ -2,7 +2,6 @@
 
 use super::command::Command;
 use super::keymap::EditorMode;
-use super::motions::first_non_blank;
 use super::{Editor, EditorAction};
 
 impl Editor {
@@ -45,9 +44,13 @@ impl Editor {
 
     fn dispatch_mode_ops(&mut self, cmd: Command) -> EditorAction {
         match cmd {
-            Command::EnterInsertMode => {
+            Command::EnterInsertMode | Command::EnterReplaceMode => {
                 self.buf().begin_group();
-                self.mode = EditorMode::Insert;
+                self.mode = if cmd == Command::EnterReplaceMode {
+                    EditorMode::Replace
+                } else {
+                    EditorMode::Insert
+                };
                 EditorAction::ModeChanged
             }
             Command::EnterInsertAfter => {
@@ -55,17 +58,11 @@ impl Editor {
                 EditorAction::ModeChanged
             }
             Command::EnterInsertLineEnd => {
-                self.buf().begin_group();
-                self.mode = EditorMode::Insert;
-                self.move_line_end();
-                self.cursor_col += 1;
+                self.enter_insert_line_end();
                 EditorAction::ModeChanged
             }
             Command::EnterInsertLineStart => {
-                self.buf().begin_group();
-                self.mode = EditorMode::Insert;
-                let col = first_non_blank(&self.buf(), self.cursor_line);
-                self.cursor_col = col;
+                self.enter_insert_line_start();
                 EditorAction::ModeChanged
             }
             Command::EnterInsertBelow | Command::NewlineBelow => {

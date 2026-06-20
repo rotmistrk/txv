@@ -237,7 +237,7 @@ impl Editor {
 
     pub fn clamp_col(&mut self) {
         let line_len = self.buf().line_len(self.cursor_line);
-        let max = if self.mode == EditorMode::Insert {
+        let max = if self.mode == EditorMode::Insert || self.mode == EditorMode::Replace {
             line_len
         } else {
             line_len.saturating_sub(1)

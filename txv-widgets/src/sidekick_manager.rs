@@ -57,7 +57,13 @@ impl View for SidekickManager {
                 HandleResult::Consumed
             }
             CM_DROPDOWN_DONE => {
-                self.handle_done(data);
+                self.hide();
+                // Re-emit so the editor can handle it
+                if let Some(d) = data.as_ref() {
+                    if let Some(&idx) = d.downcast_ref::<usize>() {
+                        self.group.put_command(CM_SIDEKICK_RESULT, Some(Box::new(idx)));
+                    }
+                }
                 HandleResult::Consumed
             }
             CM_DROPDOWN_CANCELLED => {
@@ -97,6 +103,7 @@ impl SidekickManager {
         HandleResult::Consumed
     }
 
+    #[allow(dead_code)]
     fn handle_done(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) {
         let idx = data
             .as_ref()

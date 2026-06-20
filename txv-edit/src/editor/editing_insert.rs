@@ -1,6 +1,7 @@
 //! Insert mode exit and block insert replication.
 
 use super::keymap::EditorMode;
+use super::motions::first_non_blank;
 use super::Editor;
 
 impl Editor {
@@ -29,5 +30,32 @@ impl Editor {
             let offset = self.buf().line_col_to_offset(line_idx, sc).unwrap_or(0);
             self.buf().insert(offset, &inserted);
         }
+    }
+
+    pub(super) fn enter_insert_line_end(&mut self) {
+        self.buf().begin_group();
+        self.mode = EditorMode::Insert;
+        self.move_line_end();
+        self.cursor_col += 1;
+    }
+
+    pub(super) fn enter_insert_line_start(&mut self) {
+        self.buf().begin_group();
+        self.mode = EditorMode::Insert;
+        let col = first_non_blank(&self.buf(), self.cursor_line);
+        self.cursor_col = col;
+    }
+
+    pub(super) fn replace_char_at(&mut self, offset: usize, ch: char) {
+        let line_len = self.buf().line_len(self.cursor_line);
+        if self.cursor_col < line_len {
+            let end = self
+                .buf()
+                .line_col_to_offset(self.cursor_line, self.cursor_col + 1)
+                .unwrap_or(offset + 1);
+            self.buf().delete(offset, end);
+        }
+        self.buf().insert(offset, &ch.to_string());
+        self.cursor_col += 1;
     }
 }
