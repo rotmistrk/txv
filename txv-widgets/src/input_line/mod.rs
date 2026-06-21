@@ -42,6 +42,8 @@ pub struct InputLine {
     pub(crate) sidekick_visible: bool,
     /// Shared clipboard ring (direct access, no events needed).
     pub(crate) clipboard: Option<txv_core::clipboard_ring::ClipboardHandle>,
+    /// When true, display chars as '*' (password mode).
+    pub(crate) password: bool,
 }
 
 impl InputLine {
@@ -61,6 +63,7 @@ impl InputLine {
             palette: None,
             sidekick_visible: false,
             clipboard: None,
+            password: false,
         }
     }
 
@@ -91,6 +94,11 @@ impl InputLine {
 
     pub fn with_clipboard(mut self, handle: txv_core::clipboard_ring::ClipboardHandle) -> Self {
         self.clipboard = Some(handle);
+        self
+    }
+
+    pub fn with_password(mut self) -> Self {
+        self.password = true;
         self
     }
 

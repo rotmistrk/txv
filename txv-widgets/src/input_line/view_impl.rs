@@ -44,7 +44,12 @@ impl View for InputLine {
             } else {
                 style
             };
-            self.state.buffer_mut().put(x, 0, ch, s);
+            let display_ch = if self.password {
+                '*'
+            } else {
+                ch
+            };
+            self.state.buffer_mut().put(x, 0, display_ch, s);
         }
         // Overflow indicators
         let total_chars = self.char_count();
