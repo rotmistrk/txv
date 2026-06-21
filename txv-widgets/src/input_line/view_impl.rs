@@ -51,18 +51,7 @@ impl View for InputLine {
             };
             self.state.buffer_mut().put(x, 0, display_ch, s);
         }
-        // Overflow indicators
-        let total_chars = self.char_count();
-        if ww > 0 && total_chars > ww {
-            let ov_fg = self.resolve_style(StyleId::OverflowIndicator).fg();
-            if start > 0 {
-                self.state.buffer_mut().put(0, 0, '…', style.with_fg(ov_fg));
-            }
-            if start + ww < total_chars {
-                let rx = (ww - 1) as u16;
-                self.state.buffer_mut().put(rx, 0, '…', style.with_fg(ov_fg));
-            }
-        }
+        self.draw_overflow_indicators(style, ww, start);
     }
 
     fn set_palette(&mut self, palette: Arc<dyn Palette>) {
@@ -75,6 +64,22 @@ impl View for InputLine {
 
     fn handle(&mut self, event: &Event) -> HandleResult {
         self.handle_event(event)
+    }
+}
+
+impl InputLine {
+    fn draw_overflow_indicators(&mut self, style: Style, ww: usize, start: usize) {
+        let total_chars = self.char_count();
+        if ww > 0 && total_chars > ww {
+            let ov_fg = self.resolve_style(StyleId::OverflowIndicator).fg();
+            if start > 0 {
+                self.state.buffer_mut().put(0, 0, '…', style.with_fg(ov_fg));
+            }
+            if start + ww < total_chars {
+                let rx = (ww - 1) as u16;
+                self.state.buffer_mut().put(rx, 0, '…', style.with_fg(ov_fg));
+            }
+        }
     }
 }
 

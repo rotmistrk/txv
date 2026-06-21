@@ -6,6 +6,7 @@
 //! On CM_DROPDOWN_CANCELLED: hides.
 
 use txv_core::commands::{RepositionRequest, CM_REPOSITION};
+use txv_core::event::{KeyCode, KeyEvent, KeyMod};
 use txv_core::prelude::*;
 
 use crate::dropdown_menu::{DropdownMenu, CM_DROPDOWN_CANCELLED, CM_DROPDOWN_DONE};
@@ -59,23 +60,11 @@ impl View for SidekickManager {
                 HandleResult::Consumed
             }
             CM_SIDEKICK_NEXT => {
-                if let Some(child) = self.group.child_mut(0) {
-                    child.handle(&Event::Key(txv_core::event::KeyEvent::new(
-                        txv_core::event::KeyCode::Down,
-                        txv_core::event::KeyMod::default(),
-                    )));
-                    self.group.mark_dirty();
-                }
+                self.send_key_to_child(KeyCode::Down);
                 HandleResult::Consumed
             }
             CM_SIDEKICK_PREV => {
-                if let Some(child) = self.group.child_mut(0) {
-                    child.handle(&Event::Key(txv_core::event::KeyEvent::new(
-                        txv_core::event::KeyCode::Up,
-                        txv_core::event::KeyMod::default(),
-                    )));
-                    self.group.mark_dirty();
-                }
+                self.send_key_to_child(KeyCode::Up);
                 HandleResult::Consumed
             }
             CM_DROPDOWN_DONE => {
@@ -98,6 +87,13 @@ impl View for SidekickManager {
 }
 
 impl SidekickManager {
+    fn send_key_to_child(&mut self, code: KeyCode) {
+        if let Some(child) = self.group.child_mut(0) {
+            child.handle(&Event::Key(KeyEvent::new(code, KeyMod::default())));
+            self.group.mark_dirty();
+        }
+    }
+
     fn handle_show(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
         let Some(show) = data.as_ref().and_then(|d| d.downcast_ref::<SidekickRequest>()) else {
             return HandleResult::Ignored;
