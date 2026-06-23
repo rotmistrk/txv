@@ -125,38 +125,55 @@ impl<D: DropdownSource> DropdownMenu<D> {
     }
     fn draw_secondary(&mut self, vis_idx: usize, y: u16, w: u16, rs: Style, dim_s: Style) {
         let orig_idx = self.visible[vis_idx];
-        let badge = self.source.badge(orig_idx);
-        let sec = self.source.secondary(orig_idx);
+        let badge = self.source.badge(orig_idx).map(|(s, st)| (s.to_string(), st));
+        let sec = self.source.secondary(orig_idx).to_string();
 
         if badge.is_none() && sec.is_empty() {
             return;
         }
 
+        let label_len = self.source.label(orig_idx).chars().count() as u16;
+        let label_end = 3 + label_len;
+
         // Badge right-aligned inside right border
         if let Some((badge_str, badge_s)) = badge {
             let badge_len = badge_str.chars().count() as u16;
-            let badge_end = w.saturating_sub(2); // last char at this col
+            let badge_end = w.saturating_sub(2);
             let badge_col = badge_end.saturating_sub(badge_len);
             let bs = Style::new(badge_s.fg(), rs.bg());
             for (i, ch) in badge_str.chars().enumerate() {
                 self.state.buffer_mut().put(badge_col + i as u16, y, ch, bs);
             }
 
-            // Secondary right-aligned before badge
             if !sec.is_empty() {
                 let end_x = badge_col.saturating_sub(2);
-                let sec_x = (end_x + 1).saturating_sub(sec.len() as u16);
-                for (i, ch) in sec.chars().enumerate() {
-                    self.state.buffer_mut().put(sec_x + i as u16, y, ch, dim_s);
-                }
+                self.draw_truncated_secondary(&sec, label_end, end_x, y, dim_s);
             }
         } else if !sec.is_empty() {
-            // Secondary right-aligned at right border
             let end_x = w.saturating_sub(3);
-            let sec_x = (end_x + 1).saturating_sub(sec.len() as u16);
+            self.draw_truncated_secondary(&sec, label_end, end_x, y, dim_s);
+        }
+    }
+
+    fn draw_truncated_secondary(&mut self, sec: &str, min_x: u16, end_x: u16, y: u16, style: Style) {
+        if end_x <= min_x + 1 {
+            return; // no room
+        }
+        let avail = (end_x - min_x) as usize;
+        let sec_len = sec.chars().count();
+        if sec_len <= avail {
+            let sec_x = (end_x + 1).saturating_sub(sec_len as u16);
             for (i, ch) in sec.chars().enumerate() {
-                self.state.buffer_mut().put(sec_x + i as u16, y, ch, dim_s);
+                self.state.buffer_mut().put(sec_x + i as u16, y, ch, style);
             }
+        } else if avail >= 4 {
+            // Truncate with ellipsis
+            let show = avail - 1; // leave room for …
+            let sec_x = (end_x + 1).saturating_sub(avail as u16);
+            for (i, ch) in sec.chars().take(show).enumerate() {
+                self.state.buffer_mut().put(sec_x + i as u16, y, ch, style);
+            }
+            self.state.buffer_mut().put(sec_x + show as u16, y, '…', style);
         }
     }
 
