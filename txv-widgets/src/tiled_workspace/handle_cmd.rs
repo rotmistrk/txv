@@ -5,6 +5,7 @@ use std::any::Any;
 use txv_core::event::CommandId;
 
 use super::commands::*;
+use super::types::LayoutMode;
 use super::types::{PanelPosition, SplitDir};
 use super::TiledWorkspace;
 use crate::tab_panel::TabPanel;
@@ -113,6 +114,12 @@ impl TiledWorkspace {
             }
             CM_TW_LAYOUT_CYCLE => {
                 self.cycle_layout();
+                true
+            }
+            CM_TW_LAYOUT_SET => {
+                if let Some(mode) = data.as_ref().and_then(|d| d.downcast_ref::<LayoutMode>()) {
+                    self.set_layout_mode(*mode);
+                }
                 true
             }
             CM_TW_TAB_NEXT | CM_TW_TAB_PREV => {

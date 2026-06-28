@@ -100,3 +100,5 @@ pub const CM_TW_TAB_NEXT: CommandId = CM_TW_BASE + 24;
 pub const CM_TW_TAB_PREV: CommandId = CM_TW_BASE + 25;
 /// Close active tab in focused panel. No payload.
 pub const CM_TW_TAB_CLOSE: CommandId = CM_TW_BASE + 26;
+/// Set layout mode directly. Payload: `Box<LayoutMode>`.
+pub const CM_TW_LAYOUT_SET: CommandId = CM_TW_BASE + 27;
