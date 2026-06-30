@@ -129,12 +129,21 @@ impl<D: TreeData> TreeView<D> {
         self.scroll.set_total(self.data.visible_count());
         self.scroll.ensure_visible(self.cursor);
     }
+
+    fn clamp_cursor(&mut self) {
+        let max = self.data.visible_count().saturating_sub(1);
+        if self.cursor > max {
+            self.cursor = max;
+            self.sync_scroll();
+        }
+    }
 }
 
 impl<D: TreeData> View for TreeView<D> {
     delegate_view_state!(state);
 
     fn draw(&mut self) {
+        self.clamp_cursor();
         self.draw_tree();
     }
 
