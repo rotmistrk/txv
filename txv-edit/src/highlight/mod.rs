@@ -1,6 +1,7 @@
 //! Syntax highlighting via syntect — detects language from extension, highlights lines.
 
 use std::path::Path;
+use std::path::PathBuf;
 
 use syntect::highlighting::{Theme, ThemeSet};
 use syntect::parsing::SyntaxSet;
@@ -35,7 +36,16 @@ impl Highlighter {
 
     /// Create with a specific theme name. Falls back to first available if not found.
     pub fn with_theme(name: &str) -> Self {
-        let syntax_set = SyntaxSet::load_defaults_newlines();
+        let mut builder = SyntaxSet::load_defaults_newlines().into_builder();
+
+        // Load custom syntaxes from well-known directories
+        for dir in custom_syntax_dirs() {
+            if dir.is_dir() {
+                let _ = builder.add_from_folder(&dir, true);
+            }
+        }
+
+        let syntax_set = builder.build();
         let themes = ThemeSet::load_defaults();
         let theme = themes
             .themes
@@ -156,6 +166,28 @@ pub(crate) fn ensure_readable(r: u8, g: u8, b: u8) -> (u8, u8, u8) {
     } else {
         (r, g, b)
     }
+}
+
+/// Directories to search for custom `.sublime-syntax` files.
+fn custom_syntax_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+
+    // XDG: ~/.config/kairn/syntaxes/ (preferred)
+    if let Some(xdg_config) = std::env::var_os("XDG_CONFIG_HOME") {
+        dirs.push(PathBuf::from(xdg_config).join("kairn").join("syntaxes"));
+    } else if let Some(home) = std::env::var_os("HOME") {
+        dirs.push(PathBuf::from(&home).join(".config").join("kairn").join("syntaxes"));
+    }
+
+    // ~/.kiro/syntaxes/ (kiro ecosystem)
+    if let Some(home) = std::env::var_os("HOME") {
+        dirs.push(PathBuf::from(home).join(".kiro").join("syntaxes"));
+    }
+
+    // ./syntaxes/ (project-local)
+    dirs.push(PathBuf::from("syntaxes"));
+
+    dirs
 }
 
 #[cfg(test)]
