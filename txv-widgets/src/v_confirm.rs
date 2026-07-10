@@ -49,7 +49,8 @@ impl ConfirmView {
         let w = if label.is_empty() {
             0
         } else {
-            label.len() as u16 + 2
+            // Clamp to a reasonable max — status bar layout will further clip
+            (label.len() as u16 + 2).min(120)
         };
         resize_width_to(&mut self.state, w);
     }
