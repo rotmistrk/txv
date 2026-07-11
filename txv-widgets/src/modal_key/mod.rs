@@ -143,6 +143,11 @@ impl ModalKey {
         }
         self.propagate_default_palette();
         self.update_bounds();
+        // Re-enable focus-gated groups that we disabled on activate
+        if self.terminal_command.is_some() {
+            use crate::focus_gated_group::CM_ACTIVATE_GROUP;
+            self.group.put_command(CM_ACTIVATE_GROUP, Some(Box::new(u16::MAX)));
+        }
     }
 
     pub(crate) fn propagate_modal_palette(&mut self) {

@@ -21,6 +21,8 @@ pub struct FocusGatedGroup {
     active: bool,
     group_id: u16,
     natural_width: u16,
+    /// True if deactivated by wildcard (should re-activate when wildcard activate arrives).
+    suppressed: bool,
 }
 
 impl FocusGatedGroup {
@@ -33,6 +35,7 @@ impl FocusGatedGroup {
             active: false,
             group_id,
             natural_width: 0,
+            suppressed: false,
         }
     }
 
@@ -147,15 +150,23 @@ impl FocusGatedGroup {
                 self.activate();
                 return Some(HandleResult::Consumed);
             }
+            if *gid == u16::MAX && self.suppressed {
+                self.suppressed = false;
+                self.activate();
+                return None; // Wildcard: don't consume, let others see it
+            }
         }
         if id == CM_DEACTIVATE_GROUP {
             let gid = data.as_ref().and_then(|d| d.downcast_ref::<u16>())?;
-            if *gid == self.group_id || *gid == u16::MAX {
+            if *gid == self.group_id {
+                self.suppressed = false;
                 self.deactivate();
-                if *gid == u16::MAX {
-                    return None; // Wildcard: don't consume, let others see it
-                }
                 return Some(HandleResult::Consumed);
+            }
+            if *gid == u16::MAX {
+                self.suppressed = self.active;
+                self.deactivate();
+                return None; // Wildcard: don't consume, let others see it
             }
         }
         None
