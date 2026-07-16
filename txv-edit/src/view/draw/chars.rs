@@ -135,6 +135,7 @@ fn draw_char<D: EditorViewDelegate>(ctx: &mut DrawCtx<'_, D>, ch: char, span_sty
             ctx.p,
         );
         let (display, style) = resolve_display(ctx.editor, ch, style);
+        let display = ctx.delegate.transform_char(display);
         ctx.buf.put(x, st.vis_row as u16, display, style);
     }
     st.col += display_char_width(ch) as usize;

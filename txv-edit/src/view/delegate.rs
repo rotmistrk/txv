@@ -141,6 +141,11 @@ pub trait EditorViewDelegate: Send {
     fn drain_broadcasts(&mut self) -> Vec<(u16, Option<Box<dyn Any + Send>>)> {
         vec![]
     }
+
+    /// Transform a character before rendering. Used for display-only remapping.
+    fn transform_char(&self, ch: char) -> char {
+        ch
+    }
 }
 
 /// No-op delegate for standalone usage.
