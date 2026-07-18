@@ -5,6 +5,7 @@ use txv_core::prelude::*;
 use super::style::compose_char_style;
 use super::DrawParams;
 use super::LineDraw;
+use crate::editor::keymap::EditorMode;
 use crate::editor::Editor;
 use crate::highlight::HlSpan;
 use crate::view::delegate::EditorViewDelegate;
@@ -156,8 +157,19 @@ fn draw_line_tail<D: EditorViewDelegate>(
     if st.vis_row < p.h as usize && st.col >= p.h_off {
         let fill_start = (st.col - p.h_off).min(p.avail);
         let fill_style = ephemeral_bg(editor, delegate, line_idx);
+        // Software cursor at end-of-line or on empty line
+        let cursor_col = if line_idx == editor.cursor_line() {
+            Some((editor.cursor_col().saturating_sub(p.h_off)).min(p.avail))
+        } else {
+            None
+        };
         for fc in fill_start..p.avail {
-            buf.put(text_x + fc as u16, st.vis_row as u16, ' ', fill_style);
+            let style = if cursor_col == Some(fc) {
+                cursor_tail_style(editor, delegate, fill_style)
+            } else {
+                fill_style
+            };
+            buf.put(text_x + fc as u16, st.vis_row as u16, ' ', style);
         }
     }
     if editor.options().list() && st.vis_row < p.h as usize && st.col >= p.h_off {
@@ -171,6 +183,33 @@ fn draw_line_tail<D: EditorViewDelegate>(
         let line = editor.buf().line(line_idx).unwrap_or_default();
         draw_indent_guides(buf, &line, text_x, start_row as u16, p);
     }
+}
+
+/// Compute cursor style for the tail area (end-of-line or empty line).
+fn cursor_tail_style<D: EditorViewDelegate>(editor: &Editor, delegate: &D, base: Style) -> Style {
+    use crate::view::delegate::CursorRender;
+
+    let mode = editor.mode();
+    if let CursorRender::Software(cs) = delegate.cursor_render(mode) {
+        return cs;
+    }
+    if matches!(
+        mode,
+        EditorMode::Normal | EditorMode::Visual | EditorMode::VisualLine | EditorMode::VisualBlock
+    ) {
+        let fg = if base.fg() == Color::Reset {
+            Color::Rgb(220, 220, 220)
+        } else {
+            base.fg()
+        };
+        let bg = if base.bg() == Color::Reset {
+            Color::Rgb(30, 30, 30)
+        } else {
+            base.bg()
+        };
+        return Style::new(bg, fg).with_attrs(base.attrs());
+    }
+    base
 }
 
 fn resolve_display(editor: &Editor, ch: char, style: Style) -> (char, Style) {
