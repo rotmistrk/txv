@@ -11,8 +11,11 @@
 
 pub mod commands;
 pub mod keymap;
+mod registry;
 pub mod types;
 pub mod workspace_state;
+
+pub use registry::register_commands;
 
 mod accessors;
 mod bindings;

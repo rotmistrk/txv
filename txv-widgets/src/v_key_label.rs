@@ -3,6 +3,7 @@
 use std::any::Any;
 use std::sync::Arc;
 
+use txv_core::command_registry;
 use txv_core::prelude::*;
 
 /// A View-based status bar item that displays a label and emits a command on key press.
@@ -130,14 +131,13 @@ impl View for KeyLabelView {
     }
 
     fn key_help(&self) -> Vec<txv_core::key_help::KeyHelpEntry> {
-        if self.label_text.is_empty() {
-            return vec![txv_core::key_help::KeyHelpEntry::new(
-                format_key_event(&self.key),
-                format!("cmd:{}", self.command),
-                "Global",
-            )];
-        }
-        let action = self.label_text.replace('~', "");
+        // If we have a visible label, use it as the action description.
+        // Otherwise, look up the command's registered label.
+        let action = if self.label_text.is_empty() {
+            command_registry::label(self.command)
+        } else {
+            self.label_text.replace('~', "")
+        };
         vec![txv_core::key_help::KeyHelpEntry::new(
             format_key_event(&self.key),
             action,
