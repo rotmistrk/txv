@@ -6,6 +6,7 @@ pub(crate) mod completion_source;
 mod handle_key;
 mod history;
 mod readline;
+mod selection;
 #[cfg(test)]
 mod tests;
 mod view_impl;
@@ -44,6 +45,8 @@ pub struct InputLine {
     pub(crate) clipboard: Option<txv_core::clipboard_ring::ClipboardHandle>,
     /// When true, display chars as '*' (password mode).
     pub(crate) password: bool,
+    /// When true, don't auto-resize bounds — scroll within fixed width instead.
+    pub(crate) constrained: bool,
 }
 
 impl InputLine {
@@ -64,6 +67,7 @@ impl InputLine {
             sidekick_visible: false,
             clipboard: None,
             password: false,
+            constrained: false,
         }
     }
 
@@ -99,6 +103,13 @@ impl InputLine {
 
     pub fn with_password(mut self) -> Self {
         self.password = true;
+        self
+    }
+
+    /// Enable constrained mode — don't auto-resize bounds, scroll within fixed width.
+    /// Use this when embedding InputLine in a Group that manages its bounds.
+    pub fn with_constrained(mut self) -> Self {
+        self.constrained = true;
         self
     }
 
@@ -148,68 +159,6 @@ impl InputLine {
         self.state.mark_dirty();
     }
 
-    pub(crate) fn char_count(&self) -> usize {
-        self.text.chars().count()
-    }
-
-    pub(crate) fn selection_range(&self) -> Option<(usize, usize)> {
-        self.selection.map(|anchor| {
-            let lo = anchor.min(self.cursor);
-            let hi = anchor.max(self.cursor);
-            (lo, hi)
-        })
-    }
-
-    /// Get the currently selected text, if any.
-    pub fn selected_text(&self) -> Option<String> {
-        let (lo, hi) = self.selection_range()?;
-        let byte_lo = self.char_to_byte(lo);
-        let byte_hi = self.char_to_byte(hi);
-        Some(self.text[byte_lo..byte_hi].to_string())
-    }
-
-    /// Insert text at cursor, replacing selection if active.
-    pub fn insert_text(&mut self, text: &str) {
-        if self.selection.is_some() {
-            self.delete_selection();
-        }
-        let byte_pos = self.char_to_byte(self.cursor);
-        self.text.insert_str(byte_pos, text);
-        self.cursor += text.chars().count();
-        self.update_width();
-        self.state.mark_dirty();
-    }
-
-    pub(crate) fn delete_selection(&mut self) {
-        if let Some((lo, hi)) = self.selection_range() {
-            let byte_lo = self.char_to_byte(lo);
-            let byte_hi = self.char_to_byte(hi);
-            self.text.drain(byte_lo..byte_hi);
-            self.cursor = lo;
-            self.selection = None;
-            self.update_width();
-        }
-    }
-
-    /// Convert char index to byte offset.
-    fn char_to_byte(&self, char_idx: usize) -> usize {
-        self.text
-            .char_indices()
-            .nth(char_idx)
-            .map(|(b, _)| b)
-            .unwrap_or(self.text.len())
-    }
-
-    /// Auto-resize bounds to fit text (standalone mode).
-    fn update_width(&mut self) {
-        self.state.mark_dirty();
-        let w = (self.char_count() as u16).saturating_add(2).max(10);
-        let b = self.state.bounds();
-        if b.w() != w {
-            self.state.set_bounds(Rect::new(b.x(), b.y(), w, 1));
-        }
-    }
-
     pub(crate) fn handle_char(&mut self, ch: char) {
         self.delete_selection();
         let byte_pos = self.char_to_byte(self.cursor);
@@ -242,47 +191,11 @@ impl InputLine {
         }
     }
 
-    pub(crate) fn handle_nav(&mut self, shift: bool, new_cursor: usize) {
-        if shift {
-            if self.selection.is_none() {
-                self.selection = Some(self.cursor);
-            }
-        } else {
-            self.selection = None;
-        }
-        self.cursor = new_cursor;
-        self.state.mark_dirty();
-    }
-
     pub(crate) fn resolve_style(&self, id: StyleId) -> Style {
         match &self.palette {
             Some(p) => p.style(id),
             None => txv_core::palette::palette().style(id),
         }
-    }
-
-    pub(crate) fn visible_start(&self, width: usize) -> usize {
-        if width == 0 {
-            return 0;
-        }
-        let total = self.char_count();
-        let mut start = if self.cursor >= width {
-            self.cursor - width + 1
-        } else {
-            0
-        };
-        // If cursor lands on the last cell and there's text to the right,
-        // scroll one more so the cursor isn't on the right-overflow '…' position.
-        let cursor_pos = self.cursor - start;
-        if cursor_pos == width - 1 && start + width < total {
-            start += 1;
-        }
-        // If cursor lands on position 0 and there's left overflow,
-        // scroll one less so the cursor isn't on the left-overflow '…' position.
-        if start > 0 && self.cursor == start {
-            start -= 1;
-        }
-        start
     }
 
     /// Emit change_command if configured.
