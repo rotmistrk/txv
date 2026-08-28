@@ -3,11 +3,11 @@
 use txv_core::command_registry::{register, CommandMeta};
 
 use super::commands::{
-    CM_TW_CYCLE_SUBPANEL, CM_TW_FOCUS_DOWN, CM_TW_FOCUS_LEFT, CM_TW_FOCUS_RIGHT, CM_TW_FOCUS_UP, CM_TW_GROW_H,
-    CM_TW_GROW_SUBPANEL, CM_TW_GROW_V, CM_TW_LAYOUT_CYCLE, CM_TW_MOVE_TAB_SUBPANEL, CM_TW_SHRINK_H,
-    CM_TW_SHRINK_SUBPANEL, CM_TW_SHRINK_V, CM_TW_TAB_CLOSE, CM_TW_TAB_DROPDOWN, CM_TW_TAB_DROPDOWN_CLOSE,
-    CM_TW_TAB_DROPDOWN_DOWN, CM_TW_TAB_DROPDOWN_UP, CM_TW_TAB_NEXT, CM_TW_TAB_PREV, CM_TW_TOGGLE_TOOLS,
-    CM_TW_TOGGLE_TREE, CM_TW_ZOOM,
+    CM_TW_ACTIVATE_TAB, CM_TW_CYCLE_SUBPANEL, CM_TW_FOCUS_DOWN, CM_TW_FOCUS_LEFT, CM_TW_FOCUS_PANEL, CM_TW_FOCUS_RIGHT,
+    CM_TW_FOCUS_UP, CM_TW_GROW_H, CM_TW_GROW_SUBPANEL, CM_TW_GROW_V, CM_TW_LAYOUT_CYCLE, CM_TW_MOVE_TAB_SUBPANEL,
+    CM_TW_SHRINK_H, CM_TW_SHRINK_SUBPANEL, CM_TW_SHRINK_V, CM_TW_TAB_CLOSE, CM_TW_TAB_DROPDOWN,
+    CM_TW_TAB_DROPDOWN_CLOSE, CM_TW_TAB_DROPDOWN_DOWN, CM_TW_TAB_DROPDOWN_UP, CM_TW_TAB_NEXT, CM_TW_TAB_PREV,
+    CM_TW_TOGGLE_TOOLS, CM_TW_TOGGLE_TREE, CM_TW_ZOOM,
 };
 
 /// Register all TiledWorkspace commands with the command registry.
@@ -37,6 +37,10 @@ fn register_panel_visibility() {
 }
 
 fn register_focus_navigation() {
+    register(
+        CM_TW_FOCUS_PANEL,
+        CommandMeta::new("focus-panel", "Focus panel", "Focus a specific panel by ID"),
+    );
     register(
         CM_TW_FOCUS_LEFT,
         CommandMeta::new("focus-left", "Focus left", "Move focus to the panel on the left"),
@@ -110,6 +114,10 @@ fn register_tabs() {
     register(
         CM_TW_TAB_CLOSE,
         CommandMeta::new("tab-close", "Close tab", "Close the active tab"),
+    );
+    register(
+        CM_TW_ACTIVATE_TAB,
+        CommandMeta::new("activate-tab", "Switch tab", "Switch to a specific tab by number"),
     );
 }
 
