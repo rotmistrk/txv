@@ -132,8 +132,8 @@ impl View for KeyLabelView {
     }
 
     fn key_help(&self) -> Vec<txv_core::key_help::KeyHelpEntry> {
-        // Help text comes from command registry, NOT from status bar label.
-        let action = command_registry::label(self.command);
+        // Help text comes from command registry's HELP field, not label.
+        let action = command_registry::help(self.command);
         vec![txv_core::key_help::KeyHelpEntry::new(
             format_key_event(&self.key),
             action,

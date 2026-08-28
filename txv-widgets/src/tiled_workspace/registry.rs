@@ -3,9 +3,10 @@
 use txv_core::command_registry::{register, CommandMeta};
 
 use super::commands::{
-    CM_TW_ACTIVATE_TAB, CM_TW_CYCLE_SUBPANEL, CM_TW_FOCUS_DOWN, CM_TW_FOCUS_LEFT, CM_TW_FOCUS_PANEL, CM_TW_FOCUS_RIGHT,
-    CM_TW_FOCUS_UP, CM_TW_GROW_H, CM_TW_GROW_SUBPANEL, CM_TW_GROW_V, CM_TW_LAYOUT_CYCLE, CM_TW_MOVE_TAB_SUBPANEL,
-    CM_TW_SHRINK_H, CM_TW_SHRINK_SUBPANEL, CM_TW_SHRINK_V, CM_TW_TAB_CLOSE, CM_TW_TAB_DROPDOWN,
+    CM_TW_ACTIVATE_TAB, CM_TW_CLOSE_OTHER_SUBPANEL, CM_TW_CLOSE_SUBPANEL, CM_TW_CYCLE_SUBPANEL,
+    CM_TW_EQUALIZE_SUBPANEL, CM_TW_FOCUS_DOWN, CM_TW_FOCUS_LEFT, CM_TW_FOCUS_PANEL, CM_TW_FOCUS_RIGHT, CM_TW_FOCUS_UP,
+    CM_TW_GROW_H, CM_TW_GROW_SUBPANEL, CM_TW_GROW_V, CM_TW_LAYOUT_CYCLE, CM_TW_MOVE_TAB_SUBPANEL, CM_TW_SHRINK_H,
+    CM_TW_SHRINK_SUBPANEL, CM_TW_SHRINK_V, CM_TW_SPLIT_H, CM_TW_SPLIT_V, CM_TW_TAB_CLOSE, CM_TW_TAB_DROPDOWN,
     CM_TW_TAB_DROPDOWN_CLOSE, CM_TW_TAB_DROPDOWN_DOWN, CM_TW_TAB_DROPDOWN_UP, CM_TW_TAB_NEXT, CM_TW_TAB_PREV,
     CM_TW_TOGGLE_TOOLS, CM_TW_TOGGLE_TREE, CM_TW_ZOOM,
 };
@@ -129,14 +130,66 @@ fn register_layout() {
 }
 
 fn register_subpanels() {
+    register_subpanel_splits();
+    register_subpanel_close();
+    register_subpanel_focus();
+    register_subpanel_resize();
+}
+
+fn register_subpanel_splits() {
+    register(
+        CM_TW_SPLIT_H,
+        CommandMeta::new(
+            "split-h",
+            "Split horizontal",
+            "Split the current panel horizontally (top/bottom)",
+        ),
+    );
+    register(
+        CM_TW_SPLIT_V,
+        CommandMeta::new(
+            "split-v",
+            "Split vertical",
+            "Split the current panel vertically (left/right)",
+        ),
+    );
+}
+
+fn register_subpanel_close() {
+    register(
+        CM_TW_CLOSE_SUBPANEL,
+        CommandMeta::new("close-subpanel", "Close subpanel", "Close the focused subpanel"),
+    );
+    register(
+        CM_TW_CLOSE_OTHER_SUBPANEL,
+        CommandMeta::new(
+            "close-other",
+            "Close other subpanel",
+            "Close the other subpanel, keep the focused one",
+        ),
+    );
+    register(
+        CM_TW_EQUALIZE_SUBPANEL,
+        CommandMeta::new("equalize", "Equalize subpanels", "Make all subpanels the same size"),
+    );
+}
+
+fn register_subpanel_focus() {
     register(
         CM_TW_CYCLE_SUBPANEL,
-        CommandMeta::new("cycle-subpanel", "Cycle subpanel", "Cycle focus between subpanels"),
+        CommandMeta::new("cycle-subpanel", "Cycle subpanel", "Move focus to the next subpanel"),
     );
     register(
         CM_TW_MOVE_TAB_SUBPANEL,
-        CommandMeta::new("move-tab", "Move tab", "Move the active tab to the other subpanel"),
+        CommandMeta::new(
+            "move-tab",
+            "Move tab to subpanel",
+            "Move the active tab to the other subpanel",
+        ),
     );
+}
+
+fn register_subpanel_resize() {
     register(
         CM_TW_GROW_SUBPANEL,
         CommandMeta::new(
