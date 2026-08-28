@@ -12,10 +12,8 @@ pub struct KeyLabelView {
     key: KeyEvent,
     command: CommandId,
     data: Option<u16>,
-    /// Short text shown in status bar (e.g., "~F2~:Tree").
+    /// Short text shown in status bar (e.g., "~F2~:Tree"). Empty = hidden binding.
     label_text: String,
-    /// Longer description for help system (e.g., "Focus tree panel").
-    help_text: String,
     palette: Option<Arc<dyn Palette>>,
 }
 
@@ -38,20 +36,12 @@ impl KeyLabelView {
             command,
             data: None,
             label_text,
-            help_text: String::new(),
             palette: None,
         }
     }
 
     pub fn with_data(mut self, data: u16) -> Self {
         self.data = Some(data);
-        self
-    }
-
-    /// Set a separate help text for the F1 help system.
-    /// If not set, uses label_text or falls back to command registry.
-    pub fn with_help(mut self, help: impl Into<String>) -> Self {
-        self.help_text = help.into();
         self
     }
 
@@ -142,14 +132,8 @@ impl View for KeyLabelView {
     }
 
     fn key_help(&self) -> Vec<txv_core::key_help::KeyHelpEntry> {
-        // Priority: explicit help_text > label_text > command registry
-        let action = if !self.help_text.is_empty() {
-            self.help_text.clone()
-        } else if !self.label_text.is_empty() {
-            self.label_text.replace('~', "")
-        } else {
-            command_registry::label(self.command)
-        };
+        // Help text comes from command registry, NOT from status bar label.
+        let action = command_registry::label(self.command);
         vec![txv_core::key_help::KeyHelpEntry::new(
             format_key_event(&self.key),
             action,
