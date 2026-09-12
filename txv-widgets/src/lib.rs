@@ -41,6 +41,7 @@ pub mod prefix_item;
 pub mod progress_bar;
 pub mod pty_session;
 pub mod pty_terminal;
+mod pty_terminal_handle;
 mod pty_terminal_scroll;
 mod pty_terminal_spawn;
 pub mod resize_helpers;

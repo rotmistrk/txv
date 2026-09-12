@@ -32,6 +32,9 @@ impl PtyTerminal {
             exited: false,
             scroll_offset: 0,
             had_output: false,
+            pinned_mode: false,
+            gap: 0,
+            cursor_area_lines: 3,
         })
     }
 
@@ -62,6 +65,9 @@ impl PtyTerminal {
             exited: false,
             scroll_offset: 0,
             had_output: false,
+            pinned_mode: false,
+            gap: 0,
+            cursor_area_lines: 3,
         })
     }
 
@@ -87,6 +93,15 @@ impl PtyTerminal {
             exited: false,
             scroll_offset: 0,
             had_output: false,
+            pinned_mode: false,
+            gap: 0,
+            cursor_area_lines: 3,
         })
+    }
+
+    /// Set the number of lines reserved for live cursor area in pinned mode.
+    /// 0 = simple freeze (mode a), >0 = split view with gap indicator (mode b).
+    pub fn set_cursor_area_lines(&mut self, lines: u16) {
+        self.cursor_area_lines = lines;
     }
 }

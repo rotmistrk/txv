@@ -1,6 +1,6 @@
 //! PtyTerminal scrollback rendering and content extraction.
 
-use txv_core::prelude::*;
+use txv_core::cell::Style;
 
 use crate::pty_terminal::PtyTerminal;
 
@@ -31,6 +31,90 @@ impl PtyTerminal {
             result.push(line_str);
         }
         result
+    }
+
+    /// Draw pinned mode: scrollback area + separator + live cursor area.
+    pub(crate) fn draw_pinned_mode(&mut self, w: u16, h: u16, cursor_area: u16) {
+        let separator_y = h - cursor_area - 1;
+        let scrollback_height = separator_y as usize;
+
+        // Draw scrollback content in top area
+        self.draw_scrollback_region(0, scrollback_height, w as usize);
+
+        // Draw separator line with gap indicator
+        self.draw_gap_separator(separator_y, w);
+
+        // Draw live cursor area at bottom
+        self.draw_cursor_area(separator_y + 1, cursor_area, w);
+    }
+
+    fn draw_scrollback_region(&mut self, start_y: usize, height: usize, w: usize) {
+        let grid_rows = self.termbuf.grid_rows() as usize;
+        let sb_len = self.termbuf.scrollback_len();
+        let total = sb_len + grid_rows;
+
+        // In pinned mode, scroll_offset is from the frozen position (before gap)
+        // The gap contains new lines we haven't scrolled through yet
+        let frozen_total = total.saturating_sub(self.gap);
+        let bottom_line = frozen_total.saturating_sub(self.scroll_offset);
+        let top_line = bottom_line.saturating_sub(height);
+
+        for screen_y in 0..height {
+            let line_idx = top_line + screen_y;
+            self.draw_scrollback_line(line_idx, start_y + screen_y, w, sb_len);
+        }
+    }
+
+    fn draw_gap_separator(&mut self, y: u16, w: u16) {
+        use txv_core::cell::Attrs;
+        use txv_core::palette::{palette, StyleId};
+
+        let base = palette().style(StyleId::StateInfo);
+        let style = base.with_attrs(Attrs::default().bold());
+
+        // Build separator: ─────< 45 lines >─────
+        let gap_text = format!(" {} lines ", self.gap);
+        let left_arrow = '\u{e0b2}'; // Powerline left arrow
+        let right_arrow = '\u{e0b0}'; // Powerline right arrow
+        let label = format!("{left_arrow}{gap_text}{right_arrow}");
+        let label_len = label.chars().count();
+
+        let line_char = '─';
+        let left_pad = (w as usize).saturating_sub(label_len) / 2;
+        let right_pad = (w as usize).saturating_sub(label_len + left_pad);
+
+        let mut x = 0u16;
+        for _ in 0..left_pad {
+            self.state.buffer_mut().put(x, y, line_char, style);
+            x += 1;
+        }
+        for ch in label.chars() {
+            if x < w {
+                self.state.buffer_mut().put(x, y, ch, style);
+                x += 1;
+            }
+        }
+        for _ in 0..right_pad {
+            if x < w {
+                self.state.buffer_mut().put(x, y, line_char, style);
+                x += 1;
+            }
+        }
+    }
+
+    fn draw_cursor_area(&mut self, start_y: u16, height: u16, w: u16) {
+        let grid_rows = self.termbuf.grid_rows();
+        // Show the last `height` lines of the live grid
+        let start_row = grid_rows.saturating_sub(height) as usize;
+
+        for i in 0..height {
+            let row = start_row + i as usize;
+            if let Some(line) = self.termbuf.grid_line(row) {
+                for (x, tc) in line.iter().enumerate().take(w as usize) {
+                    self.state.buffer_mut().put(x as u16, start_y + i, tc.ch(), tc.style());
+                }
+            }
+        }
     }
 
     pub(crate) fn draw_scrollback_to_buf(&mut self) {

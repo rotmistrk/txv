@@ -5,7 +5,6 @@ use txv_core::event::Event;
 use txv_core::prelude::*;
 use txv_render::termbuf::TermBuf;
 
-use crate::key_encode::key_to_bytes;
 use crate::pty_session::PtySession;
 
 /// Terminal view backed by a real PTY process.
@@ -22,6 +21,12 @@ pub struct PtyTerminal {
     pub(crate) scroll_offset: usize,
     /// Set when PTY produces output; cleared by `clear_output_flag()`.
     pub(crate) had_output: bool,
+    /// When true, scrollback view is pinned and new output goes to gap.
+    pub(crate) pinned_mode: bool,
+    /// Lines of new output hidden between frozen scrollback and cursor area.
+    pub(crate) gap: usize,
+    /// Number of lines to show at bottom for live cursor area (0 = simple freeze).
+    pub(crate) cursor_area_lines: u16,
 }
 
 impl PtyTerminal {
@@ -51,8 +56,17 @@ impl PtyTerminal {
         };
         if let Some(data) = session.poll() {
             log::trace!("PTY data: {} bytes", data.len());
+            let old_total = self.termbuf.scrollback_len() + self.termbuf.grid_rows() as usize;
             self.termbuf.process(&data);
-            self.scroll_offset = 0;
+            let new_total = self.termbuf.scrollback_len() + self.termbuf.grid_rows() as usize;
+            let new_lines = new_total.saturating_sub(old_total);
+
+            if self.pinned_mode {
+                // In pinned mode, new output goes to gap instead of scrolling view
+                self.gap += new_lines;
+            } else {
+                self.scroll_offset = 0;
+            }
             self.had_output = true;
             self.state.mark_dirty();
         } else if !session.is_alive() {
@@ -129,7 +143,13 @@ impl View for PtyTerminal {
         if w == 0 || h == 0 {
             return;
         }
-        if self.scroll_offset == 0 {
+        let cursor_area = self.cursor_area_lines;
+
+        // Pinned mode with split view: scrollback + separator + cursor area
+        // Falls back to simple scrollback if window too small
+        if self.pinned_mode && cursor_area > 0 && h > cursor_area + 1 {
+            self.draw_pinned_mode(w, h, cursor_area);
+        } else if self.scroll_offset == 0 && !self.pinned_mode {
             self.draw_live_grid(w, h);
         } else {
             self.draw_scrollback_to_buf();
@@ -179,56 +199,5 @@ impl PtyTerminal {
             let ch = cell.ch();
             self.state.buffer_mut().put(cx, cy, ch, style);
         }
-    }
-
-    fn handle_paste(&mut self, text: &str) -> HandleResult {
-        if self.exited {
-            return HandleResult::Consumed;
-        }
-        if let Some(session) = self.session.as_mut() {
-            session.write(b"\x1b[200~");
-            session.write(text.as_bytes());
-            session.write(b"\x1b[201~");
-        }
-        HandleResult::Consumed
-    }
-
-    fn handle_key(&mut self, key: &KeyEvent) -> HandleResult {
-        if self.exited {
-            return HandleResult::Consumed;
-        }
-        if key.code() == KeyCode::PageUp {
-            return self.scroll_up_page();
-        }
-        if key.code() == KeyCode::PageDown {
-            return self.scroll_down_page();
-        }
-        if self.scroll_offset > 0 {
-            self.scroll_offset = 0;
-            self.state.mark_dirty();
-        }
-        if let Some(bytes) = key_to_bytes(key) {
-            if let Some(session) = self.session.as_mut() {
-                session.write(&bytes);
-            }
-            HandleResult::Consumed
-        } else {
-            HandleResult::Ignored
-        }
-    }
-
-    fn scroll_up_page(&mut self) -> HandleResult {
-        let max = self.termbuf.scrollback_len();
-        let page = (self.prev_rows as usize).saturating_sub(1).max(1);
-        self.scroll_offset = (self.scroll_offset + page).min(max);
-        self.state.mark_dirty();
-        HandleResult::Consumed
-    }
-
-    fn scroll_down_page(&mut self) -> HandleResult {
-        let page = (self.prev_rows as usize).saturating_sub(1).max(1);
-        self.scroll_offset = self.scroll_offset.saturating_sub(page);
-        self.state.mark_dirty();
-        HandleResult::Consumed
     }
 }
