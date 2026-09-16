@@ -72,8 +72,11 @@ impl PtyTerminal {
         let base = palette().style(StyleId::StateInfo);
         let style = base.with_attrs(Attrs::default().bold());
 
+        // Calculate actual gap between scrollback bottom and cursor area top
+        let displayed_gap = self.calculate_displayed_gap();
+
         // Build separator: ─────< 45 lines >─────
-        let gap_text = format!(" {} lines ", self.gap);
+        let gap_text = format!(" {} lines ", displayed_gap);
         let left_arrow = '\u{e0b2}'; // Powerline left arrow
         let right_arrow = '\u{e0b0}'; // Powerline right arrow
         let label = format!("{left_arrow}{gap_text}{right_arrow}");

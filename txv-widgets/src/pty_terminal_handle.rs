@@ -50,14 +50,22 @@ impl PtyTerminal {
         let cursor_area = self.cursor_area_lines as usize;
 
         // If not in pinned mode and we have a cursor area configured, enter pinned mode
-        if !self.pinned_mode && cursor_area > 0 && h > cursor_area + 1 {
+        if !self.pinned_mode && cursor_area > 0 && h > cursor_area + 2 {
             self.pinned_mode = true;
             self.gap = 0;
-            // scroll_offset stays at 0, we'll scroll from current position
         }
 
+        // Page size: scrollback area height - 1 (for context overlap)
+        // In pinned mode: h - cursor_area - 1 (separator) - 1 (overlap)
+        // In normal mode: h - 1
+        let scrollback_height = if self.pinned_mode && cursor_area > 0 {
+            h.saturating_sub(cursor_area + 1) // subtract cursor_area and separator
+        } else {
+            h
+        };
+        let page = scrollback_height.saturating_sub(1).max(1);
+
         let max = self.termbuf.scrollback_len() + self.gap;
-        let page = h.saturating_sub(1).max(1);
         self.scroll_offset = (self.scroll_offset + page).min(max);
         self.state.mark_dirty();
         HandleResult::Consumed
@@ -65,30 +73,56 @@ impl PtyTerminal {
 
     pub(crate) fn scroll_down_page(&mut self) -> HandleResult {
         let h = self.prev_rows as usize;
-        let page = h.saturating_sub(1).max(1);
-        let new_offset = self.scroll_offset.saturating_sub(page);
+        let cursor_area = self.cursor_area_lines as usize;
+
+        // Page size matches scroll_up_page
+        let scrollback_height = if self.pinned_mode && cursor_area > 0 {
+            h.saturating_sub(cursor_area + 1)
+        } else {
+            h
+        };
+        let page = scrollback_height.saturating_sub(1).max(1);
 
         if self.pinned_mode {
-            // In pinned mode, scrolling down reduces gap first, then scroll_offset
-            if new_offset == 0 && self.gap == 0 {
+            // Calculate current displayed gap
+            let displayed_gap = self.calculate_displayed_gap();
+
+            if self.scroll_offset <= page && displayed_gap == 0 {
                 // Exiting pinned mode - back to live view
                 self.pinned_mode = false;
                 self.scroll_offset = 0;
-            } else if new_offset < self.scroll_offset {
-                // Consume gap before reducing scroll_offset
-                let consumed = self.scroll_offset - new_offset;
-                if self.gap >= consumed {
-                    self.gap -= consumed;
-                } else {
-                    self.gap = 0;
-                }
-                self.scroll_offset = new_offset;
+                self.gap = 0;
+            } else {
+                // Scrolling down: reduce scroll_offset
+                // displayed_gap will decrease as scroll_offset decreases
+                self.scroll_offset = self.scroll_offset.saturating_sub(page);
             }
         } else {
-            self.scroll_offset = new_offset;
+            self.scroll_offset = self.scroll_offset.saturating_sub(page);
         }
 
         self.state.mark_dirty();
         HandleResult::Consumed
+    }
+
+    /// Calculate the displayed gap: lines between scrollback bottom and cursor area top.
+    pub(crate) fn calculate_displayed_gap(&self) -> usize {
+        if !self.pinned_mode {
+            return 0;
+        }
+        let cursor_area = self.cursor_area_lines as usize;
+        let grid_rows = self.termbuf.grid_rows() as usize;
+        let sb_len = self.termbuf.scrollback_len();
+        let total = sb_len + grid_rows;
+
+        // Scrollback view bottom line (exclusive)
+        let frozen_total = total.saturating_sub(self.gap);
+        let scrollback_bottom = frozen_total.saturating_sub(self.scroll_offset);
+
+        // Cursor area top line
+        let cursor_top = total.saturating_sub(cursor_area);
+
+        // Gap is lines between them
+        cursor_top.saturating_sub(scrollback_bottom)
     }
 }
