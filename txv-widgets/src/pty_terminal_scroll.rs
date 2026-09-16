@@ -116,6 +116,12 @@ impl PtyTerminal {
                 for (x, tc) in line.iter().enumerate().take(w as usize) {
                     self.state.buffer_mut().put(x as u16, start_y + i, tc.ch(), tc.style());
                 }
+            } else {
+                // Fill empty rows with spaces
+                let style = Style::default();
+                for x in 0..w {
+                    self.state.buffer_mut().put(x, start_y + i, ' ', style);
+                }
             }
         }
     }
