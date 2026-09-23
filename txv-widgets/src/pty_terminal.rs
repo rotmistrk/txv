@@ -23,8 +23,9 @@ pub struct PtyTerminal {
     pub(crate) had_output: bool,
     /// When true, scrollback view is pinned and new output goes to gap.
     pub(crate) pinned_mode: bool,
-    /// Lines of new output hidden between frozen scrollback and cursor area.
-    pub(crate) gap: usize,
+    /// Absolute line index at bottom of frozen scrollback view.
+    /// The top area shows lines ending at this index, regardless of new output.
+    pub(crate) pinned_bottom_line: usize,
     /// Number of lines to show at bottom for live cursor area (0 = simple freeze).
     pub(crate) cursor_area_lines: u16,
 }
@@ -56,17 +57,12 @@ impl PtyTerminal {
         };
         if let Some(data) = session.poll() {
             log::trace!("PTY data: {} bytes", data.len());
-            let old_total = self.termbuf.scrollback_len() + self.termbuf.grid_rows() as usize;
             self.termbuf.process(&data);
-            let new_total = self.termbuf.scrollback_len() + self.termbuf.grid_rows() as usize;
-            let new_lines = new_total.saturating_sub(old_total);
 
-            if self.pinned_mode {
-                // In pinned mode, new output goes to gap instead of scrolling view
-                self.gap += new_lines;
-            } else {
+            if !self.pinned_mode {
                 self.scroll_offset = 0;
             }
+            // In pinned mode, pinned_bottom_line stays fixed - gap grows automatically
             self.had_output = true;
             self.state.mark_dirty();
         } else if !session.is_alive() {

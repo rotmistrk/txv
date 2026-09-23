@@ -33,7 +33,7 @@ impl PtyTerminal {
             scroll_offset: 0,
             had_output: false,
             pinned_mode: false,
-            gap: 0,
+            pinned_bottom_line: 0,
             cursor_area_lines: 3,
         })
     }
@@ -66,7 +66,7 @@ impl PtyTerminal {
             scroll_offset: 0,
             had_output: false,
             pinned_mode: false,
-            gap: 0,
+            pinned_bottom_line: 0,
             cursor_area_lines: 3,
         })
     }
@@ -94,7 +94,7 @@ impl PtyTerminal {
             scroll_offset: 0,
             had_output: false,
             pinned_mode: false,
-            gap: 0,
+            pinned_bottom_line: 0,
             cursor_area_lines: 3,
         })
     }

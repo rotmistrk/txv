@@ -49,14 +49,11 @@ impl PtyTerminal {
     }
 
     fn draw_scrollback_region(&mut self, start_y: usize, height: usize, w: usize) {
-        let grid_rows = self.termbuf.grid_rows() as usize;
         let sb_len = self.termbuf.scrollback_len();
-        let total = sb_len + grid_rows;
 
-        // In pinned mode, scroll_offset is from the frozen position (before gap)
-        // The gap contains new lines we haven't scrolled through yet
-        let frozen_total = total.saturating_sub(self.gap);
-        let bottom_line = frozen_total.saturating_sub(self.scroll_offset);
+        // In pinned mode, pinned_bottom_line is the absolute line index at the bottom
+        // of the frozen scrollback view. Draw lines [bottom - height, bottom).
+        let bottom_line = self.pinned_bottom_line;
         let top_line = bottom_line.saturating_sub(height);
 
         for screen_y in 0..height {
