@@ -19,21 +19,23 @@ impl PtyTerminal {
     }
 
     pub(crate) fn handle_key(&mut self, key: &KeyEvent) -> HandleResult {
-        if self.exited {
-            return HandleResult::Consumed;
-        }
+        // Page keys work even when exited (for reviewing scrollback)
         if key.code() == KeyCode::PageUp {
             return self.scroll_up_page();
         }
         if key.code() == KeyCode::PageDown {
             return self.scroll_down_page();
         }
-        // Any other key exits scrollback/pinned mode and goes to PTY
+        // Any other key exits scrollback/pinned mode
         if self.scroll_offset > 0 || self.pinned_mode {
             self.scroll_offset = 0;
             self.pinned_mode = false;
             self.pinned_bottom_line = 0;
             self.state.mark_dirty();
+        }
+        // Don't send keys to exited terminal
+        if self.exited {
+            return HandleResult::Consumed;
         }
         if let Some(bytes) = key_to_bytes(key) {
             if let Some(session) = self.session.as_mut() {
@@ -120,18 +122,47 @@ impl PtyTerminal {
         HandleResult::Consumed
     }
 
-    /// Calculate the displayed gap: lines between scrollback bottom and cursor area top.
+    /// Calculate the displayed gap: logical lines between scrollback bottom and cursor area top.
+    /// Accounts for line wrapping - wrapped rows count as 1 logical line together.
     pub(crate) fn calculate_displayed_gap(&self) -> usize {
         if !self.pinned_mode {
             return 0;
         }
         let cursor_area = self.cursor_area_lines as usize;
         let total = self.total_lines();
+        let sb_len = self.termbuf.scrollback_len();
 
-        // Cursor area top line index
+        // Physical rows in the gap: from pinned_bottom_line to cursor_top
         let cursor_top = total.saturating_sub(cursor_area);
+        let gap_start = self.pinned_bottom_line;
+        let gap_end = cursor_top;
 
-        // Gap is lines between pinned_bottom_line and cursor_top
-        cursor_top.saturating_sub(self.pinned_bottom_line)
+        if gap_start >= gap_end {
+            return 0;
+        }
+
+        // Count logical lines: a row starts a new logical line if the previous row
+        // was NOT wrapped. First row always starts a logical line.
+        let mut logical_lines = 0;
+        for line_idx in gap_start..gap_end {
+            let prev_wrapped = if line_idx == 0 {
+                false
+            } else {
+                self.is_line_wrapped(line_idx - 1, sb_len)
+            };
+            if !prev_wrapped {
+                logical_lines += 1;
+            }
+        }
+        logical_lines
+    }
+
+    /// Check if a line (by absolute index) is wrapped.
+    fn is_line_wrapped(&self, line_idx: usize, sb_len: usize) -> bool {
+        if line_idx < sb_len {
+            self.termbuf.scrollback_wrapped(sb_len - 1 - line_idx)
+        } else {
+            self.termbuf.grid_wrapped(line_idx - sb_len)
+        }
     }
 }

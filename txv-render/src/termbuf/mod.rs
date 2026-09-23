@@ -167,9 +167,19 @@ impl TermBuf {
         self.scrollback.line_from_bottom(offset).map(|r| r.cells.as_slice())
     }
 
+    /// Check if a scrollback line is soft-wrapped (continues on next row).
+    pub fn scrollback_wrapped(&self, offset: usize) -> bool {
+        self.scrollback.line_from_bottom(offset).is_some_and(|r| r.wrapped)
+    }
+
     /// Get a visible grid line by row index.
     pub fn grid_line(&self, row: usize) -> Option<&[TCell]> {
         self.cells.get(row).map(|r| r.cells.as_slice())
+    }
+
+    /// Check if a grid line is soft-wrapped (continues on next row).
+    pub fn grid_wrapped(&self, row: usize) -> bool {
+        self.cells.get(row).is_some_and(|r| r.wrapped)
     }
 
     /// Number of visible rows.

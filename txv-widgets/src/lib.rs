@@ -44,6 +44,8 @@ pub mod pty_terminal;
 mod pty_terminal_handle;
 mod pty_terminal_scroll;
 mod pty_terminal_spawn;
+#[cfg(test)]
+mod pty_terminal_tests;
 pub mod resize_helpers;
 pub mod scroll_view;
 pub mod scrollbar;
