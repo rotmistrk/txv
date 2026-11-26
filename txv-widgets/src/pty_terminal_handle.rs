@@ -28,9 +28,7 @@ impl PtyTerminal {
         }
         // Any other key exits scrollback/pinned mode
         if self.scroll_offset > 0 || self.pinned_mode {
-            self.scroll_offset = 0;
-            self.pinned_mode = false;
-            self.pinned_bottom_line = 0;
+            self.exit_pinned();
             self.state.mark_dirty();
         }
         // Don't send keys to exited terminal
@@ -52,72 +50,40 @@ impl PtyTerminal {
         self.termbuf.scrollback_len() + self.termbuf.grid_rows() as usize
     }
 
-    /// Calculate scrollback area height (top part of split view)
-    fn scrollback_area_height(&self) -> usize {
-        let h = self.prev_rows as usize;
-        let cursor_area = self.cursor_area_lines as usize;
-        if self.pinned_mode && cursor_area > 0 {
-            h.saturating_sub(cursor_area + 1) // subtract cursor_area and separator
-        } else {
-            h
-        }
-    }
-
     pub(crate) fn scroll_up_page(&mut self) -> HandleResult {
-        let h = self.prev_rows as usize;
-        let cursor_area = self.cursor_area_lines as usize;
-        let total = self.total_lines();
-
-        // If not in pinned mode and we have a cursor area configured, enter pinned mode
-        if !self.pinned_mode && cursor_area > 0 && h > cursor_area + 2 {
-            self.pinned_mode = true;
-            // Pin at current bottom: total - cursor_area (just above the cursor area)
-            self.pinned_bottom_line = total.saturating_sub(cursor_area);
+        if !self.pinned_mode && self.can_pin() {
+            self.enter_pinned();
         }
-
-        // Page size: scrollback area height - 1 (for context overlap)
         let scrollback_height = self.scrollback_area_height();
         let page = scrollback_height.saturating_sub(1).max(1);
-
-        // Scroll up: move pinned_bottom_line up (toward older content)
-        // Can't go below scrollback_height (need at least that many lines to show)
-        let min_bottom = scrollback_height;
-        self.pinned_bottom_line = self.pinned_bottom_line.saturating_sub(page).max(min_bottom);
-
-        // scroll_offset tracks position for non-pinned mode; keep in sync
-        self.scroll_offset = total.saturating_sub(self.pinned_bottom_line);
-
+        if self.pinned_mode {
+            // Toward older content; the top area must stay full.
+            let index = self.pinned_bottom_index().saturating_sub(page).max(scrollback_height);
+            self.set_pinned_bottom_index(index);
+            self.scroll_offset = self.total_lines().saturating_sub(index);
+        } else {
+            let max = self.termbuf.scrollback_len();
+            self.scroll_offset = (self.scroll_offset + page).min(max);
+        }
         self.state.mark_dirty();
         HandleResult::Consumed
     }
 
     pub(crate) fn scroll_down_page(&mut self) -> HandleResult {
-        let cursor_area = self.cursor_area_lines as usize;
-        let total = self.total_lines();
-
         let scrollback_height = self.scrollback_area_height();
         let page = scrollback_height.saturating_sub(1).max(1);
-
         if self.pinned_mode {
-            // Scroll down: move pinned_bottom_line down (toward newer content)
-            let new_bottom = self.pinned_bottom_line + page;
-
-            // The maximum pinned_bottom_line is total - cursor_area (live position)
-            let max_bottom = total.saturating_sub(cursor_area);
-
-            if new_bottom >= max_bottom {
-                // We've caught up to live - exit pinned mode
-                self.pinned_mode = false;
-                self.pinned_bottom_line = 0;
-                self.scroll_offset = 0;
+            let index = self.pinned_bottom_index() + page;
+            if index >= self.live_top_index() {
+                // Caught up with the live area.
+                self.exit_pinned();
             } else {
-                self.pinned_bottom_line = new_bottom;
-                self.scroll_offset = total.saturating_sub(self.pinned_bottom_line);
+                self.set_pinned_bottom_index(index);
+                self.scroll_offset = self.total_lines().saturating_sub(index);
             }
         } else {
             self.scroll_offset = self.scroll_offset.saturating_sub(page);
         }
-
         self.state.mark_dirty();
         HandleResult::Consumed
     }
@@ -128,14 +94,9 @@ impl PtyTerminal {
         if !self.pinned_mode {
             return 0;
         }
-        let cursor_area = self.cursor_area_lines as usize;
-        let total = self.total_lines();
         let sb_len = self.termbuf.scrollback_len();
-
-        // Physical rows in the gap: from pinned_bottom_line to cursor_top
-        let cursor_top = total.saturating_sub(cursor_area);
-        let gap_start = self.pinned_bottom_line;
-        let gap_end = cursor_top;
+        let gap_start = self.pinned_bottom_index();
+        let gap_end = self.live_top_index();
 
         if gap_start >= gap_end {
             return 0;

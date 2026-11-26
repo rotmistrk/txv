@@ -51,9 +51,9 @@ impl PtyTerminal {
     fn draw_scrollback_region(&mut self, start_y: usize, height: usize, w: usize) {
         let sb_len = self.termbuf.scrollback_len();
 
-        // In pinned mode, pinned_bottom_line is the absolute line index at the bottom
-        // of the frozen scrollback view. Draw lines [bottom - height, bottom).
-        let bottom_line = self.pinned_bottom_line;
+        // In pinned mode, the top area ends just above pinned_bottom_index().
+        // Draw rows [bottom - height, bottom).
+        let bottom_line = self.pinned_bottom_index();
         let top_line = bottom_line.saturating_sub(height);
 
         for screen_y in 0..height {
@@ -103,9 +103,8 @@ impl PtyTerminal {
     }
 
     fn draw_cursor_area(&mut self, start_y: u16, height: u16, w: u16) {
-        let grid_rows = self.termbuf.grid_rows();
-        // Show the last `height` lines of the live grid
-        let start_row = grid_rows.saturating_sub(height) as usize;
+        // Live area ends at the cursor row (see live_start_row).
+        let start_row = self.live_start_row();
 
         for i in 0..height {
             let row = start_row + i as usize;

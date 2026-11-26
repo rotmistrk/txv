@@ -8,6 +8,10 @@ use super::row::Row;
 pub(super) struct Scrollback {
     lines: VecDeque<Row>,
     limit: usize,
+    /// Total rows ever dropped from the front. Lets callers keep a stable
+    /// position in the output history: `history_index - evicted` is the
+    /// current index, even after the ring is full and keeps rotating.
+    evicted: usize,
 }
 
 impl Scrollback {
@@ -15,6 +19,7 @@ impl Scrollback {
         Self {
             lines: VecDeque::new(),
             limit,
+            evicted: 0,
         }
     }
 
@@ -24,12 +29,18 @@ impl Scrollback {
         }
         if self.lines.len() >= self.limit {
             self.lines.pop_front();
+            self.evicted += 1;
         }
         self.lines.push_back(row);
     }
 
     pub fn len(&self) -> usize {
         self.lines.len()
+    }
+
+    /// Total rows dropped from the front since creation.
+    pub fn evicted(&self) -> usize {
+        self.evicted
     }
 
     pub fn line_from_bottom(&self, offset: usize) -> Option<&Row> {
@@ -51,6 +62,7 @@ impl Scrollback {
         // Trim to limit
         while self.lines.len() > self.limit {
             self.lines.pop_front();
+            self.evicted += 1;
         }
     }
 }
@@ -83,6 +95,24 @@ mod tests {
         assert_eq!(sb.len(), 3);
         assert_eq!(sb.line_from_bottom(2).map(|r| r.cells[0].ch), Some('C'));
         assert_eq!(sb.line_from_bottom(0).map(|r| r.cells[0].ch), Some('E'));
+    }
+
+    #[test]
+    fn evicted_counts_rows_dropped_by_push() {
+        let mut sb = Scrollback::new(1000);
+        for i in 0..3500 {
+            sb.push(make_row(char::from(b'A' + (i % 26) as u8), 80));
+        }
+        assert_eq!(sb.len(), 1000);
+        assert_eq!(sb.evicted(), 2500);
+    }
+
+    #[test]
+    fn evicted_counts_rows_trimmed_by_replace() {
+        let mut sb = Scrollback::new(100);
+        sb.replace((0..250).map(|_| make_row('x', 40)).collect());
+        assert_eq!(sb.len(), 100);
+        assert_eq!(sb.evicted(), 150);
     }
 
     #[test]

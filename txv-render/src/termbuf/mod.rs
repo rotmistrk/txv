@@ -162,6 +162,13 @@ impl TermBuf {
         self.scrollback.len()
     }
 
+    /// Total scrollback lines dropped since creation (ring overflow, reflow trim).
+    /// Add this to an index into scrollback + grid to get a position that stays
+    /// valid while output keeps arriving.
+    pub fn scrollback_evicted(&self) -> usize {
+        self.scrollback.evicted()
+    }
+
     /// Get a scrollback line by offset from bottom (0 = most recent).
     pub fn scrollback_line(&self, offset: usize) -> Option<&[TCell]> {
         self.scrollback.line_from_bottom(offset).map(|r| r.cells.as_slice())

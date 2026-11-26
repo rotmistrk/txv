@@ -114,7 +114,7 @@ fn write_system_clipboard(text: &str) -> Result<(), String> {
     }
     #[cfg(target_os = "macos")]
     {
-        return write_via_command("pbcopy", &[], text);
+        write_via_command("pbcopy", &[], text)
     }
     #[cfg(not(target_os = "macos"))]
     {

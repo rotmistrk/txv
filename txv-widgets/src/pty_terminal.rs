@@ -23,9 +23,10 @@ pub struct PtyTerminal {
     pub(crate) had_output: bool,
     /// When true, scrollback view is pinned and new output goes to gap.
     pub(crate) pinned_mode: bool,
-    /// Absolute line index at bottom of frozen scrollback view.
-    /// The top area shows lines ending at this index, regardless of new output.
-    pub(crate) pinned_bottom_line: usize,
+    /// Bottom of the frozen top area, in history coordinates
+    /// (index + scrollback_evicted). Stays on the same content while output
+    /// arrives, even after the scrollback ring is full. See pty_terminal_pin.rs.
+    pub(crate) pinned_bottom_hist: usize,
     /// Number of lines to show at bottom for live cursor area (0 = simple freeze).
     pub(crate) cursor_area_lines: u16,
 }
@@ -62,7 +63,7 @@ impl PtyTerminal {
             if !self.pinned_mode {
                 self.scroll_offset = 0;
             }
-            // In pinned mode, pinned_bottom_line stays fixed - gap grows automatically
+            // Pinned mode: the pin is in history coordinates (pty_terminal_pin.rs), so it stays put
             self.had_output = true;
             self.state.mark_dirty();
         } else if !session.is_alive() {

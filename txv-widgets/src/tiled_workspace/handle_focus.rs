@@ -67,12 +67,10 @@ impl TiledWorkspace {
             } else {
                 return false;
             }
+        } else if focused > 0 {
+            focused - 1
         } else {
-            if focused > 0 {
-                focused - 1
-            } else {
-                return false;
-            }
+            return false;
         };
         sp.switch_focus(next);
         true

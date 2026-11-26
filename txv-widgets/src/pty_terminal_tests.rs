@@ -20,7 +20,7 @@ fn make_test_terminal(cols: u16, rows: u16, cursor_area: u16) -> PtyTerminal {
         scroll_offset: 0,
         had_output: false,
         pinned_mode: false,
-        pinned_bottom_line: 0,
+        pinned_bottom_hist: 0,
         cursor_area_lines: cursor_area,
     }
 }
@@ -44,7 +44,7 @@ fn initial_state_not_pinned() {
     let term = make_test_terminal(80, 24, 3);
     assert!(!term.pinned_mode);
     assert_eq!(term.scroll_offset, 0);
-    assert_eq!(term.pinned_bottom_line, 0);
+    assert_eq!(term.pinned_bottom_hist, 0);
 }
 
 #[test]
@@ -55,7 +55,7 @@ fn page_up_enters_pinned_mode() {
     term.scroll_up_page();
 
     assert!(term.pinned_mode, "should enter pinned mode");
-    assert!(term.pinned_bottom_line > 0, "should have pinned position");
+    assert!(term.pinned_bottom_hist > 0, "should have pinned position");
 }
 
 #[test]
@@ -73,7 +73,7 @@ fn pinned_bottom_line_set_correctly_on_first_pgup() {
     let page = scrollback_height - 1; // 5
     let expected = expected_initial_pin - page;
 
-    assert_eq!(term.pinned_bottom_line, expected);
+    assert_eq!(term.pinned_bottom_hist, expected);
 }
 
 #[test]
@@ -82,14 +82,14 @@ fn new_output_does_not_change_pinned_bottom_line() {
     feed_lines(&mut term, 50);
 
     term.scroll_up_page();
-    let pinned_before = term.pinned_bottom_line;
+    let pinned_before = term.pinned_bottom_hist;
 
     // Simulate new output
     feed_lines(&mut term, 5);
 
     // pinned_bottom_line should stay the same
     assert_eq!(
-        term.pinned_bottom_line, pinned_before,
+        term.pinned_bottom_hist, pinned_before,
         "pinned position must not change"
     );
 }
@@ -123,11 +123,11 @@ fn page_down_moves_toward_live() {
     term.scroll_up_page();
     term.scroll_up_page();
     term.scroll_up_page();
-    let pinned_after_up = term.pinned_bottom_line;
+    let pinned_after_up = term.pinned_bottom_hist;
 
     // Scroll down once
     term.scroll_down_page();
-    let pinned_after_down = term.pinned_bottom_line;
+    let pinned_after_down = term.pinned_bottom_hist;
 
     assert!(pinned_after_down > pinned_after_up, "should move toward newer content");
 }
@@ -199,9 +199,9 @@ fn scrollback_area_height_in_pinned_mode() {
     assert!(term.pinned_mode);
 
     // We can verify indirectly: page size should be scrollback_height - 1 = 5
-    let pin_before = term.pinned_bottom_line;
+    let pin_before = term.pinned_bottom_hist;
     term.scroll_up_page();
-    let pin_after = term.pinned_bottom_line;
+    let pin_after = term.pinned_bottom_hist;
 
     // Page moved us by at most 5 lines (may be clamped)
     let diff = pin_before.saturating_sub(pin_after);
@@ -221,9 +221,9 @@ fn minimum_pinned_bottom_line() {
     // Should not go below scrollback_height (need content to fill the view)
     let scrollback_height = 6; // 10 - 3 - 1
     assert!(
-        term.pinned_bottom_line >= scrollback_height,
+        term.pinned_bottom_hist >= scrollback_height,
         "pinned_bottom_line {} should be >= {}",
-        term.pinned_bottom_line,
+        term.pinned_bottom_hist,
         scrollback_height
     );
 }
@@ -234,10 +234,10 @@ fn page_size_based_on_scrollback_area() {
     feed_lines(&mut term, 100);
 
     term.scroll_up_page();
-    let first_pin = term.pinned_bottom_line;
+    let first_pin = term.pinned_bottom_hist;
 
     term.scroll_up_page();
-    let second_pin = term.pinned_bottom_line;
+    let second_pin = term.pinned_bottom_hist;
 
     // Page size should be scrollback_height - 1 = 6 - 1 = 5
     let expected_page = 5;
@@ -273,7 +273,7 @@ fn extreme_wrap_logical_page_at_least_one() {
     // Even if wrap fills the entire gap region, we should count logical lines
     // The gap should be >= 1 if there's any content in it
     assert!(
-        gap >= 1 || term.pinned_bottom_line == 0,
+        gap >= 1 || term.pinned_bottom_hist == 0,
         "gap should be at least 1 if there's content"
     );
 }
@@ -285,10 +285,10 @@ fn physical_scroll_always_progresses() {
     feed_lines(&mut term, 50);
 
     term.scroll_up_page();
-    let pin1 = term.pinned_bottom_line;
+    let pin1 = term.pinned_bottom_hist;
 
     term.scroll_up_page();
-    let pin2 = term.pinned_bottom_line;
+    let pin2 = term.pinned_bottom_hist;
 
     // Physical page is at least 1 (max(scrollback_height - 1, 1))
     assert!(pin2 < pin1, "scroll should always move: {} -> {}", pin1, pin2);
