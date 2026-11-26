@@ -59,35 +59,46 @@ impl TabPanel {
     /// Insert a tab with a title and child view. Activates the new tab.
     pub fn insert_tab(&mut self, title: impl Into<String>, view: Box<dyn View>) {
         self.bar_mut().add_tab(title);
-        self.group.insert(view);
-        let new_idx = self.group.child_count() - 1;
+        // Group index = tab index + 1. Insert at that position, not at the
+        // end: an open dropdown is the last group child. The bar already
+        // holds the new title, so its count is the new tab's group index.
+        let new_idx = self.bar().tab_count();
+        self.group.insert_at(new_idx, view);
         // New tab starts hidden; set_active will make it visible
         self.group.set_child_visible(new_idx, false);
         self.set_active(new_idx - 1);
     }
 
     /// Remove a tab by index. Returns the removed view.
+    ///
+    /// The bar title, the focused group child, and child visibility are kept
+    /// on the same tab: if the active tab survives it stays active; if it is
+    /// removed, the tab that takes its index becomes active.
     pub fn remove_tab(&mut self, idx: usize) -> Option<Box<dyn View>> {
         let gi = idx + 1; // group index
-        if gi >= self.group.child_count() {
+        if gi >= self.group.child_count() || idx >= self.tab_count() {
             return None;
+        }
+        if idx == self.bar().active_index() {
+            if let Some(child) = self.group.child_mut(gi) {
+                child.unselect();
+            }
         }
         self.bar_mut().remove_tab(idx);
         let view = self.group.remove(gi);
-        self.relayout();
+        if self.tab_count() > 0 {
+            self.set_active(self.bar().active_index());
+        } else {
+            self.relayout();
+        }
         Some(view)
     }
 
     /// Take the active tab's view (for moving between panels).
     pub fn take_active(&mut self) -> Option<(String, Box<dyn View>)> {
         let idx = self.bar().active_index();
-        if idx >= self.tab_count() {
-            return None;
-        }
-        let title = self.bar().titles()[idx].clone();
-        self.bar_mut().remove_tab(idx);
-        let view = self.group.remove(idx + 1);
-        self.relayout();
+        let title = self.bar().titles().get(idx)?.clone();
+        let view = self.remove_tab(idx)?;
         Some((title, view))
     }
 
@@ -291,3 +302,5 @@ impl TabPanel {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+#[cfg(test)]
+mod tests_identity;

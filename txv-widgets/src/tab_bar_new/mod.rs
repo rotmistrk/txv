@@ -118,7 +118,9 @@ impl TabBar {
                 *v -= 1;
             }
         }
-        if self.active >= self.titles.len() && self.active > 0 {
+        // Keep `active` on the same tab: removing a tab to its left shifts it.
+        // Removing the last tab while it is active moves to the new last tab.
+        if self.active > 0 && (idx < self.active || self.active >= self.titles.len()) {
             self.active -= 1;
         }
         self.state.mark_dirty();
