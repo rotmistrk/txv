@@ -30,28 +30,33 @@ fi
 
 # 4. ALL tests MUST pass. Zero failures allowed.
 echo "  tests..."
-TEST_OUTPUT=$(cargo test --workspace --no-fail-fast 2>&1)
-TEST_EXIT=$?
+# `set -e` would exit silently on a failing $(...); capture the code instead.
+TEST_EXIT=0
+TEST_OUTPUT=$(cargo test --workspace --no-fail-fast 2>&1) || TEST_EXIT=$?
 if [ $TEST_EXIT -ne 0 ]; then
-    echo "$TEST_OUTPUT" | grep -E "FAILED|^error|failures:" | head -20
+    echo "Failing tests:"
+    grep -E "^test .* FAILED$" <<< "$TEST_OUTPUT" || true
+    echo "Panics:"
+    grep -A4 "panicked at" <<< "$TEST_OUTPUT" | head -80 || true
+    grep -E -A6 "^error(\[|:)" <<< "$TEST_OUTPUT" | head -40 || true
     echo "❌ Tests failed (exit code $TEST_EXIT)"
     exit 1
 fi
 # Double-check: ensure at least one test actually ran
-if ! echo "$TEST_OUTPUT" | grep -q "test result:"; then
+if ! grep -q "test result:" <<< "$TEST_OUTPUT"; then
     echo "❌ No test results found — tests did not run!"
     exit 1
 fi
 # Ensure zero failures in output
-if echo "$TEST_OUTPUT" | grep -q "FAILED"; then
-    echo "$TEST_OUTPUT" | grep "FAILED"
+if grep -q "FAILED" <<< "$TEST_OUTPUT"; then
+    grep "FAILED" <<< "$TEST_OUTPUT"
     echo "❌ Test failures detected"
     exit 1
 fi
 # Ensure zero ignored/skipped tests (check --tests only, doc-tests use rust,ignore legitimately)
-LIB_OUTPUT=$(cargo test --workspace --tests 2>&1)
-if echo "$LIB_OUTPUT" | grep -qE '[1-9][0-9]* ignored'; then
-    echo "$LIB_OUTPUT" | grep 'ignored'
+LIB_OUTPUT=$(cargo test --workspace --tests 2>&1) || true
+if grep -qE '[1-9][0-9]* ignored' <<< "$LIB_OUTPUT"; then
+    grep 'ignored' <<< "$LIB_OUTPUT"
     echo "❌ Tests were skipped/ignored — all tests must run"
     exit 1
 fi
