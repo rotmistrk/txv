@@ -3,6 +3,7 @@
 //! Uses GroupState to host an InputLine for command/search mode.
 //! Child 0 (when present): InputLine for `:` or `/` input.
 
+mod accessors;
 mod cursor;
 pub mod delegate;
 pub mod draw;
@@ -121,22 +122,6 @@ impl<D: EditorViewDelegate> EditorView<D> {
         self.editor.buf().is_modified()
     }
 
-    pub fn editor(&self) -> &Editor {
-        &self.editor
-    }
-
-    pub fn editor_mut(&mut self) -> &mut Editor {
-        &mut self.editor
-    }
-
-    pub fn delegate(&self) -> &D {
-        &self.delegate
-    }
-
-    pub fn delegate_mut(&mut self) -> &mut D {
-        &mut self.delegate
-    }
-
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -146,18 +131,6 @@ impl<D: EditorViewDelegate> EditorView<D> {
         let ext = extension_from_path(path).to_string();
         self.hl_cache = HighlightCache::new(&ext);
         self.group.set_title(file_title(path));
-    }
-
-    pub fn highlighter(&self) -> &Highlighter {
-        &self.highlighter
-    }
-
-    pub fn highlighter_mut(&mut self) -> &mut Highlighter {
-        &mut self.highlighter
-    }
-
-    pub fn hl_cache_mut(&mut self) -> &mut HighlightCache {
-        &mut self.hl_cache
     }
 
     pub fn mark_dirty(&mut self) {
