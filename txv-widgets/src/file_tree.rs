@@ -13,6 +13,9 @@ pub struct FileTreeData {
     root: PathBuf,
     /// Additional roots for multi-root workspace (empty = single root mode).
     pub(crate) extra_roots: Vec<PathBuf>,
+    /// Display labels for `extra_roots` (same order). Kept so rebuilds and
+    /// refreshes show them; empty = each root's directory name.
+    root_labels: Vec<String>,
     pub(crate) nodes: Vec<TreeNode>,
     pub(crate) visible: Vec<usize>,
     /// Per-path foreground color (relative path → color).
@@ -51,10 +54,8 @@ impl FileTreeData {
         let primary = roots.first().cloned().unwrap_or_default();
         let mut data = Self::empty(primary);
         if roots.len() > 1 {
-            for root_path in &roots {
-                data.nodes.push(Self::root_node(root_path));
-            }
             data.extra_roots = roots;
+            data.push_root_nodes();
             // Auto-expand all roots on initial construction
             for i in 0..data.nodes.len() {
                 data.nodes[i].expanded = true;
@@ -72,6 +73,7 @@ impl FileTreeData {
         Self {
             root,
             extra_roots: Vec::new(),
+            root_labels: Vec::new(),
             nodes: Vec::new(),
             visible: Vec::new(),
             colors: HashMap::new(),
@@ -87,11 +89,20 @@ impl FileTreeData {
         }
     }
 
-    fn root_node(path: &Path) -> TreeNode {
-        let label = path
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_else(|| path.to_string_lossy().into_owned());
+    /// One top-level node per extra root, labelled from `root_labels`.
+    fn push_root_nodes(&mut self) {
+        for (i, root_path) in self.extra_roots.iter().enumerate() {
+            let node = Self::root_node(root_path, self.root_labels.get(i));
+            self.nodes.push(node);
+        }
+    }
+
+    fn root_node(path: &Path, label: Option<&String>) -> TreeNode {
+        let label = label.cloned().unwrap_or_else(|| {
+            path.file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| path.to_string_lossy().into_owned())
+        });
         TreeNode {
             path: path.to_path_buf(),
             label,
@@ -122,10 +133,10 @@ impl FileTreeData {
         self.fully_loaded = false;
         if roots.len() > 1 {
             self.root = roots.first().cloned().unwrap_or_default();
+            // New roots: labels for the old ones no longer apply.
+            self.root_labels.clear();
             self.extra_roots = roots;
-            for root_path in &self.extra_roots.clone() {
-                self.nodes.push(Self::root_node(root_path));
-            }
+            self.push_root_nodes();
         } else if let Some(r) = roots.into_iter().next() {
             self.root = r.clone();
             self.extra_roots.clear();
@@ -135,10 +146,12 @@ impl FileTreeData {
     }
 
     /// Set disambiguated display labels for root nodes (multi-root only).
+    /// They stay in effect across refreshes until the roots change.
     pub fn set_root_labels(&mut self, labels: &[String]) {
         if self.extra_roots.is_empty() {
             return;
         }
+        self.root_labels = labels.to_vec();
         for (i, node) in self.nodes.iter_mut().filter(|n| n.parent.is_none()).enumerate() {
             if let Some(label) = labels.get(i) {
                 node.label = label.clone();
@@ -216,9 +229,7 @@ impl FileTreeData {
     }
 
     fn refresh_multi_root(&mut self, expanded_paths: &[PathBuf]) {
-        for root_path in &self.extra_roots.clone() {
-            self.nodes.push(Self::root_node(root_path));
-        }
+        self.push_root_nodes();
         for i in 0..self.nodes.len() {
             if self.nodes[i].parent.is_none() && self.nodes[i].is_dir && expanded_paths.contains(&self.nodes[i].path) {
                 self.nodes[i].expanded = true;
@@ -257,3 +268,7 @@ impl FileTreeData {
         self.rebuild_visible();
     }
 }
+
+#[cfg(test)]
+#[path = "file_tree_root_label_tests.rs"]
+mod root_label_tests;
