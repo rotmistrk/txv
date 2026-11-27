@@ -133,8 +133,14 @@ impl Program {
                 }
             }
 
-            // Tick
+            // Tick — same as `run()`: Event::Tick to the views, then CM_TICK
+            // to the app handler (background work is drained on CM_TICK).
             self.group.dispatch(&Event::Tick);
+            self.sink.push(Event::Command {
+                id: CM_TICK,
+                data: None,
+                broadcast: false,
+            });
             self.drain_commands(handler);
 
             // Draw and flush
