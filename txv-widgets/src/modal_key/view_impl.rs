@@ -7,7 +7,15 @@ use txv_core::prelude::*;
 use super::ModalKey;
 
 impl View for ModalKey {
-    delegate_group_state!(group, override { options, draw, handle, set_sink });
+    delegate_group_state!(group, override { options, draw, handle, set_sink, set_bounds });
+
+    /// The StatusBar sizes an active prompt after activation; children follow.
+    fn set_bounds(&mut self, rect: Rect) {
+        self.group.set_bounds(rect);
+        if self.active {
+            self.layout_children_modal();
+        }
+    }
 
     fn set_sink(&mut self, sink: EventSink) {
         self.group.set_own_sink(sink.clone());

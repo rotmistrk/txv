@@ -1,18 +1,27 @@
 //! MessageView — shows toast messages, auto-dismisses after timeout.
 
+use std::any::Any;
 use std::time::Instant;
 use txv_core::prelude::*;
 
+use crate::focus_gated_group::{CM_ACTIVATE_GROUP, CM_DEACTIVATE_GROUP};
 use crate::resize_helpers::resize_width_to;
 use crate::status_items::CM_STATUS_MESSAGE;
 
+/// Group id that ModalKey broadcasts to every status item when a prompt opens/closes.
+const ALL_GROUPS: u16 = u16::MAX;
+
 /// A View-based status bar item that displays transient messages.
+///
+/// While a modal prompt (M-x, file finder) is open, the message yields its
+/// width to the prompt; it keeps the text and reappears when the prompt closes.
 pub struct MessageView {
     state: ViewState,
     display: String,
     display_style: Style,
     timeout_secs: u16,
     last_set: Option<Instant>,
+    yielded: bool,
 }
 
 impl MessageView {
@@ -25,11 +34,12 @@ impl MessageView {
             display_style: Style::default(),
             timeout_secs,
             last_set: None,
+            yielded: false,
         }
     }
 
     fn update_bounds(&mut self) {
-        let w = if self.display.is_empty() {
+        let w = if self.display.is_empty() || self.yielded {
             0
         } else {
             self.display.len() as u16 + 2
@@ -55,6 +65,17 @@ impl MessageView {
         };
         self.display_style = Style::new(fg_style.fg(), bar_bg);
         self.last_set = Some(Instant::now());
+        self.update_bounds();
+        self.state.mark_dirty();
+    }
+
+    /// React to ModalKey's wildcard group broadcast: yield while a prompt is open.
+    fn on_prompt_toggle(&mut self, id: CommandId, data: &Option<Box<dyn Any + Send>>) {
+        let is_wildcard = data.as_ref().and_then(|d| d.downcast_ref::<u16>()) == Some(&ALL_GROUPS);
+        if !is_wildcard {
+            return;
+        }
+        self.yielded = id == CM_DEACTIVATE_GROUP;
         self.update_bounds();
         self.state.mark_dirty();
     }
@@ -96,6 +117,10 @@ impl View for MessageView {
                 }
                 HandleResult::Ignored
             }
+            Event::Command { id, data, .. } if *id == CM_DEACTIVATE_GROUP || *id == CM_ACTIVATE_GROUP => {
+                self.on_prompt_toggle(*id, data);
+                HandleResult::Ignored
+            }
             Event::Tick => {
                 self.check_timeout();
                 HandleResult::Ignored
@@ -104,3 +129,7 @@ impl View for MessageView {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "v_message_tests.rs"]
+mod tests;

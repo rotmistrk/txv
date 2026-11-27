@@ -148,6 +148,9 @@ mod modal_key_test_completion;
 mod modal_key_tests;
 
 #[cfg(test)]
+mod modal_key_tests_resize;
+
+#[cfg(test)]
 mod dropdown_tab_panel_tests;
 
 #[cfg(test)]
