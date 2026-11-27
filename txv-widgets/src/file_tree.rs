@@ -18,8 +18,8 @@ pub struct FileTreeData {
     root_labels: Vec<String>,
     pub(crate) nodes: Vec<TreeNode>,
     pub(crate) visible: Vec<usize>,
-    /// Per-path foreground color (relative path → color).
-    pub(crate) colors: HashMap<String, Color>,
+    /// Per-file foreground color, keyed by absolute path (unique across roots).
+    pub(crate) colors: HashMap<PathBuf, Color>,
     /// Badge colors for root nodes (index matches root order in extra_roots).
     pub(crate) root_badge_colors: Vec<Color>,
     /// Set of absolute paths currently open in editor tabs.
@@ -194,8 +194,8 @@ impl FileTreeData {
         &self.root
     }
 
-    /// Set per-path foreground colors (relative path → color).
-    pub fn set_colors(&mut self, colors: HashMap<String, Color>) {
+    /// Set per-file foreground colors (absolute path → color).
+    pub fn set_colors(&mut self, colors: HashMap<PathBuf, Color>) {
         self.colors = colors;
     }
 

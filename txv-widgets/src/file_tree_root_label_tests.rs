@@ -57,3 +57,31 @@ fn new_roots_drop_old_labels() {
     data.rebuild_visible();
     assert_eq!(root_labels(&data), ["web", "tools"]);
 }
+
+#[test]
+fn same_relative_path_in_two_roots_keeps_its_own_color() {
+    use std::collections::HashMap;
+    use txv_core::cell::Color;
+
+    /// Any distinct color marks the file.
+    const MARK: Color = Color::Ansi(1);
+
+    let (dir, roots) = two_web_roots();
+    let mut data = FileTreeData::with_roots(roots.clone());
+    data.expand_paths(&[roots[0].join("src"), roots[1].join("src")]);
+    let app_index = roots[0].join("src/index.ts");
+    let mut colors = HashMap::new();
+    colors.insert(app_index.clone(), MARK);
+    data.set_colors(colors);
+    let style_of = |data: &FileTreeData, path: &std::path::Path| {
+        let id = data
+            .nodes
+            .iter()
+            .position(|n| n.path == path)
+            .unwrap_or_else(|| panic!("node {path:?}"));
+        data.style(id).fg()
+    };
+    assert_eq!(style_of(&data, &app_index), MARK);
+    assert_ne!(style_of(&data, &roots[1].join("src/index.ts")), MARK);
+    drop(dir);
+}

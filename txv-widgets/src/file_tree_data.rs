@@ -55,14 +55,10 @@ impl TreeData for FileTreeData {
         if node.is_dir {
             return palette().style(StyleId::TreeDir);
         }
-        let root = self.root_of(id);
-        let rel = node.path.strip_prefix(root).ok().and_then(|p| p.to_str());
-        if let Some(rel_path) = rel {
-            if let Some(&color) = self.colors.get(rel_path) {
-                return Style::default().with_fg(color);
-            }
+        match self.colors.get(&node.path) {
+            Some(&color) => Style::default().with_fg(color),
+            None => Style::default(),
         }
-        Style::default()
     }
 
     fn highlight_positions(&self, id: usize) -> Option<&[usize]> {
