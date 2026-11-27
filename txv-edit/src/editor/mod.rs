@@ -42,7 +42,7 @@ use crate::editor::ex_complete::ExCompleter;
 use crate::shared_register::RegisterHandle;
 use txv_core::clipboard_ring::ClipboardHandle;
 
-pub use self::ex_commands::CMD_TABLE_NAMES;
+pub use self::ex_commands::command_names;
 
 use self::command::Command;
 use self::ephemeral::EphemeralHighlights;

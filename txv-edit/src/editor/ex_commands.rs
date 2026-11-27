@@ -134,27 +134,10 @@ const CMD_TABLE: &[CmdEntry] = &[
     },
 ];
 
-/// Full command names for Tab completion in ex mode.
-pub const CMD_TABLE_NAMES: &[&str] = &[
-    "delete",
-    "diff",
-    "edit",
-    "fmt",
-    "nodiff",
-    "noblame",
-    "nohlsearch",
-    "only",
-    "quit",
-    "set",
-    "setglobal",
-    "split",
-    "substitute",
-    "vsplit",
-    "write",
-    "wq",
-    "x",
-    "yank",
-];
+/// Full command names for Tab completion in ex mode, from the command table.
+pub fn command_names() -> impl Iterator<Item = &'static str> {
+    CMD_TABLE.iter().map(|entry| entry.full)
+}
 
 /// Look up a command name by unambiguous prefix.
 /// Returns None if no match or ambiguous.

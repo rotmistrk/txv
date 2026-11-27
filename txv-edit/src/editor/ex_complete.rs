@@ -1,6 +1,6 @@
 //! Ex command completion — Tab-cycling in command mode.
 
-use crate::editor::ex_commands::CMD_TABLE_NAMES;
+use crate::editor::ex_commands::command_names;
 
 /// State for cycling through completions in command mode.
 pub struct ExCompleter {
@@ -103,11 +103,10 @@ fn collect_matches(prefix: &str, extra_commands: &[&str]) -> Vec<String> {
     if prefix.is_empty() {
         return Vec::new();
     }
-    let mut results: Vec<String> = CMD_TABLE_NAMES
-        .iter()
-        .chain(extra_commands.iter())
+    let mut results: Vec<String> = command_names()
+        .map(str::to_string)
+        .chain(extra_commands.iter().map(|s| s.to_string()))
         .filter(|cmd| cmd.starts_with(prefix))
-        .map(|s| s.to_string())
         .collect();
     results.sort();
     results.dedup();
