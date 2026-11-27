@@ -158,11 +158,10 @@ impl Table {
     }
 
     fn handle_page(&mut self, code: KeyCode) {
-        let page = self.state.bounds().h().saturating_sub(2) as usize;
-        let max = self.rows.len().saturating_sub(1);
+        self.sync_scroll();
         match code {
-            KeyCode::PageDown => self.cursor = (self.cursor + page).min(max),
-            KeyCode::PageUp => self.cursor = self.cursor.saturating_sub(page),
+            KeyCode::PageDown => self.cursor = self.scroll.page_down(self.cursor),
+            KeyCode::PageUp => self.cursor = self.scroll.page_up(self.cursor),
             _ => {}
         }
         self.sync_scroll();

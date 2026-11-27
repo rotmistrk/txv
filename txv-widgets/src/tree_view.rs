@@ -225,13 +225,13 @@ impl<D: TreeData> TreeView<D> {
     }
 
     fn handle_jump(&mut self, code: KeyCode) {
-        let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
+        self.sync_scroll();
         let max = self.data.visible_count().saturating_sub(1);
         match code {
             KeyCode::Home => self.cursor = 0,
             KeyCode::End => self.cursor = max,
-            KeyCode::PageDown => self.cursor = (self.cursor + page).min(max),
-            KeyCode::PageUp => self.cursor = self.cursor.saturating_sub(page),
+            KeyCode::PageDown => self.cursor = self.scroll.page_down(self.cursor),
+            KeyCode::PageUp => self.cursor = self.scroll.page_up(self.cursor),
             _ => {}
         }
         self.sync_scroll();

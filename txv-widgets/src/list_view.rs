@@ -157,13 +157,14 @@ impl<D: ListData> View for ListView<D> {
 
 impl<D: ListData> ListView<D> {
     fn page_down(&mut self) {
-        let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
-        let max = self.data.len().saturating_sub(1);
-        self.set_cursor((self.cursor + page).min(max));
+        self.sync_scroll();
+        let cursor = self.scroll.page_down(self.cursor);
+        self.set_cursor(cursor);
     }
 
     fn page_up(&mut self) {
-        let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
-        self.set_cursor(self.cursor.saturating_sub(page));
+        self.sync_scroll();
+        let cursor = self.scroll.page_up(self.cursor);
+        self.set_cursor(cursor);
     }
 }

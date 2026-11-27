@@ -138,16 +138,15 @@ impl<D: TreeTableSource> TreeTableView<D> {
     }
 
     fn page_up(&mut self) {
-        let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
-        self.cursor = self.cursor.saturating_sub(page);
+        self.sync_scroll();
+        self.cursor = self.scroll.page_up(self.cursor);
         self.sync_scroll();
         self.state.mark_dirty();
     }
 
     fn page_down(&mut self) {
-        let page = (self.state.bounds().h() as usize).saturating_sub(1).max(1);
-        let max = self.data.visible_count().saturating_sub(1);
-        self.cursor = (self.cursor + page).min(max);
+        self.sync_scroll();
+        self.cursor = self.scroll.page_down(self.cursor);
         self.sync_scroll();
         self.state.mark_dirty();
     }

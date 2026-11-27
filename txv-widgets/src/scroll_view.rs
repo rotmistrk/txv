@@ -66,6 +66,27 @@ impl ScrollView {
         self.total.saturating_sub(self.viewport)
     }
 
+    /// Rows one PgUp/PgDn moves: a viewport minus one row of overlap.
+    pub fn page_size(&self) -> usize {
+        self.viewport.saturating_sub(1).max(1)
+    }
+
+    /// PgDn: move the viewport forward one page and return the cursor moved by
+    /// the same amount, so it keeps its screen row. Clamped to the last item.
+    pub fn page_down(&mut self, cursor: usize) -> usize {
+        let step = self.page_size();
+        self.scroll_down(step);
+        cursor.saturating_add(step).min(self.total.saturating_sub(1))
+    }
+
+    /// PgUp: move the viewport back one page and return the cursor moved by
+    /// the same amount. Clamped to the first item.
+    pub fn page_up(&mut self, cursor: usize) -> usize {
+        let step = self.page_size();
+        self.scroll_up(step);
+        cursor.saturating_sub(step)
+    }
+
     /// Thumb position and size for a scrollbar (0-based row, height).
     pub fn thumb(&self, track_height: u16) -> (u16, u16) {
         if self.total == 0 || self.viewport >= self.total {
@@ -95,3 +116,7 @@ impl Default for ScrollView {
         Self::new()
     }
 }
+
+#[cfg(test)]
+#[path = "scroll_view_tests.rs"]
+mod tests;
