@@ -115,12 +115,21 @@ impl Program {
     }
 
     /// Run exactly N iterations of the event loop (for testing).
+    ///
+    /// Same as `run()`: layout happens on the first call and on resize only,
+    /// so views repaint only when they are dirty. A layout on every call
+    /// would repaint everything and hide views that forget to mark
+    /// themselves dirty.
     pub fn run_cycles(&mut self, backend: &mut dyn Backend, handler: &mut dyn FnMut(&mut CommandContext), n: usize) {
         let (w, h) = backend.size();
-        self.layout(w, h);
+        if self.group.bounds() != Rect::new(0, 0, w, h) {
+            self.layout(w, h);
+        }
 
         for _ in 0..n {
-            // Process all pending events
+            // Process all pending events. Like `run()`, draw after each one
+            // before the next: a view created or changed by an event is drawn
+            // before it sees a Tick.
             while let Some(event) = backend.poll_event(Duration::ZERO) {
                 if let Event::Resize(nw, nh) = &event {
                     self.layout(*nw, *nh);
@@ -131,6 +140,7 @@ impl Program {
                     self.draw_and_flush(backend);
                     return;
                 }
+                self.draw_if_dirty(backend);
             }
 
             // Tick — same as `run()`: Event::Tick to the views, then CM_TICK
@@ -143,9 +153,15 @@ impl Program {
             });
             self.drain_commands(handler);
 
-            // Draw and flush
-            self.draw_and_flush(backend);
+            // Draw only what is dirty, as `run()` does.
+            self.draw_if_dirty(backend);
             backend.set_cursor(self.group.cursor());
+        }
+    }
+
+    fn draw_if_dirty(&mut self, backend: &mut dyn Backend) {
+        if self.group.any_dirty() {
+            self.draw_and_flush(backend);
         }
     }
 
