@@ -72,7 +72,7 @@ impl Editor {
                 }
                 EditorAction::None
             }
-            ExCommand::Format => EditorAction::LspFormat,
+            ExCommand::Format(args) => EditorAction::LspFormat(args),
             ExCommand::FormatRange { start, end } => EditorAction::LspFormatRange(start, end),
             ExCommand::FormatBuiltin(args) => EditorAction::BuiltinFormat(args),
             _ => self.dispatch_ex_cmd_range(ex_cmd),

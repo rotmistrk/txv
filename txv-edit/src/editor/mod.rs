@@ -81,8 +81,8 @@ pub enum EditorAction {
     Vsplit(String),
     /// :only — close split
     Only,
-    /// :fmt — format entire file via LSP
-    LspFormat,
+    /// :fmt [args] — format entire file via LSP (the app may use the args)
+    LspFormat(String),
     /// :fmt with visual range — format selection via LSP
     LspFormatRange(usize, usize),
     /// :fmt! — format using built-in formatter (bypass LSP)

@@ -103,3 +103,35 @@ fn test_parse_relative_range() {
     let result = parse_ex_full(".,+2y", 1, 5, None);
     assert_eq!(result, Some(ExCommand::Yank { start: 1, end: 3 }));
 }
+
+#[test]
+fn fmt_carries_its_argument() {
+    assert_eq!(
+        parse_ex_full("fmt", 0, 10, None),
+        Some(ExCommand::Format(String::new()))
+    );
+    assert_eq!(
+        parse_ex_full("fmt all", 0, 10, None),
+        Some(ExCommand::Format("all".to_string()))
+    );
+    assert_eq!(
+        parse_ex_full("fmt  all  ", 0, 10, None),
+        Some(ExCommand::Format("all".to_string()))
+    );
+}
+
+#[test]
+fn fmt_bang_is_still_the_builtin_formatter() {
+    assert_eq!(
+        parse_ex_full("fmt! --sort-keys", 0, 10, None),
+        Some(ExCommand::FormatBuiltin("--sort-keys".to_string()))
+    );
+}
+
+#[test]
+fn fmt_with_a_visual_range_formats_that_range() {
+    assert_eq!(
+        parse_ex_full("fmt", 0, 10, Some((2, 6))),
+        Some(ExCommand::FormatRange { start: 2, end: 6 })
+    );
+}

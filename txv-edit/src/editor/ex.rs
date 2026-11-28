@@ -39,7 +39,8 @@ pub enum ExCommand {
     Vsplit(String),
     Only,
     Revert,
-    Format,
+    /// `:fmt [args]`; the args are everything after the command word.
+    Format(String),
     FormatRange {
         start: usize,
         end: usize,
@@ -130,7 +131,7 @@ fn dispatch_ex_cmd_id(
             if let Some((start, end)) = visual_lines {
                 Some(ExCommand::FormatRange { start, end })
             } else {
-                Some(ExCommand::Format)
+                Some(ExCommand::Format(rest.trim().to_string()))
             }
         }
         ExCmdId::Delete | ExCmdId::Yank | ExCmdId::Substitute => {
